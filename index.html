@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meine Alpen Webcam-Übersicht</title>
+  <style>
+    /* Allgemeines Layout */
+    .webcam-container {
+      margin-bottom: 30px; /* Abstand zwischen den Webcam-Containern */
+    }
+    
+    /* Stil für jeden Webcam-Container */
+    .iframe-container {
+      width: 1000px;  /* Breite des Containers */
+      height: 600px; /* Höhe des Containers */
+      position: relative;
+      background-color: #000; /* Hintergrundfarbe, falls die Webcam nicht lädt */
+    }
+    
+    /* iFrame-Styling und Zoom */
+    .iframe-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 2000px;  /* Ursprüngliche Breite der eingebetteten Webcam */
+      height: 1200px; /* Ursprüngliche Höhe der eingebetteten Webcam */
+      border: none; /* Kein Rahmen um das iFrame */
+      transform: scale(0.5); /* Skaliert den Inhalt auf 50% */
+      transform-origin: 0 0; /* Ursprung der Skalierung oben links */
+    }
+  /* Für Mobilgeräte */
+  @media (max-width: 768px) {
+    .iframe-container iframe {
+      width: 800px;
+      height: 600px;
+      transform: scale(1); /* Keine Skalierung auf mobilen Geräten */
+    }
+  }
+    /* iFrame für 100% Zoom (kein Zoom) */
+    .zoom-100 iframe {
+      width: 800px;   /* Ursprüngliche Breite der eingebetteten Webcam */
+      height: 600px;  /* Ursprüngliche Höhe der eingebetteten Webcam */
+      transform: scale(1); /*100% Skalierung, kein Zoom */
+    }
+  </style>
+</head>
+<body>
+  <h1>Meine Webcams</h1>
+
+  <!-- Webcam Speck -->
+  <div class="webcam-container">
+    <h2><a href="https://fgzo.ch/#galerie-2" target="_blank">Speck</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://fgzo.ch/#galerie-2" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Bachtel -->
+  <div class="webcam-container">
+    <h2><a href="https://bachtel.it-wms.com/" target="_blank">Bachtel</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://bachtel.it-wms.com/" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Wangen-Lachen -->
+  <div class="webcam-container">
+    <h2><a href="https://cams.lspv.dyndns.info/cams" target="_blank">Wangen-Lachen</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://cams.lspv.dyndns.info/cams" loading="lazy"></iframe>
+    </div>
+  </div>
+  
+  <!-- Webcam Uznach -->
+  <div class="webcam-container">
+    <h2><a href="https://eichi.ch/cam/webcam/eichi.jpg" target="_blank">Uznach</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://eichi.ch/cam/webcam/eichi.jpg" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Rapperswil -->
+  <div class="webcam-container">
+    <h2><a href="https://knieskinderzoo.roundshot.com/" target="_blank">Rapperswil</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://knieskinderzoo.roundshot.com/" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Walensee -->
+  <div class="webcam-container">
+    <h2><a href="https://feed.yellow.camera/niederurner-taeli" target="_blank">Walensee</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://feed.yellow.camera/niederurner-taeli" loading="lazy"></iframe>
+    </div>
+  </div>
+
+    <!-- Chäserugg -->
+  <div class="webcam-container">
+    <h2><a href="https://chaeserrugg.roundshot.com/" target="_blank">Chäserugg</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://chaeserrugg.roundshot.com/" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Mollis Nord-->
+  <div class="webcam-container zoom-100">
+    <h2><a href="https://webcams.glaronia.ch/flugplatz_mollis_nord.jpg" target="_blank">Flugplatz Mollis Nord</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://webcams.glaronia.ch/flugplatz_mollis_nord.jpg" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Richtung Tödi-->
+  <div class="webcam-container">
+    <h2><a href="https://decoral.ch/Kameratoedi.jpg" target="_blank">Richtung Tödi</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://decoral.ch/Kameratoedi.jpg" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Elm Weissenberge-->
+  <div class="webcam-container">
+    <h2><a href="https://feed.yellow.camera/7M8XY9W2G?hot=true&ui=true" target="_blank">Elm Weissenberge</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://feed.yellow.camera/7M8XY9W2G?hot=true&ui=true" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Klausenpass-->
+  <div class="webcam-container zoom-100">
+    <h2><a href="https://webcam.hotel-klausenpass.ch/panorama.jpg" target="_blank">Klausenpass</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://webcam.hotel-klausenpass.ch/panorama.jpg" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Mythen-->
+  <div class="webcam-container">
+    <h2><a href="https://rotenfluebahn.roundshot.com/rotenflue/#/" target="_blank">Mythen</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://rotenfluebahn.roundshot.com/rotenflue/#/" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Oberalppass-->
+  <div class="webcam-container">
+    <h2><a href="https://webcam.skiarena.ch/oberalppass/image.jpg" target="_blank">Oberalppass</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://webcam.skiarena.ch/oberalppass/image.jpg" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Laax Grab Sogn Gion-->
+  <div class="webcam-container">
+    <h2><a href="https://laax.roundshot.com/crap-sogn-gion-plaun/" target="_blank">Laax Grab Sogn Gion</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://laax.roundshot.com/crap-sogn-gion-plaun/" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Andermatt Nord Gurschen-->
+  <div class="webcam-container">
+    <h2><a href="https://www.sky-cam.ch/skiarena/gurschen_N/gurschen_N.jpg" target="_blank">Andermatt Nord Gurschen</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://www.sky-cam.ch/skiarena/gurschen_N/gurschen_N.jpg" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Gotthardpass-->
+  <div class="webcam-container">
+    <h2><a href="https://webcam.afbn.ch/H_OSG_017,200_S_KAM_001_Sued.jpg" target="_blank">Gotthardpass</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://webcam.afbn.ch/H_OSG_017,200_S_KAM_001_Sued.jpg" loading="lazy"></iframe>
+    </div>
+  </div>
+  
+  <!-- Webcam Grimsel Passhöhe-->
+  <div class="webcam-container">
+    <h2><a href="https://hotel-grimselpass.ch/webcam/" target="_blank">Grimsel Passhöhe</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://hotel-grimselpass.ch/webcam" loading="lazy"></iframe>
+    </div>
+  </div>
+  
+  <!-- Webcam Ambri Tarnolgio-->
+  <div class="webcam-container zoom-100">
+    <h2><a href="https://www.tarnolgio.ch/webcam00.jpg">Ambri Tarnolgio</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://www.tarnolgio.ch/webcam00.jpg" loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <!-- Webcam Ascona / Locarno-->
+  <div class="webcam-container">
+    <h2><a href="https://ascona-locarno.roundshot.com/bellavistahotel/" target="_blank">Ascona / Locarno</a></h2>
+    <div class="iframe-container">
+      <iframe src="https://ascona-locarno.roundshot.com/bellavistahotel/" loading="lazy"></iframe>
+    </div>
+  </div>
+
+
+
+
