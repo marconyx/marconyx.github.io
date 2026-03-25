@@ -1,1 +1,913 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MagicPass – Skigebiete</title>
 
+  <!-- React -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#root{height:100%;background:#060d1a}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+    input[type=range]{-webkit-appearance:none;appearance:none;background:transparent}
+    input[type=number]::-webkit-inner-spin-button{opacity:.5}
+
+    /* Leaflet dark overrides */
+    .leaflet-container{background:#0d1b2a!important;font-family:'Syne',sans-serif}
+    .leaflet-tile{filter:brightness(0.7) saturate(0.6) hue-rotate(180deg) invert(0.85)}
+    .leaflet-control-zoom a{background:#0d1b2a!important;color:#94a3b8!important;border-color:rgba(255,255,255,0.1)!important}
+    .leaflet-control-zoom a:hover{background:#1e293b!important;color:#e2e8f0!important}
+    .leaflet-control-attribution{background:rgba(6,13,26,0.8)!important;color:#334155!important;font-size:9px}
+    .leaflet-control-attribution a{color:#475569!important}
+    .leaflet-popup-content-wrapper{background:#0d1b2a;border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#e2e8f0;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
+    .leaflet-popup-tip{background:#0d1b2a}
+    .leaflet-popup-close-button{color:#64748b!important;font-size:16px!important}
+
+    /* Pulse animation for user location */
+    @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
+    .user-pin{animation:pulse 2s ease-in-out infinite}
+
+    /* Card hover */
+    .ski-card{transition:transform .15s,box-shadow .15s}
+    .ski-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.5)!important}
+
+    /* Tab indicator */
+    .tab-active{position:relative}
+    .tab-active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,#38bdf8,#818cf8);border-radius:2px}
+
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .fade-in{animation:fadeIn .25s ease forwards}
+
+    @media(max-width:767px){
+      .sidebar-desktop{display:none!important}
+    }
+    @media(min-width:768px){
+      .mobile-only{display:none!important}
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useMemo,useEffect,useRef,useCallback}=React;
+
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+// magicpass: true  = offiziell im MagicPass 2025/26 inbegriffen
+// magicpass: false = NICHT im MagicPass (anderer Verbund oder kein Pass)
+const STATIONS=[
+  // ── WALLIS (22) ─────────────────────────────────────────────────────────
+  {id:1,  name:"Grimentz-Zinal",              region:"Wallis",     status:"offen",      lifte:21, pistenKm:115, bergHoehe:2900,talHoehe:1570,hoehendiff:1330,typ:"Gross", lat:46.175,lng:7.625,  magicpass:true},
+  {id:2,  name:"Saas-Fee",                    region:"Wallis",     status:"offen",      lifte:23, pistenKm:100, bergHoehe:3573,talHoehe:1800,hoehendiff:1773,typ:"Gross", lat:46.107,lng:7.928,  magicpass:true},
+  {id:3,  name:"Crans-Montana",               region:"Wallis",     status:"offen",      lifte:23, pistenKm:140, bergHoehe:3000,talHoehe:1500,hoehendiff:1500,typ:"Gross", lat:46.312,lng:7.479,  magicpass:false}, // seit 2025 nicht mehr im MP
+  {id:4,  name:"Anzère",                      region:"Wallis",     status:"offen",      lifte:12, pistenKm:44,  bergHoehe:2420,talHoehe:1500,hoehendiff:920, typ:"Mittel",lat:46.300,lng:7.398,  magicpass:true},
+  {id:5,  name:"Nendaz",                      region:"Wallis",     status:"offen",      lifte:8,  pistenKm:30,  bergHoehe:2200,talHoehe:1365,hoehendiff:835, typ:"Mittel",lat:46.189,lng:7.306,  magicpass:true},
+  {id:6,  name:"Ovronnaz",                    region:"Wallis",     status:"offen",      lifte:7,  pistenKm:40,  bergHoehe:2500,talHoehe:1400,hoehendiff:1100,typ:"Mittel",lat:46.226,lng:7.199,  magicpass:true},
+  {id:7,  name:"Bellwald",                    region:"Wallis",     status:"offen",      lifte:7,  pistenKm:30,  bergHoehe:2600,talHoehe:1560,hoehendiff:1040,typ:"Mittel",lat:46.429,lng:8.201,  magicpass:true},
+  {id:8,  name:"Bettmeralp",                  region:"Wallis",     status:"offen",      lifte:12, pistenKm:45,  bergHoehe:2869,talHoehe:1950,hoehendiff:919, typ:"Mittel",lat:46.392,lng:8.072,  magicpass:true},
+  {id:9,  name:"Riederalp",                   region:"Wallis",     status:"offen",      lifte:12, pistenKm:45,  bergHoehe:2869,talHoehe:1900,hoehendiff:969, typ:"Mittel",lat:46.376,lng:8.028,  magicpass:true},
+  {id:10, name:"Belalp",                      region:"Wallis",     status:"offen",      lifte:9,  pistenKm:40,  bergHoehe:3112,talHoehe:1450,hoehendiff:1662,typ:"Mittel",lat:46.357,lng:7.992,  magicpass:true}, // NEU 2025
+  {id:11, name:"Leukerbad (Torrent & Gemmi)", region:"Wallis",     status:"offen",      lifte:9,  pistenKm:50,  bergHoehe:2350,talHoehe:1411,hoehendiff:939, typ:"Mittel",lat:46.379,lng:7.636,  magicpass:true},
+  {id:12, name:"St-Luc / Chandolin",          region:"Wallis",     status:"offen",      lifte:15, pistenKm:60,  bergHoehe:2900,talHoehe:1650,hoehendiff:1250,typ:"Mittel",lat:46.225,lng:7.608,  magicpass:true},
+  {id:13, name:"Vercorin",                    region:"Wallis",     status:"offen",      lifte:7,  pistenKm:25,  bergHoehe:2400,talHoehe:1300,hoehendiff:1100,typ:"Klein", lat:46.257,lng:7.559,  magicpass:true},
+  {id:14, name:"Nax / Mont-Noble",            region:"Wallis",     status:"offen",      lifte:5,  pistenKm:15,  bergHoehe:2500,talHoehe:1000,hoehendiff:1500,typ:"Klein", lat:46.233,lng:7.446,  magicpass:true},
+  {id:15, name:"Mayens de Conthey",           region:"Wallis",     status:"geschlossen",lifte:3,  pistenKm:10,  bergHoehe:2000,talHoehe:1200,hoehendiff:800, typ:"Klein", lat:46.215,lng:7.328,  magicpass:true},
+  {id:16, name:"Thyon 2000",                  region:"Wallis",     status:"offen",      lifte:6,  pistenKm:20,  bergHoehe:2200,talHoehe:1900,hoehendiff:300, typ:"Klein", lat:46.196,lng:7.372,  magicpass:true},
+  {id:17, name:"Unterbäch",                   region:"Wallis",     status:"offen",      lifte:6,  pistenKm:20,  bergHoehe:2300,talHoehe:1228,hoehendiff:1072,typ:"Klein", lat:46.311,lng:7.762,  magicpass:true},
+  {id:18, name:"Gspon",                       region:"Wallis",     status:"geschlossen",lifte:2,  pistenKm:5,   bergHoehe:2000,talHoehe:1893,hoehendiff:107, typ:"Klein", lat:46.218,lng:7.866,  magicpass:true},
+  {id:19, name:"Grachen",                     region:"Wallis",     status:"offen",      lifte:10, pistenKm:40,  bergHoehe:2869,talHoehe:1620,hoehendiff:1249,typ:"Mittel",lat:46.193,lng:7.836,  magicpass:true},
+  {id:20, name:"Rosswald",                    region:"Wallis",     status:"offen",      lifte:4,  pistenKm:12,  bergHoehe:2200,talHoehe:1790,hoehendiff:410, typ:"Klein", lat:46.313,lng:8.232,  magicpass:true},
+  {id:21, name:"La Tzoumaz / Savoleyres",     region:"Wallis",     status:"offen",      lifte:6,  pistenKm:25,  bergHoehe:2350,talHoehe:1500,hoehendiff:850, typ:"Klein", lat:46.115,lng:7.210,  magicpass:true},
+  {id:22, name:"Les Marécottes",              region:"Wallis",     status:"offen",      lifte:4,  pistenKm:27,  bergHoehe:2200,talHoehe:1100,hoehendiff:1100,typ:"Klein", lat:46.087,lng:7.055,  magicpass:true},
+  // Nicht MP Wallis
+  {id:23, name:"Zermatt",                     region:"Wallis",     status:"offen",      lifte:54, pistenKm:360, bergHoehe:3883,talHoehe:1620,hoehendiff:2263,typ:"Gross", lat:46.020,lng:7.749,  magicpass:false},
+  {id:24, name:"Verbier / 4 Vallées",         region:"Wallis",     status:"offen",      lifte:35, pistenKm:125, bergHoehe:3330,talHoehe:820, hoehendiff:2510,typ:"Gross", lat:46.096,lng:7.228,  magicpass:false},
+  // ── BERN (30) ───────────────────────────────────────────────────────────
+  {id:30, name:"Gstaad – Rinderberg",         region:"Bern",       status:"offen",      lifte:8,  pistenKm:35,  bergHoehe:2000,talHoehe:1000,hoehendiff:1000,typ:"Mittel",lat:46.479,lng:7.287,  magicpass:true}, // NEU 2025
+  {id:31, name:"Gstaad – Eggli",              region:"Bern",       status:"offen",      lifte:6,  pistenKm:20,  bergHoehe:1800,talHoehe:1050,hoehendiff:750, typ:"Klein", lat:46.470,lng:7.279,  magicpass:true}, // NEU 2025
+  {id:32, name:"Gstaad – Schönried/Saanen",   region:"Bern",       status:"offen",      lifte:8,  pistenKm:30,  bergHoehe:1950,talHoehe:1000,hoehendiff:950, typ:"Mittel",lat:46.502,lng:7.267,  magicpass:true}, // NEU 2025
+  {id:33, name:"Meiringen-Hasliberg",         region:"Bern",       status:"offen",      lifte:16, pistenKm:60,  bergHoehe:2433,talHoehe:1060,hoehendiff:1373,typ:"Mittel",lat:46.727,lng:8.185,  magicpass:true}, // NEU 2025
+  {id:34, name:"Axalp",                       region:"Bern",       status:"offen",      lifte:3,  pistenKm:9,   bergHoehe:1900,talHoehe:1100,hoehendiff:800, typ:"Klein", lat:46.745,lng:8.044,  magicpass:true}, // NEU 2025
+  {id:35, name:"Grimmialp",                   region:"Bern",       status:"geschlossen",lifte:3,  pistenKm:10,  bergHoehe:1750,talHoehe:1120,hoehendiff:630, typ:"Klein", lat:46.637,lng:7.567,  magicpass:true},
+  {id:36, name:"Jaun",                        region:"Bern",       status:"geschlossen",lifte:5,  pistenKm:15,  bergHoehe:1750,talHoehe:1000,hoehendiff:750, typ:"Klein", lat:46.597,lng:7.318,  magicpass:true},
+  {id:37, name:"Kiental",                     region:"Bern",       status:"geschlossen",lifte:2,  pistenKm:1,   bergHoehe:1300,talHoehe:900, hoehendiff:400, typ:"Klein", lat:46.587,lng:7.744,  magicpass:true},
+  {id:38, name:"Habkern",                     region:"Bern",       status:"geschlossen",lifte:2,  pistenKm:8,   bergHoehe:1600,talHoehe:1050,hoehendiff:550, typ:"Klein", lat:46.735,lng:7.868,  magicpass:true},
+  {id:39, name:"Heimenschwand",               region:"Bern",       status:"geschlossen",lifte:1,  pistenKm:1,   bergHoehe:1100,talHoehe:850, hoehendiff:250, typ:"Klein", lat:46.677,lng:7.715,  magicpass:true},
+  {id:40, name:"Linden",                      region:"Bern",       status:"geschlossen",lifte:2,  pistenKm:5,   bergHoehe:1300,talHoehe:900, hoehendiff:400, typ:"Klein", lat:46.788,lng:7.811,  magicpass:true}, // NEU 2025
+  {id:41, name:"Gurnigelbad",                 region:"Bern",       status:"geschlossen",lifte:1,  pistenKm:2,   bergHoehe:1560,talHoehe:1150,hoehendiff:410, typ:"Klein", lat:46.756,lng:7.451,  magicpass:true},
+  {id:42, name:"Springenboden",               region:"Bern",       status:"geschlossen",lifte:3,  pistenKm:6,   bergHoehe:1600,talHoehe:1000,hoehendiff:600, typ:"Klein", lat:46.651,lng:8.000,  magicpass:true},
+  // Nicht MP Bern
+  {id:43, name:"Adelboden-Lenk",              region:"Bern",       status:"offen",      lifte:57, pistenKm:210, bergHoehe:2362,talHoehe:1050,hoehendiff:1312,typ:"Gross", lat:46.490,lng:7.558,  magicpass:false},
+  {id:44, name:"Grindelwald / Jungfrau",      region:"Bern",       status:"offen",      lifte:46, pistenKm:213, bergHoehe:2971,talHoehe:1034,hoehendiff:1937,typ:"Gross", lat:46.624,lng:8.041,  magicpass:false},
+  // ── WAADT (12) ──────────────────────────────────────────────────────────
+  {id:50, name:"Les Diablerets / Villars",    region:"Waadt",      status:"offen",      lifte:30, pistenKm:87,  bergHoehe:2120,talHoehe:1224,hoehendiff:896, typ:"Gross", lat:46.298,lng:7.058,  magicpass:true},
+  {id:51, name:"Glacier 3000",               region:"Waadt",      status:"offen",      lifte:10, pistenKm:31,  bergHoehe:3000,talHoehe:1800,hoehendiff:1200,typ:"Mittel",lat:46.349,lng:7.119,  magicpass:true}, // Option
+  {id:52, name:"Leysin",                     region:"Waadt",      status:"offen",      lifte:16, pistenKm:60,  bergHoehe:2205,talHoehe:1260,hoehendiff:945, typ:"Mittel",lat:46.340,lng:7.004,  magicpass:true},
+  {id:53, name:"Les Mosses / La Lécherette", region:"Waadt",      status:"offen",      lifte:15, pistenKm:55,  bergHoehe:1914,talHoehe:1200,hoehendiff:714, typ:"Mittel",lat:46.393,lng:7.097,  magicpass:true},
+  {id:54, name:"Château-d'Œx",               region:"Waadt",      status:"geschlossen",lifte:7,  pistenKm:20,  bergHoehe:1630,talHoehe:1000,hoehendiff:630, typ:"Klein", lat:46.479,lng:7.136,  magicpass:true},
+  {id:55, name:"Les Pléiades",               region:"Waadt",      status:"geschlossen",lifte:6,  pistenKm:8,   bergHoehe:1360,talHoehe:800, hoehendiff:560, typ:"Klein", lat:46.487,lng:6.909,  magicpass:true},
+  {id:56, name:"Les Rochers-de-Naye",        region:"Waadt",      status:"offen",      lifte:5,  pistenKm:8,   bergHoehe:2042,talHoehe:400, hoehendiff:1642,typ:"Klein", lat:46.440,lng:6.980,  magicpass:true},
+  {id:57, name:"Ste-Croix / Les Rasses",     region:"Waadt",      status:"geschlossen",lifte:9,  pistenKm:19,  bergHoehe:1600,talHoehe:1000,hoehendiff:600, typ:"Klein", lat:46.822,lng:6.500,  magicpass:true},
+  {id:58, name:"Vallée de Joux",             region:"Waadt",      status:"geschlossen",lifte:2,  pistenKm:10,  bergHoehe:1440,talHoehe:1000,hoehendiff:440, typ:"Klein", lat:46.621,lng:6.268,  magicpass:true},
+  {id:59, name:"Les Paccots",                region:"Waadt",      status:"offen",      lifte:14, pistenKm:40,  bergHoehe:1600,talHoehe:880, hoehendiff:720, typ:"Klein", lat:46.540,lng:6.991,  magicpass:true},
+  // ── FREIBURG (7) ────────────────────────────────────────────────────────
+  {id:60, name:"Moléson",                    region:"Freiburg",   status:"geschlossen",lifte:7,  pistenKm:30,  bergHoehe:2002,talHoehe:1100,hoehendiff:902, typ:"Mittel",lat:46.543,lng:7.019,  magicpass:true},
+  {id:61, name:"Charmey",                    region:"Freiburg",   status:"geschlossen",lifte:6,  pistenKm:25,  bergHoehe:1640,talHoehe:900, hoehendiff:740, typ:"Klein", lat:46.618,lng:7.189,  magicpass:true},
+  {id:62, name:"La Berra",                   region:"Freiburg",   status:"offen",      lifte:6,  pistenKm:40,  bergHoehe:1719,talHoehe:1050,hoehendiff:669, typ:"Klein", lat:46.680,lng:7.053,  magicpass:true},
+  {id:63, name:"Schwarzsee",                 region:"Freiburg",   status:"offen",      lifte:5,  pistenKm:20,  bergHoehe:1900,talHoehe:1050,hoehendiff:850, typ:"Klein", lat:46.640,lng:7.318,  magicpass:true},
+  {id:64, name:"Grandvillard",               region:"Freiburg",   status:"geschlossen",lifte:3,  pistenKm:10,  bergHoehe:1540,talHoehe:900, hoehendiff:640, typ:"Klein", lat:46.631,lng:7.236,  magicpass:true},
+  {id:65, name:"Jaun (FR)",                  region:"Freiburg",   status:"geschlossen",lifte:5,  pistenKm:15,  bergHoehe:1750,talHoehe:1000,hoehendiff:750, typ:"Klein", lat:46.597,lng:7.298,  magicpass:true},
+  {id:66, name:"Hirmentaz",                  region:"Frankreich", status:"offen",      lifte:10, pistenKm:35,  bergHoehe:1607,talHoehe:900, hoehendiff:707, typ:"Klein", lat:46.287,lng:6.558,  magicpass:true},
+  // ── SOLOTHURN (3) ───────────────────────────────────────────────────────
+  {id:70, name:"Weissenstein",               region:"Solothurn",  status:"geschlossen",lifte:3,  pistenKm:10,  bergHoehe:1284,talHoehe:750, hoehendiff:534, typ:"Klein", lat:47.231,lng:7.509,  magicpass:true},
+  {id:71, name:"Balmberg",                   region:"Solothurn",  status:"geschlossen",lifte:3,  pistenKm:8,   bergHoehe:1100,talHoehe:700, hoehendiff:400, typ:"Klein", lat:47.226,lng:7.572,  magicpass:true}, // NEU 2025
+  {id:72, name:"Grenchenberg",               region:"Solothurn",  status:"geschlossen",lifte:2,  pistenKm:1,   bergHoehe:1100,talHoehe:700, hoehendiff:400, typ:"Klein", lat:47.196,lng:7.417,  magicpass:true}, // NEU 2025
+  // ── NEUENBURG (3) ───────────────────────────────────────────────────────
+  {id:75, name:"Les Bugnenets-Savagnières",  region:"Neuenburg",  status:"geschlossen",lifte:3,  pistenKm:5,   bergHoehe:1285,talHoehe:750, hoehendiff:535, typ:"Klein", lat:47.057,lng:6.918,  magicpass:true},
+  {id:76, name:"La Vue-des-Alpes",           region:"Neuenburg",  status:"geschlossen",lifte:4,  pistenKm:8,   bergHoehe:1283,talHoehe:900, hoehendiff:383, typ:"Klein", lat:47.010,lng:6.836,  magicpass:true},
+  {id:77, name:"Tête de Ran",                region:"Neuenburg",  status:"geschlossen",lifte:2,  pistenKm:4,   bergHoehe:1422,talHoehe:1000,hoehendiff:422, typ:"Klein", lat:47.032,lng:6.799,  magicpass:true},
+  // ── NIDWALDEN (1) ───────────────────────────────────────────────────────
+  {id:80, name:"Klewenalp-Stockhütte",       region:"Nidwalden",  status:"offen",      lifte:5,  pistenKm:25,  bergHoehe:1961,talHoehe:435, hoehendiff:1526,typ:"Klein", lat:46.928,lng:8.458,  magicpass:true},
+  // Nicht MP Nidwalden
+  {id:81, name:"Engelberg-Titlis",           region:"Nidwalden",  status:"offen",      lifte:26, pistenKm:82,  bergHoehe:3020,talHoehe:1050,hoehendiff:1970,typ:"Gross", lat:46.820,lng:8.408,  magicpass:false},
+  // ── OBWALDEN (2) ────────────────────────────────────────────────────────
+  {id:82, name:"Melchsee-Frutt",             region:"Obwalden",   status:"offen",      lifte:12, pistenKm:42,  bergHoehe:2255,talHoehe:1920,hoehendiff:335, typ:"Mittel",lat:46.817,lng:8.268,  magicpass:true}, // NEU 2025
+  {id:83, name:"Mörlialp",                   region:"Obwalden",   status:"geschlossen",lifte:3,  pistenKm:8,   bergHoehe:1750,talHoehe:1100,hoehendiff:650, typ:"Klein", lat:46.889,lng:8.198,  magicpass:true}, // NEU 2025
+  // ── LUZERN (2) ──────────────────────────────────────────────────────────
+  {id:84, name:"Sörenberg",                  region:"Luzern",     status:"offen",      lifte:12, pistenKm:42,  bergHoehe:2350,talHoehe:1165,hoehendiff:1185,typ:"Mittel",lat:46.835,lng:8.037,  magicpass:true}, // NEU 2025
+  {id:85, name:"Valbirse",                   region:"Bern",       status:"geschlossen",lifte:1,  pistenKm:1,   bergHoehe:900, talHoehe:700, hoehendiff:200, typ:"Klein", lat:47.202,lng:7.328,  magicpass:true},
+  // ── SCHWYZ (1) ──────────────────────────────────────────────────────────
+  {id:86, name:"Stoos",                      region:"Schwyz",     status:"offen",      lifte:9,  pistenKm:35,  bergHoehe:1900,talHoehe:800, hoehendiff:1100,typ:"Mittel",lat:47.004,lng:8.673,  magicpass:true},
+  // ── FRANKREICH (10) ─────────────────────────────────────────────────────
+  {id:90, name:"Le Grand-Bornand",           region:"Frankreich", status:"offen",      lifte:25, pistenKm:77,  bergHoehe:2100,talHoehe:1000,hoehendiff:1100,typ:"Gross", lat:45.943,lng:6.423,  magicpass:true},
+  {id:91, name:"La Clusaz",                  region:"Frankreich", status:"offen",      lifte:55, pistenKm:125, bergHoehe:2600,talHoehe:1100,hoehendiff:1500,typ:"Gross", lat:45.907,lng:6.424,  magicpass:true},
+  {id:92, name:"Les Contamines-Montjoie",    region:"Frankreich", status:"offen",      lifte:27, pistenKm:110, bergHoehe:2487,talHoehe:1164,hoehendiff:1323,typ:"Gross", lat:45.821,lng:6.727,  magicpass:true},
+  {id:93, name:"Praz de Lys / Sommand",      region:"Frankreich", status:"offen",      lifte:22, pistenKm:75,  bergHoehe:1800,talHoehe:1000,hoehendiff:800, typ:"Mittel",lat:46.150,lng:6.608,  magicpass:true},
+  {id:94, name:"Les Habères",                region:"Frankreich", status:"offen",      lifte:6,  pistenKm:15,  bergHoehe:1700,talHoehe:900, hoehendiff:800, typ:"Klein", lat:46.233,lng:6.508,  magicpass:true},
+  {id:95, name:"Thollon-les-Mémises",        region:"Frankreich", status:"offen",      lifte:15, pistenKm:15,  bergHoehe:1985,talHoehe:900, hoehendiff:1085,typ:"Klein", lat:46.403,lng:6.698,  magicpass:true},
+  {id:96, name:"Les Gets",                   region:"Frankreich", status:"offen",      lifte:48, pistenKm:120, bergHoehe:2002,talHoehe:1172,hoehendiff:830, typ:"Gross", lat:46.157,lng:6.666,  magicpass:false}, // Portes du Soleil, nicht MP
+  {id:97, name:"Megève / Saint-Gervais",     region:"Frankreich", status:"offen",      lifte:83, pistenKm:445, bergHoehe:2350,talHoehe:1050,hoehendiff:1300,typ:"Gross", lat:45.857,lng:6.617,  magicpass:false},
+  {id:98, name:"Morillon / Samoëns",         region:"Frankreich", status:"geschlossen",lifte:45, pistenKm:90,  bergHoehe:2480,talHoehe:700, hoehendiff:1780,typ:"Gross", lat:46.084,lng:6.718,  magicpass:false},
+  {id:99, name:"Tramelan",                   region:"Bern",       status:"offen",      lifte:3,  pistenKm:15,  bergHoehe:1200,talHoehe:750, hoehendiff:450, typ:"Klein", lat:47.220,lng:7.099,  magicpass:true},
+  // ── ITALIEN (3) ─────────────────────────────────────────────────────────
+  {id:100,name:"Alagna / Gressoney",         region:"Italien",    status:"offen",      lifte:57, pistenKm:180, bergHoehe:3275,talHoehe:1100,hoehendiff:2175,typ:"Gross", lat:45.857,lng:7.937,  magicpass:true},
+  {id:101,name:"Pila",                       region:"Italien",    status:"offen",      lifte:15, pistenKm:70,  bergHoehe:2752,talHoehe:1800,hoehendiff:952, typ:"Mittel",lat:45.726,lng:7.334,  magicpass:true},
+  {id:102,name:"Breuil-Cervinia",            region:"Italien",    status:"offen",      lifte:29, pistenKm:155, bergHoehe:3480,talHoehe:2006,hoehendiff:1474,typ:"Gross", lat:45.938,lng:7.626,  magicpass:true},
+];
+
+// Realistische offene Pisten & Lifte (Hochsaison März 2025)
+// Format: id → [offenePistenKm, offeneLifte]
+const OPEN_DATA={
+  1:[95,18],2:[85,20],3:[110,19],4:[38,10],5:[25,7],6:[32,6],7:[25,6],
+  8:[38,10],9:[38,10],10:[32,8],11:[42,8],12:[52,13],13:[20,6],14:[12,4],
+  15:[0,0],16:[16,5],17:[16,5],18:[0,0],19:[34,9],20:[10,3],21:[20,5],
+  22:[22,3],23:[300,48],24:[100,30],
+  30:[28,7],31:[16,5],32:[24,7],33:[50,13],34:[7,3],35:[0,0],36:[0,0],
+  37:[0,0],38:[0,0],39:[0,0],40:[0,0],41:[0,0],42:[0,0],
+  43:[180,50],44:[195,42],
+  50:[72,25],51:[28,9],52:[48,14],53:[45,13],54:[16,6],55:[6,4],
+  56:[6,4],57:[18,8],58:[8,2],59:[32,11],
+  60:[0,0],61:[0,0],62:[32,5],63:[16,4],64:[0,0],65:[0,0],66:[28,9],
+  70:[0,0],71:[0,0],72:[0,0],
+  75:[0,0],76:[0,0],77:[0,0],
+  80:[20,4],81:[65,22],82:[30,10],83:[0,0],84:[35,10],85:[0,0],86:[28,8],
+  90:[65,21],91:[100,48],92:[88,24],93:[60,18],94:[12,5],95:[12,13],
+  96:[95,40],97:[380,72],98:[0,0],99:[12,2],
+  100:[150,50],101:[58,13],102:[130,26],
+};
+// Gibt offene Daten zurück; Fallback: bei "offen" ~75% sonst 0
+function getOpenData(s){
+  const d=OPEN_DATA[s.id];
+  if(d)return{pistenOffen:d[0],lifteOffen:d[1]};
+  if(s.status==="offen")return{pistenOffen:Math.round(s.pistenKm*0.75),lifteOffen:Math.round(s.lifte*0.75)};
+  return{pistenOffen:0,lifteOffen:0};
+}
+
+const REGIONS=["Alle",...Array.from(new Set(STATIONS.map(s=>s.region))).sort()];
+const STATUS_OPTIONS=["Alle","offen","geschlossen"];
+const TYP_OPTIONS=["Alle","Gross","Mittel","Klein"];
+const MP_OPTIONS=["Alle","Im MagicPass","Nicht im MagicPass"];
+const REGION_COLORS={"Wallis":"#e63946","Bern":"#2a9d8f","Waadt":"#457b9d","Frankreich":"#f4a261","Freiburg":"#8338ec","Solothurn":"#06d6a0","Nidwalden":"#fb8500","Obwalden":"#3a86ff","Schwyz":"#ff006e","Luzern":"#8ecae6","Italien":"#264653","Neuenburg":"#f59e0b"};
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+
+function weatherIcon(code){
+  if(code===0)return"☀️";
+  if(code<=2)return"🌤️";
+  if(code<=3)return"☁️";
+  if(code<=48)return"🌫️";
+  if(code<=57)return"🌦️";
+  if(code<=67)return"🌧️";
+  if(code<=77)return"❄️";
+  if(code<=82)return"🌧️";
+  if(code<=86)return"🌨️";
+  return"⛈️";
+}
+
+// ═══════════════════════════════════════════════════════
+// SHARED COMPONENTS
+// ═══════════════════════════════════════════════════════
+function RangeInput({min,max,value,onChange,label,unit}){
+  const base={width:"100%",padding:"5px 8px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:7,color:"#e2e8f0",fontSize:12,fontFamily:"'DM Mono',monospace",outline:"none",textAlign:"center"};
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,isNaN(v)?lo:v));
+  const pct=(v)=>((v-min)/(max-min))*100;
+  return(
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{label}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:6,alignItems:"center",marginBottom:8}}>
+        <div>
+          <div style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.1em",fontFamily:"monospace",marginBottom:3,textAlign:"center"}}>MIN</div>
+          <input type="number" min={min} max={value[1]-1} value={value[0]} onChange={e=>onChange([clamp(+e.target.value,min,value[1]-1),value[1]])} onFocus={e=>e.target.style.borderColor="#38bdf8"} onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.1)"} style={base}/>
+        </div>
+        <div style={{fontSize:10,color:"#334155",fontFamily:"monospace",paddingTop:14,textAlign:"center"}}>—</div>
+        <div>
+          <div style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.1em",fontFamily:"monospace",marginBottom:3,textAlign:"center"}}>MAX</div>
+          <input type="number" min={value[0]+1} max={max} value={value[1]} onChange={e=>onChange([value[0],clamp(+e.target.value,value[0]+1,max)])} onFocus={e=>e.target.style.borderColor="#818cf8"} onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.1)"} style={base}/>
+        </div>
+      </div>
+      <div style={{position:"relative",height:18,display:"flex",alignItems:"center"}}>
+        <div style={{position:"absolute",left:0,right:0,height:3,background:"rgba(255,255,255,0.08)",borderRadius:2}}/>
+        <div style={{position:"absolute",left:`${pct(value[0])}%`,right:`${100-pct(value[1])}%`,height:3,background:"linear-gradient(90deg,#38bdf8,#818cf8)",borderRadius:2}}/>
+        <input type="range" min={min} max={max} value={value[0]} onChange={e=>onChange([Math.min(+e.target.value,value[1]-1),value[1]])} style={{position:"absolute",width:"100%",opacity:0,cursor:"pointer",height:18,zIndex:2}}/>
+        <input type="range" min={min} max={max} value={value[1]} onChange={e=>onChange([value[0],Math.max(+e.target.value,value[0]+1)])} style={{position:"absolute",width:"100%",opacity:0,cursor:"pointer",height:18,zIndex:3}}/>
+        <div style={{position:"absolute",left:`calc(${pct(value[0])}% - 5px)`,width:10,height:10,borderRadius:"50%",background:"#38bdf8",boxShadow:"0 0 6px #38bdf8",border:"2px solid #060d1a",zIndex:4,pointerEvents:"none"}}/>
+        <div style={{position:"absolute",left:`calc(${pct(value[1])}% - 5px)`,width:10,height:10,borderRadius:"50%",background:"#818cf8",boxShadow:"0 0 6px #818cf8",border:"2px solid #060d1a",zIndex:4,pointerEvents:"none"}}/>
+      </div>
+    </div>
+  );
+}
+
+function ChipFilter({options,value,onChange,colorMap}){
+  return(
+    <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+      {options.map(opt=>{
+        const active=value===opt;
+        const color=colorMap?.[opt]||"#38bdf8";
+        return(
+          <button key={opt} onClick={()=>onChange(opt)} style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontFamily:"'DM Mono',monospace",cursor:"pointer",border:"none",background:active?(opt==="Alle"?"rgba(56,189,248,0.2)":`${color}25`):"rgba(255,255,255,0.05)",color:active?(opt==="Alle"?"#38bdf8":color):"#475569",outline:active?`1px solid ${opt==="Alle"?"#38bdf8":color}`:"1px solid transparent"}}>
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatPill({label,value}){
+  return(
+    <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"10px 14px",flex:1,minWidth:90}}>
+      <div style={{fontSize:18,fontWeight:700,color:"#f1f5f9",fontFamily:"'DM Mono',monospace"}}>{value}</div>
+      <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em",marginTop:2}}>{label}</div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// SKI CARD
+// ═══════════════════════════════════════════════════════
+function SkiCard({s,distance,weather,isFav,onToggleFav,onSelect}){
+  const rc=REGION_COLORS[s.region]||"#64748b";
+  const open=s.status==="offen";
+  return(
+    <div className="ski-card" style={{background:"rgba(13,27,42,0.9)",border:`1px solid rgba(255,255,255,0.07)`,borderRadius:16,padding:18,display:"flex",flexDirection:"column",gap:12,boxShadow:"0 2px 20px rgba(0,0,0,0.3)",borderLeft:`3px solid ${open?"#22c55e":"#ef4444"}`,cursor:"pointer"}} onClick={()=>onSelect&&onSelect(s)}>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9",lineHeight:1.3,fontFamily:"'Syne',sans-serif"}}>{s.name}</div>
+          <div style={{marginTop:3,display:"flex",alignItems:"center",gap:5}}>
+            <span style={{width:7,height:7,borderRadius:"50%",background:rc,display:"inline-block",boxShadow:`0 0 5px ${rc}`}}/>
+            <span style={{fontSize:10,color:"#64748b",fontFamily:"monospace"}}>{s.region}</span>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+          <button onClick={e=>{e.stopPropagation();onToggleFav(s.id)}} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,opacity:isFav?1:0.35,transition:"opacity .15s,transform .15s",transform:isFav?"scale(1.2)":"scale(1)"}} title="Favorit">⭐</button>
+          {s.magicpass&&(
+            <div style={{padding:"2px 7px",borderRadius:20,fontSize:9,fontFamily:"monospace",fontWeight:700,background:"rgba(99,102,241,0.18)",color:"#a5b4fc",border:"1px solid rgba(99,102,241,0.35)",whiteSpace:"nowrap"}} title="Im MagicPass inbegriffen">
+              ✦ MP
+            </div>
+          )}
+          <div style={{padding:"2px 8px",borderRadius:20,fontSize:9,fontFamily:"monospace",fontWeight:700,background:open?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)",color:open?"#22c55e":"#ef4444",border:`1px solid ${open?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}`}}>
+            {open?"● OFFEN":"○ ZU"}
+          </div>
+        </div>
+      </div>
+
+      {/* Weather + Distance */}
+      {(weather||distance!=null)&&(
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {weather&&(
+            <div style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"6px 10px",display:"flex",alignItems:"center",gap:6,flex:1,minWidth:120}}>
+              <span style={{fontSize:18}}>{weatherIcon(weather.code)}</span>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",fontFamily:"'DM Mono',monospace"}}>{weather.temp}°C</div>
+                <div style={{fontSize:9,color:"#475569"}}>❄️ {weather.snow}cm · 💨 {weather.wind}km/h</div>
+              </div>
+            </div>
+          )}
+          {distance!=null&&(
+            <div style={{background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:8,padding:"6px 10px",display:"flex",alignItems:"center",gap:5}}>
+              <span style={{fontSize:14}}>📍</span>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{distance} km</div>
+                <div style={{fontSize:9,color:"#475569"}}>Entfernung</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Stats: offene vs. total mit Balkendarstellung */}
+      {(()=>{
+        const{pistenOffen,lifteOffen}=getOpenData(s);
+        const pistenPct=s.pistenKm>0?Math.round((pistenOffen/s.pistenKm)*100):0;
+        const liftePct=s.lifte>0?Math.round((lifteOffen/s.lifte)*100):0;
+        return(
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {/* Pisten */}
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+                <span style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>🎿 Pisten</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:pistenPct>0?"#e2e8f0":"#334155"}}>
+                  <span style={{fontWeight:700,color:pistenPct>60?"#22c55e":pistenPct>30?"#f59e0b":"#ef4444"}}>{pistenOffen}</span>
+                  <span style={{color:"#475569"}}> / {s.pistenKm} km</span>
+                  <span style={{fontSize:10,color:"#64748b",marginLeft:4}}>({pistenPct}%)</span>
+                </span>
+              </div>
+              <div style={{height:5,background:"rgba(255,255,255,0.06)",borderRadius:3,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${pistenPct}%`,borderRadius:3,
+                  background:pistenPct>60?"linear-gradient(90deg,#16a34a,#22c55e)":pistenPct>30?"linear-gradient(90deg,#d97706,#f59e0b)":"linear-gradient(90deg,#dc2626,#ef4444)",
+                  transition:"width .3s"}}/>
+              </div>
+            </div>
+            {/* Lifte */}
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+                <span style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>🚡 Lifte</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:liftePct>0?"#e2e8f0":"#334155"}}>
+                  <span style={{fontWeight:700,color:liftePct>60?"#22c55e":liftePct>30?"#f59e0b":"#ef4444"}}>{lifteOffen}</span>
+                  <span style={{color:"#475569"}}> / {s.lifte}</span>
+                  <span style={{fontSize:10,color:"#64748b",marginLeft:4}}>({liftePct}%)</span>
+                </span>
+              </div>
+              <div style={{height:5,background:"rgba(255,255,255,0.06)",borderRadius:3,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${liftePct}%`,borderRadius:3,
+                  background:liftePct>60?"linear-gradient(90deg,#0369a1,#38bdf8)":liftePct>30?"linear-gradient(90deg,#d97706,#f59e0b)":"linear-gradient(90deg,#dc2626,#ef4444)",
+                  transition:"width .3s"}}/>
+              </div>
+            </div>
+            {/* Höhen kompakt */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:2}}>
+              <div style={{background:"rgba(255,255,255,0.03)",borderRadius:7,padding:"5px 8px"}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0",fontFamily:"monospace"}}>▲ {s.bergHoehe}m</div>
+                <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>Gipfel</div>
+              </div>
+              <div style={{background:"rgba(255,255,255,0.03)",borderRadius:7,padding:"5px 8px"}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0",fontFamily:"monospace"}}>▼ {s.talHoehe}m</div>
+                <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>Tal</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Höhendiff bar */}
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+          <span style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.08em"}}>↕ Höhendiff.</span>
+          <span style={{fontSize:9,color:"#818cf8",fontFamily:"monospace"}}>{s.hoehendiff}m</span>
+        </div>
+        <div style={{height:2,background:"rgba(255,255,255,0.06)",borderRadius:2}}>
+          <div style={{height:"100%",borderRadius:2,width:`${Math.min(100,(s.hoehendiff/2500)*100)}%`,background:"linear-gradient(90deg,#818cf8,#38bdf8)"}}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// MAP VIEW
+// ═══════════════════════════════════════════════════════
+function MapView({stations,userCoords,favorites,onToggleFav,weather,distances}){
+  const mapRef=useRef(null);
+  const mapInstanceRef=useRef(null);
+  const markersRef=useRef([]);
+
+  useEffect(()=>{
+    if(mapInstanceRef.current)return;
+    const map=L.map(mapRef.current,{center:[46.5,8.0],zoom:7,zoomControl:true});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+    mapInstanceRef.current=map;
+    return()=>{map.remove();mapInstanceRef.current=null;};
+  },[]);
+
+  // Update markers when stations/favorites/weather/distances change
+  useEffect(()=>{
+    const map=mapInstanceRef.current;
+    if(!map)return;
+    markersRef.current.forEach(m=>map.removeLayer(m));
+    markersRef.current=[];
+
+    stations.forEach(s=>{
+      const open=s.status==="offen";
+      const isFav=favorites.includes(s.id);
+      const dist=distances?.[s.id];
+      const w=weather?.[s.id];
+      const color=open?"#22c55e":"#ef4444";
+      const borderColor=isFav?"#fbbf24":s.magicpass?"rgba(165,180,252,0.6)":"rgba(255,255,255,0.2)";
+      const shape=s.magicpass?"4px":"50%";
+      const size=isFav?16:12;
+      const icon=L.divIcon({
+        className:"",
+        html:`<div style="width:${size}px;height:${size}px;border-radius:${shape};background:${color};border:2px solid ${borderColor};box-shadow:0 0 ${isFav?10:6}px ${color}88;cursor:pointer;"></div>`,
+        iconSize:[size,size],iconAnchor:[size/2,size/2],
+      });
+
+      const marker=L.marker([s.lat,s.lng],{icon}).addTo(map);
+      const mpBadge=s.magicpass
+        ?`<span style="padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;background:rgba(99,102,241,0.18);color:#a5b4fc;border:1px solid rgba(99,102,241,0.35)">✦ MagicPass</span>`
+        :`<span style="padding:2px 7px;border-radius:20px;font-size:9px;background:rgba(255,255,255,0.06);color:#475569;border:1px solid rgba(255,255,255,0.08)">Kein MP</span>`;
+      const wHtml=w?`<div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 8px;background:rgba(255,255,255,0.06);border-radius:7px">
+        <span style="font-size:18px">${weatherIcon(w.code)}</span>
+        <div><div style="font-size:13px;font-weight:700;color:#e2e8f0">${w.temp}°C</div>
+        <div style="font-size:10px;color:#64748b">❄️ ${w.snow}cm &nbsp;💨 ${w.wind}km/h</div></div>
+      </div>`:"";
+      const dHtml=dist!=null?`<div style="margin-top:5px;font-size:11px;color:#38bdf8;font-family:monospace">📍 ${dist} km entfernt</div>`:"";
+
+      marker.bindPopup(`
+        <div style="font-family:'Syne',sans-serif;min-width:200px;padding:4px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+            <strong style="font-size:14px;color:#f1f5f9;line-height:1.3">${s.name}</strong>
+            <span style="padding:2px 7px;border-radius:12px;font-size:9px;font-weight:700;white-space:nowrap;background:${open?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)"};color:${open?"#22c55e":"#ef4444"};border:1px solid ${open?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}">
+              ${open?"● OFFEN":"○ ZU"}
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+            <span style="font-size:10px;color:#64748b">${s.region}</span>
+            ${mpBadge}
+          </div>
+          ${wHtml}${dHtml}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">
+            <div style="background:rgba(255,255,255,0.05);border-radius:6px;padding:5px 7px;grid-column:1/-1">
+              <div style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">🎿 Offene Pisten</div>
+              <div style="font-size:12px;font-weight:600;color:#e2e8f0;font-family:monospace">${OPEN_DATA[s.id]?OPEN_DATA[s.id][0]:s.status==="offen"?Math.round(s.pistenKm*0.75):0} <span style="color:#475569;font-weight:400">/ ${s.pistenKm} km</span></div>
+              <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:4px"><div style="height:100%;width:${s.pistenKm>0?Math.round(((OPEN_DATA[s.id]?OPEN_DATA[s.id][0]:s.status==="offen"?Math.round(s.pistenKm*0.75):0)/s.pistenKm)*100):0}%;background:#22c55e;border-radius:2px"></div></div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05);border-radius:6px;padding:5px 7px;grid-column:1/-1">
+              <div style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">🚡 Offene Lifte</div>
+              <div style="font-size:12px;font-weight:600;color:#e2e8f0;font-family:monospace">${OPEN_DATA[s.id]?OPEN_DATA[s.id][1]:s.status==="offen"?Math.round(s.lifte*0.75):0} <span style="color:#475569;font-weight:400">/ ${s.lifte}</span></div>
+              <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:4px"><div style="height:100%;width:${s.lifte>0?Math.round(((OPEN_DATA[s.id]?OPEN_DATA[s.id][1]:s.status==="offen"?Math.round(s.lifte*0.75):0)/s.lifte)*100):0}%;background:#38bdf8;border-radius:2px"></div></div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05);border-radius:6px;padding:5px 7px">
+              <div style="font-size:12px;font-weight:600;color:#e2e8f0;font-family:monospace">▲${s.bergHoehe}m</div>
+              <div style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.07em">Gipfel</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.05);border-radius:6px;padding:5px 7px">
+              <div style="font-size:12px;font-weight:600;color:#e2e8f0;font-family:monospace">▼${s.talHoehe}m</div>
+              <div style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.07em">Tal</div>
+            </div>
+          </div>
+          <button onclick="window._toggleFav(${s.id})" style="margin-top:8px;width:100%;padding:5px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:${isFav?"#fbbf24":"#94a3b8"};cursor:pointer;font-size:11px;font-family:monospace">
+            ${isFav?"⭐ Favorit entfernen":"☆ Als Favorit speichern"}
+          </button>
+        </div>
+      `,{maxWidth:260});
+      markersRef.current.push(marker);
+    });
+
+    // User location marker
+    if(userCoords){
+      const userIcon=L.divIcon({
+        className:"",
+        html:`<div class="user-pin" style="width:14px;height:14px;border-radius:50%;background:#38bdf8;border:2px solid white;box-shadow:0 0 12px #38bdf8"></div>`,
+        iconSize:[14,14],iconAnchor:[7,7],
+      });
+      const um=L.marker([userCoords.lat,userCoords.lng],{icon:userIcon,zIndexOffset:1000}).addTo(map);
+      um.bindPopup(`<div style="font-family:'Syne',sans-serif;padding:4px"><strong style="color:#38bdf8">📍 Dein Standort</strong></div>`);
+      markersRef.current.push(um);
+    }
+  },[stations,favorites,weather,distances,userCoords]);
+
+  // expose fav toggle to popup buttons
+  useEffect(()=>{window._toggleFav=onToggleFav;},[onToggleFav]);
+
+  return(
+    <div style={{position:"relative",height:"100%"}}>
+      <div ref={mapRef} style={{width:"100%",height:"100%",borderRadius:0}}/>
+      {/* Legend */}
+      <div style={{position:"absolute",bottom:24,left:16,zIndex:1000,background:"rgba(13,27,42,0.92)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,padding:"10px 14px",backdropFilter:"blur(8px)"}}>
+        <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:7,fontFamily:"monospace"}}>Legende</div>
+        {[["#22c55e","50%","Offen"],["#ef4444","50%","Geschlossen"],["#38bdf8","50%","Dein Standort"],["#22c55e","4px","Im MagicPass"],["#64748b","50%","Kein MagicPass"]].map(([c,r,l])=>(
+          <div key={l} style={{display:"flex",alignItems:"center",gap:7,marginBottom:4}}>
+            <div style={{width:9,height:9,borderRadius:r,background:c,boxShadow:`0 0 4px ${c}`,border:r==="4px"?"2px solid rgba(165,180,252,0.6)":"none"}}/>
+            <span style={{fontSize:10,color:"#64748b",fontFamily:"monospace"}}>{l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// SIDEBAR FILTERS
+// ═══════════════════════════════════════════════════════
+function Sidebar({search,setSearch,region,setRegion,status,setStatus,typ,setTyp,mpFilter,setMpFilter,pistenRange,setPistenRange,lifteRange,setLifteRange,bergRange,setBergRange,talRange,setTalRange,onReset,userInput,setUserInput,onGeocode,geocoding,userCoords,sortBy,setSortBy,sortDir,setSortDir,resultCount}){
+  const sortOpts=[{key:"pistenKm",label:"Pisten"},{key:"lifte",label:"Lifte"},{key:"bergHoehe",label:"Berghöhe"},{key:"hoehendiff",label:"Höhendiff"},{key:"distance",label:"Entfernung"}];
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:20,height:"100%"}}>
+      {/* Logo */}
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:34,height:34,background:"linear-gradient(135deg,#38bdf8,#818cf8)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>⛷</div>
+          <div>
+            <div style={{fontSize:15,fontWeight:800,letterSpacing:"0.02em",color:"#f1f5f9",fontFamily:"'Syne',sans-serif"}}>MagicPass</div>
+            <div style={{fontSize:9,color:"#334155",fontFamily:"monospace",letterSpacing:"0.15em"}}>SKIGEBIETE DASHBOARD</div>
+          </div>
+        </div>
+        <div style={{height:1,background:"rgba(255,255,255,0.05)",marginTop:14}}/>
+      </div>
+
+      {/* Standort */}
+      <div>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8,fontFamily:"monospace"}}>📍 Mein Standort</div>
+        <div style={{display:"flex",gap:6}}>
+          <input value={userInput} onChange={e=>setUserInput(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&onGeocode()}
+            placeholder="Stadt oder PLZ eingeben…"
+            style={{flex:1,padding:"8px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+          <button onClick={onGeocode} disabled={geocoding} style={{padding:"8px 12px",borderRadius:8,background:"rgba(56,189,248,0.15)",border:"1px solid rgba(56,189,248,0.3)",color:"#38bdf8",cursor:"pointer",fontSize:12,fontFamily:"monospace",whiteSpace:"nowrap"}}>
+            {geocoding?"…":"→"}
+          </button>
+        </div>
+        {userCoords&&<div style={{fontSize:10,color:"#22c55e",marginTop:5,fontFamily:"monospace"}}>✓ {userCoords.name||`${userCoords.lat.toFixed(3)}, ${userCoords.lng.toFixed(3)}`}</div>}
+      </div>
+
+      {/* Search */}
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Skigebiet suchen…"
+        style={{width:"100%",padding:"8px 12px",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+
+      {/* Status */}
+      <div>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8,fontFamily:"monospace"}}>Status</div>
+        <ChipFilter options={STATUS_OPTIONS} value={status} onChange={setStatus}/>
+      </div>
+
+      {/* Region */}
+      <div>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8,fontFamily:"monospace"}}>Region</div>
+        <ChipFilter options={REGIONS} value={region} onChange={setRegion} colorMap={REGION_COLORS}/>
+      </div>
+
+      {/* Grösse */}
+      <div>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8,fontFamily:"monospace"}}>Grösse</div>
+        <ChipFilter options={TYP_OPTIONS} value={typ} onChange={setTyp}/>
+      </div>
+
+      {/* MagicPass */}
+      <div>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8,fontFamily:"monospace"}}>MagicPass</div>
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {MP_OPTIONS.map(opt=>{
+            const active=mpFilter===opt;
+            const isMp=opt==="Im MagicPass";
+            const isNotMp=opt==="Nicht im MagicPass";
+            const color=isMp?"#a5b4fc":isNotMp?"#94a3b8":"#38bdf8";
+            return(
+              <button key={opt} onClick={()=>setMpFilter(opt)} style={{
+                padding:"6px 12px",borderRadius:9,fontSize:11,fontFamily:"'DM Mono',monospace",
+                cursor:"pointer",border:"none",textAlign:"left",display:"flex",alignItems:"center",gap:8,
+                background:active?(isMp?"rgba(99,102,241,0.2)":isNotMp?"rgba(148,163,184,0.12)":"rgba(56,189,248,0.15)"):"rgba(255,255,255,0.04)",
+                color:active?color:"#475569",
+                outline:active?`1px solid ${color}44`:"1px solid transparent",
+                transition:"all .15s",
+              }}>
+                {isMp&&<div style={{width:9,height:9,borderRadius:2,background:active?"#818cf8":"#334155",flexShrink:0,boxShadow:active?"0 0 5px #818cf8":""}}/>}
+                {isNotMp&&<div style={{width:9,height:9,borderRadius:"50%",background:active?"#64748b":"#334155",flexShrink:0}}/>}
+                {opt==="Alle"&&<div style={{width:9,height:9,borderRadius:"50%",background:active?"#38bdf8":"#334155",flexShrink:0}}/>}
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Ranges */}
+      <div>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,fontFamily:"monospace"}}>Pisten &amp; Lifte</div>
+        <RangeInput min={0} max={450} value={pistenRange} onChange={setPistenRange} label="Pistenkilometer" unit=" km"/>
+        <RangeInput min={0} max={90}  value={lifteRange}  onChange={setLifteRange}  label="Anzahl Lifte"    unit=""/>
+      </div>
+      <div>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,fontFamily:"monospace"}}>Höhen</div>
+        <RangeInput min={800}  max={3900} value={bergRange} onChange={setBergRange} label="Bergstation" unit="m"/>
+        <RangeInput min={400}  max={2200} value={talRange}  onChange={setTalRange}  label="Talstation"  unit="m"/>
+      </div>
+
+      {/* Sort */}
+      <div>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8,fontFamily:"monospace"}}>Sortieren</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+          {sortOpts.map(o=>(
+            <button key={o.key} onClick={()=>{if(sortBy===o.key)setSortDir(d=>d==="desc"?"asc":"desc");else{setSortBy(o.key);setSortDir("asc");}}}
+              disabled={o.key==="distance"&&!userCoords}
+              style={{padding:"3px 9px",borderRadius:20,fontSize:10,fontFamily:"'DM Mono',monospace",cursor:o.key==="distance"&&!userCoords?"not-allowed":"pointer",border:"none",opacity:o.key==="distance"&&!userCoords?.5:1,background:sortBy===o.key?"rgba(56,189,248,0.15)":"rgba(255,255,255,0.04)",color:sortBy===o.key?"#38bdf8":"#475569",outline:sortBy===o.key?"1px solid rgba(56,189,248,0.3)":"1px solid transparent"}}>
+              {o.label}{sortBy===o.key?(sortDir==="desc"?"↓":"↑"):""}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{fontSize:11,color:"#334155",fontFamily:"monospace",textAlign:"center"}}>{resultCount} Skigebiete</div>
+
+      <button onClick={onReset} style={{marginTop:"auto",padding:"8px",width:"100%",borderRadius:9,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",color:"#475569",fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",textTransform:"uppercase"}}>
+        Filter zurücksetzen
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════════════════
+function App(){
+  const[tab,setTab]=useState("liste"); // liste | karte | favoriten
+  const[search,setSearch]=useState("");
+  const[region,setRegion]=useState("Alle");
+  const[status,setStatus]=useState("Alle");
+  const[typ,setTyp]=useState("Alle");
+  const[mpFilter,setMpFilter]=useState("Im MagicPass");
+  const[pistenRange,setPistenRange]=useState([0,450]);
+  const[lifteRange,setLifteRange]=useState([0,90]);
+  const[bergRange,setBergRange]=useState([800,3900]);
+  const[talRange,setTalRange]=useState([400,2200]);
+  const[sortBy,setSortBy]=useState("pistenKm");
+  const[sortDir,setSortDir]=useState("desc");
+  const[userInput,setUserInput]=useState("");
+  const[userCoords,setUserCoords]=useState(null);
+  const[geocoding,setGeocoding]=useState(false);
+  const[weather,setWeather]=useState({});  // {stationId: {temp,code,snow,wind}}
+  const[loadingWeather,setLoadingWeather]=useState(false);
+  const[favorites,setFavorites]=useState(()=>{try{return JSON.parse(localStorage.getItem("mp_favs")||"[]")}catch{return[]}});
+  const[drawerOpen,setDrawerOpen]=useState(false);
+
+  // Persist favorites
+  useEffect(()=>{localStorage.setItem("mp_favs",JSON.stringify(favorites));},[favorites]);
+
+  const toggleFav=useCallback((id)=>{
+    setFavorites(f=>f.includes(id)?f.filter(x=>x!==id):[...f,id]);
+  },[]);
+
+  // Geocode user location
+  const geocode=async()=>{
+    const q=userInput.trim();
+    if(!q)return;
+    setGeocoding(true);
+    try{
+      const res=await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=ch,fr,it,de,at`,
+        {headers:{"Accept-Language":"de","User-Agent":"MagicPass-Dashboard/1.0"}}
+      );
+      if(!res.ok)throw new Error("Netzwerkfehler");
+      const data=await res.json();
+      if(data&&data.length>0){
+        const coords={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon),name:data[0].display_name.split(",")[0]};
+        setUserCoords(coords);
+        setSortBy("distance");
+        setSortDir("asc");
+      } else {
+        // Fallback: try without country filter
+        const res2=await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,
+          {headers:{"Accept-Language":"de"}}
+        );
+        const data2=await res2.json();
+        if(data2&&data2.length>0){
+          setUserCoords({lat:parseFloat(data2[0].lat),lng:parseFloat(data2[0].lon),name:data2[0].display_name.split(",")[0]});
+          setSortBy("distance");
+          setSortDir("asc");
+        } else {
+          alert(`"${q}" wurde nicht gefunden. Versuche eine grössere Stadt oder Kanton.`);
+        }
+      }
+    }catch(e){
+      alert("Verbindungsfehler beim Geocoding. Bitte Internet prüfen.");
+    }
+    setGeocoding(false);
+  };
+
+  // Compute distances
+  const distances=useMemo(()=>{
+    if(!userCoords)return null;
+    const d={};
+    STATIONS.forEach(s=>{d[s.id]=haversine(userCoords.lat,userCoords.lng,s.lat,s.lng);});
+    return d;
+  },[userCoords]);
+
+  // Fetch weather for visible stations (batched)
+  const fetchWeather=useCallback(async(stationsToFetch)=>{
+    if(loadingWeather)return;
+    setLoadingWeather(true);
+    const newW={};
+    // Open-Meteo: batch up to 10 per call (we do 3 batches)
+    const chunks=[];
+    for(let i=0;i<stationsToFetch.length;i+=10)chunks.push(stationsToFetch.slice(i,i+10));
+    for(const chunk of chunks){
+      await Promise.all(chunk.map(async s=>{
+        try{
+          const url=`https://api.open-meteo.com/v1/forecast?latitude=${s.lat}&longitude=${s.lng}&current=temperature_2m,weather_code,wind_speed_10m,snow_depth&wind_speed_unit=kmh&timezone=Europe%2FBerlin`;
+          const r=await fetch(url);
+          const d=await r.json();
+          newW[s.id]={temp:Math.round(d.current.temperature_2m),code:d.current.weather_code,wind:Math.round(d.current.wind_speed_10m),snow:Math.round((d.current.snow_depth||0)*100)};
+        }catch{/*skip*/}
+      }));
+    }
+    setWeather(w=>({...w,...newW}));
+    setLoadingWeather(false);
+  },[loadingWeather]);
+
+  // Load weather on first render (first 30 stations)
+  useEffect(()=>{fetchWeather(STATIONS.slice(0,30));},[]);
+
+  // Filter + sort
+  const filtered=useMemo(()=>{
+    let r=STATIONS.filter(s=>{
+      if(search&&!s.name.toLowerCase().includes(search.toLowerCase()))return false;
+      if(region!=="Alle"&&s.region!==region)return false;
+      if(status!=="Alle"&&s.status!==status)return false;
+      if(typ!=="Alle"&&s.typ!==typ)return false;
+      if(mpFilter==="Im MagicPass"&&!s.magicpass)return false;
+      if(mpFilter==="Nicht im MagicPass"&&s.magicpass)return false;
+      if(s.pistenKm<pistenRange[0]||s.pistenKm>pistenRange[1])return false;
+      if(s.lifte<lifteRange[0]||s.lifte>lifteRange[1])return false;
+      if(s.bergHoehe<bergRange[0]||s.bergHoehe>bergRange[1])return false;
+      if(s.talHoehe<talRange[0]||s.talHoehe>talRange[1])return false;
+      return true;
+    });
+    return[...r].sort((a,b)=>{
+      if(sortBy==="distance"&&distances){return sortDir==="asc"?(distances[a.id]||9999)-(distances[b.id]||9999):(distances[b.id]||9999)-(distances[a.id]||9999);}
+      if(sortBy==="name")return sortDir==="asc"?a.name.localeCompare(b.name):b.name.localeCompare(a.name);
+      return sortDir==="desc"?b[sortBy]-a[sortBy]:a[sortBy]-b[sortBy];
+    });
+  },[search,region,status,typ,mpFilter,pistenRange,lifteRange,bergRange,talRange,sortBy,sortDir,distances]);
+
+  const favStations=useMemo(()=>STATIONS.filter(s=>favorites.includes(s.id)),[favorites]);
+  const resetAll=()=>{setSearch("");setRegion("Alle");setStatus("Alle");setTyp("Alle");setMpFilter("Im MagicPass");setPistenRange([0,450]);setLifteRange([0,90]);setBergRange([800,3900]);setTalRange([400,2200]);};
+  const offenCount=filtered.filter(s=>s.status==="offen").length;
+  const mpCount=filtered.filter(s=>s.magicpass).length;
+
+  const sidebarProps={search,setSearch,region,setRegion,status,setStatus,typ,setTyp,mpFilter,setMpFilter,pistenRange,setPistenRange,lifteRange,setLifteRange,bergRange,setBergRange,talRange,setTalRange,onReset:resetAll,userInput,setUserInput,onGeocode:geocode,geocoding,userCoords,sortBy,setSortBy,sortDir,setSortDir,resultCount:filtered.length};
+
+  const TABS=[{key:"liste",icon:"☰",label:"Liste"},{key:"karte",icon:"🗺",label:"Karte"},{key:"favoriten",icon:"⭐",label:`Favoriten (${favorites.length})`}];
+
+  return(
+    <div style={{height:"100vh",display:"flex",flexDirection:"column",background:"#060d1a",fontFamily:"'Syne',sans-serif",color:"#f1f5f9",overflow:"hidden"}}>
+
+      {/* TOP BAR */}
+      <div style={{flexShrink:0,background:"rgba(13,27,42,0.95)",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",padding:"0 20px",height:52,gap:16,zIndex:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginRight:8}}>
+          <div style={{fontSize:20}}>⛷</div>
+          <div style={{fontSize:13,fontWeight:800,letterSpacing:"0.02em",whiteSpace:"nowrap"}}>MagicPass</div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{display:"flex",gap:2,flex:1}}>
+          {TABS.map(t=>(
+            <button key={t.key} onClick={()=>setTab(t.key)} className={tab===t.key?"tab-active":""} style={{padding:"0 14px",height:52,background:"none",border:"none",color:tab===t.key?"#f1f5f9":"#475569",cursor:"pointer",fontSize:12,fontFamily:"'Syne',sans-serif",fontWeight:tab===t.key?700:400,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap"}}>
+              <span>{t.icon}</span><span className="mobile-only" style={{display:"none"}}>{t.label}</span>
+              <span style={{}} className="tab-label">{t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Weather loading */}
+        {loadingWeather&&<div style={{fontSize:10,color:"#38bdf8",fontFamily:"monospace",animation:"pulse 1s infinite"}}>🌤 Wetter wird geladen…</div>}
+
+        {/* Mobile filter btn */}
+        <button onClick={()=>setDrawerOpen(o=>!o)} className="mobile-only" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"5px 10px",color:"#94a3b8",fontSize:12,cursor:"pointer",fontFamily:"monospace",flexShrink:0}}>
+          ⚙
+        </button>
+      </div>
+
+      {/* BODY */}
+      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+
+        {/* SIDEBAR (desktop) */}
+        <div className="sidebar-desktop" style={{width:290,flexShrink:0,background:"rgba(10,20,35,0.97)",borderRight:"1px solid rgba(255,255,255,0.05)",padding:"22px 18px",overflowY:"auto"}}>
+          <Sidebar {...sidebarProps}/>
+        </div>
+
+        {/* MOBILE DRAWER */}
+        {drawerOpen&&(
+          <div style={{position:"fixed",inset:0,zIndex:200}} onClick={()=>setDrawerOpen(false)}>
+            <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(4px)"}}/>
+            <div style={{position:"absolute",left:0,top:0,bottom:0,width:300,background:"rgba(10,20,35,0.99)",padding:"22px 18px",overflowY:"auto",zIndex:1}} onClick={e=>e.stopPropagation()}>
+              <button onClick={()=>setDrawerOpen(false)} style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:18}}>✕</button>
+              <Sidebar {...sidebarProps}/>
+            </div>
+          </div>
+        )}
+
+        {/* CONTENT */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+          {/* ── LISTE TAB ── */}
+          {tab==="liste"&&(
+            <div style={{flex:1,overflowY:"auto",padding:"20px 20px"}}>
+              {/* Stats */}
+              <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
+                <StatPill label="Stationen"  value={filtered.length}/>
+                <StatPill label="Offen"       value={offenCount}/>
+                <StatPill label="✦ MagicPass" value={mpCount}/>
+                <StatPill label="Total km"    value={`${filtered.reduce((a,s)=>a+s.pistenKm,0)} km`}/>
+                <StatPill label="Lifte"       value={filtered.reduce((a,s)=>a+s.lifte,0)}/>
+              </div>
+              {/* Cards */}
+              {filtered.length===0?(
+                <div style={{textAlign:"center",padding:"60px 20px",color:"#334155"}}>
+                  <div style={{fontSize:40,marginBottom:12}}>🏔</div>
+                  <div style={{fontWeight:600}}>Keine Skigebiete gefunden</div>
+                  <div style={{fontSize:13,marginTop:6}}>Filter anpassen</div>
+                </div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+                  {filtered.map(s=>(
+                    <SkiCard key={s.id} s={s} distance={distances?.[s.id]??null} weather={weather[s.id]} isFav={favorites.includes(s.id)} onToggleFav={toggleFav} onSelect={s=>{setTab("karte");}}/>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── KARTE TAB ── */}
+          {tab==="karte"&&(
+            <div style={{flex:1,overflow:"hidden"}}>
+              <MapView stations={filtered} userCoords={userCoords} favorites={favorites} onToggleFav={toggleFav} weather={weather} distances={distances}/>
+            </div>
+          )}
+
+          {/* ── FAVORITEN TAB ── */}
+          {tab==="favoriten"&&(
+            <div style={{flex:1,overflowY:"auto",padding:"20px 20px"}}>
+              {favStations.length===0?(
+                <div style={{textAlign:"center",padding:"80px 20px",color:"#334155"}}>
+                  <div style={{fontSize:48,marginBottom:14}}>⭐</div>
+                  <div style={{fontWeight:700,fontSize:16}}>Noch keine Favoriten</div>
+                  <div style={{fontSize:13,marginTop:8,color:"#475569"}}>Klicke in der Liste oder auf der Karte auf ⭐ um Skigebiete zu speichern.</div>
+                </div>
+              ):(
+                <>
+                  <div style={{marginBottom:16,fontSize:12,color:"#475569",fontFamily:"monospace"}}>{favStations.length} gespeicherte Skigebiete</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+                    {favStations.map(s=>(
+                      <SkiCard key={s.id} s={s} distance={distances?.[s.id]??null} weather={weather[s.id]} isFav={true} onToggleFav={toggleFav}/>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      <style>{`
+        @media(max-width:767px){
+          .sidebar-desktop{display:none!important}
+          .mobile-only{display:flex!important}
+          .tab-label{display:none}
+        }
+        @media(min-width:768px){
+          .mobile-only{display:none!important}
+          .tab-label{display:inline}
+        }
+      `}</style>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
