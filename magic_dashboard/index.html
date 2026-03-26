@@ -366,6 +366,13 @@ const STATIONS=[
 ];
 
 const REGIONS=["Alle",...Array.from(new Set(STATIONS.map(s=>s.region))).sort()];
+const LAND_REGIONS={
+  "Schweiz":["Wallis","Bern","Waadt","Freiburg","Solothurn","Nidwalden","Obwalden","Schwyz","Luzern","Neuenburg","Bern/Freiburg","Graubünden","Ostschweiz","Uri","Uri/Graubünden","Tessin","Zürich","Glarus"],
+  "Frankreich":["Frankreich"],
+  "Italien":["Italien"],
+  "Österreich":["Tirol","Salzburg","Vorarlberg","Kärnten","Steiermark","Niederösterreich","Oberösterreich"]
+};
+const LAENDER=["Alle","🇨🇭 Schweiz","🇫🇷 Frankreich","🇮🇹 Italien","🇦🇹 Österreich"];
 const STATUS_OPTS=["Alle","offen","geschlossen"];
 const TYP_OPTS=["Alle","Gross","Mittel","Klein"];
 const MP_OPTS=["Alle","Im MagicPass","Nicht im MagicPass"];
@@ -485,6 +492,248 @@ async function fetchBergfexAT(){
   }catch(e){return {};}
 }
 
+// Bergfex Italy name → station ID (bergfex.it/italien/schneebericht/)
+const BERGFEX_NAME_MAP_IT={
+  // Dolomiti Superski / Sella Ronda
+  "Sellaronda - Dolomiten":500,
+  // Val Gardena / Gröden
+  "Dolomites Val Gardena / Gröden - St. Christina":501,
+  "Dolomites Val Gardena / Gröden - St. Ulrich":501,
+  "Dolomites Val Gardena / Gröden - Wolkenstein":501,
+  // Alta Badia
+  "Alta Badia":502,
+  // Kronplatz
+  "Kronplatz - Dolomiten":503,
+  // Madonna di Campiglio / Marilleva
+  "Madonna di Campiglio / Dolomiti di Brenta":504,
+  "Folgarida - Marilleva - Val di Sole / Dolomiti di Brenta":504,
+  // Livigno
+  "Livigno":506,
+  "Carosello 3000/ Livigno":506,
+  "Mottolino Fun Mountain/ Livigno":506,
+  // Cervinia
+  "Breuil - Cervinia":507,
+  // Arabba
+  "Arabba":508,
+  // Ponte di Legno / Tonale
+  "Ponte di Legno - Temù - Adamello Ski":510,
+  "Passo Tonale - Adamello Ski / Val di Sole":510,
+  "Presena Gletscher - Adamello Ski":510,
+  // Monterosa Ski
+  "Gressoney - La Trinité / Alagna Valsesia":511,
+  "Champoluc / Frachey":511,
+  // Seiser Alm
+  "Seiser Alm":512,
+  // Latemar
+  "Obereggen - Pampeago - Predazzo / Latemar":513,
+  // Bormio
+  "Bormio":514,
+  // Gitschberg Jochtal
+  "Gitschberg Jochtal":515,
+  // Folgaria
+  "Folgaria - Fiorentini / Alpe Cimbra":518,
+  // Paganella
+  "Paganella - Andalo":519,
+  // Sulden
+  "Sulden am Ortler":520,
+  // Schnalstal
+  "Schnalstal / Kurzras":521,
+  // Klausberg
+  "Klausberg - Ahrntal":522,
+  // Meran 2000
+  "Meran 2000":523,
+  // Pila
+  "Pila / Aostatal":524,
+  // Zoncolan
+  "Ravascletto-Zoncolan":527,
+  // 3 Zinnen Dolomiten
+  "3 Zinnen Dolomiten":530,
+  // Val di Fassa
+  "Canazei - Belvedere / Val di Fassa":531,
+  "Campitello - Col Rodella / Val di Fassa":531,
+  "Catinaccio - Vigo di Fassa / Val di Fassa":531,
+  "Pozza di Fassa - Buffaure / Val di Fassa":531,
+  "Alba di Canazei - Ciampac / Val di Fassa":531,
+  // Mondolè Ski
+  "Artesina / Mondoè Ski":533,
+  // Santa Caterina
+  "Santa Caterina Valfurva":534
+};
+
+async function fetchBergfexIT(){
+  try{
+    const url=`https://corsproxy.io/?url=https://www.bergfex.it/italien/schneebericht/`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    const html=await r.text();
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const data={};
+    const parseCm=t=>{const m=(t||'').match(/(\d+)/);return m?parseInt(m[1]):null;};
+    doc.querySelectorAll('table tr').forEach(row=>{
+      const cells=row.querySelectorAll('td');
+      if(cells.length<5)return;
+      const name=cells[0].textContent.replace(/\s+/g,' ').trim();
+      const id=BERGFEX_NAME_MAP_IT[name];
+      if(!id)return;
+      const liftsText=(cells[4]?.textContent||'').replace(/\s+/g,' ').trim();
+      const liftFull=liftsText.match(/(\d+)\s*\/\s*(\d+)/);
+      const liftZero=/^\s*0\s*$/.test(liftsText);
+      const entry={
+        snowTal:parseCm(cells[1].textContent),
+        snowBerg:parseCm(cells[2].textContent),
+        snowNew:parseCm(cells[3].textContent),
+        ...(liftFull?{lifteO:parseInt(liftFull[1]),lifte:parseInt(liftFull[2]),status:parseInt(liftFull[1])>0?'offen':'geschlossen'}:{}),
+        ...(liftZero&&!liftFull?{lifteO:0,status:'geschlossen'}:{})
+      };
+      if(!data[id]||((liftFull?parseInt(liftFull[1]):0)>(data[id].lifteO||0))){
+        data[id]=entry;
+      }
+    });
+    return data;
+  }catch(e){return {};}
+}
+
+// Bergfex France name → station ID mapping
+const BERGFEX_NAME_MAP_FR={
+  // Les 3 Vallées
+  "Val Thorens / Les 3 Vallées":400,"Méribel / Les 3 Vallées":400,
+  "Courchevel / Les 3 Vallées":400,"Les Menuires / Les 3 Vallées":400,
+  "Brides-les-Bains / Les 3 Vallées":400,"Saint Martin de Belleville / Les 3 Vallées":400,
+  // Portes du Soleil (FR side)
+  "Abondance / Portes du Soleil":401,
+  "Champéry - Les Crosets - Champoussin - Morgins / Portes du Soleil":401,
+  "Torgon / Portes du Soleil":401,
+  // Tignes / Val d'Isère
+  "Tignes":402,"Val d'Isère":402,
+  // La Plagne / Paradiski
+  "La Plagne / Paradiski":403,"Peisey Vallandry / Paradiski":403,
+  // Serre Chevalier
+  "Serre Chevalier Vallée - Briançon":404,
+  // Alpe d'Huez
+  "Alpe d'Huez / Espace Alpe d'Huez":405,
+  "Auris en Oisans / Espace Alpe d'Huez":405,
+  "Vaujany / Espace Alpe d'Huez":405,
+  // Les 2 Alpes
+  "Les 2 Alpes":406,
+  // Les Arcs / Paradiski
+  "Les Arcs - Bourg-Saint-Maurice / Paradiski":407,
+  // Le Grand Massif
+  "Flaine / Le Grand Massif":409,"Les Carroz / Le Grand Massif":409,
+  "Morillon / Le Grand Massif":409,"Samoëns / Le Grand Massif":409,
+  "Sixt-Fer-à-Cheval / Le Grand Massif":409,
+  // Les Sybelles
+  "La Toussuire - Les Sybelles":410,"Le Corbier - Les Sybelles":410,
+  "Les Bottières - Les Sybelles":410,
+  "Saint Jean d'Arves - Les Sybelles":410,
+  "Saint Sorlin d'Arves - Les Sybelles":410,
+  // Espace Diamant
+  "Les Saisies":411,"Notre Dame de Bellecombe":411,
+  "Crest-Voland / Cohennoz":411,"Flumet / Saint Nicolas la Chapelle":411,
+  // La Clusaz
+  "La Clusaz - Lake Annecy Ski Resort":412,
+  // Vars / Risoul
+  "Vars - La Fôret Blanche":413,"Risoul - La Fôret Blanche":413,
+  // Le Grand Domaine
+  "Valmorel - Le Grand Domaine":414,"St. François Longchamp - Le Grand Domaine":414,
+  // Pra Loup / Val d'Allos
+  "Val d'Allos":415,
+  // Galibier Thabor
+  "Valloire - Galibier Thabor":416,"Valmeinier - Galibier Thabor":416,
+  // Val Cenis
+  "Val Cenis":417,
+  // Villard de Lans
+  "Villard de Lans - Corrençon":418,
+  // Les 7 Laux
+  "Les 7 Laux":419,
+  // Les Contamines
+  "Les Contamines - Montjoie / Hauteluce":420,
+  // Le Grand Bornand
+  "Le Grand Bornand":421,
+  // Les Houches
+  "Les Houches / Saint-Gervais":422,
+  // Les Orres
+  "Les Orres":423,
+  // Chamrousse
+  "Chamrousse":424,
+  // Dévoluy
+  "Le Dévoluy - Superdévoluy / La Joue du Loup":425,
+  // Orcières Merlette
+  "Orcières Merlette":426,"Serre-Eyraud / Orcières":426,
+  // Puy Saint Vincent
+  "Puy St Vincent":427,
+  // Isola 2000
+  "Isola 2000":428,
+  // Auron
+  "Auron":429,
+  // Valberg
+  "Valberg - Beuil / Valberg":430,
+  // Ax 3 Domaines
+  "Ax 3 Domaines - Ax-les-Thermes":431,
+  // Grand Tourmalet
+  "Grand Tourmalet - Pic du Midi / Barèges - La Mongie":432,
+  // Saint Lary Soulan
+  "Saint Lary Soulan":433,
+  // Les Angles
+  "Les Angles":434,
+  // Font-Romeu
+  "Font-Romeu - Pyrénées 2000":435,
+  // Peyragudes
+  "Peyragudes":436,
+  // Arêches-Beaufort
+  "Arêches-Beaufort":437,
+  // Sainte-Foy-Tarentaise
+  "Sainte Foy Tarentaise":438,
+  // Chamonix (Brévent / Flégère)
+  "Chamonix Mont-Blanc":439,
+  // Les Karellis
+  "Les Karellis":440,
+  // La Norma
+  "La Norma":441,
+  // Aussois
+  "Aussois":442,
+  // Valfréjus
+  "Valfréjus":444,
+  // Praz de Lys / Sommand
+  "Praz de Lys Sommand":445,
+  // La Rosière / Espace San Bernardo
+  "La Rosière - Espace San Bernardo":447,
+  // Montgenèvre (part of Via Lattea / Sestriere system, IT station)
+  "Montgenèvre / La Voie Lactee":505,
+  // Bonneval sur Arc
+  "Bonneval sur Arc":417
+};
+
+async function fetchBergfexFR(){
+  try{
+    const url=`https://corsproxy.io/?url=https://www.bergfex.at/frankreich/schneebericht/`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    const html=await r.text();
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const data={};
+    const parseCm=t=>{const m=(t||'').match(/(\d+)/);return m?parseInt(m[1]):null;};
+    doc.querySelectorAll('table tr').forEach(row=>{
+      const cells=row.querySelectorAll('td');
+      if(cells.length<5)return;
+      const name=cells[0].textContent.replace(/\s+/g,' ').trim();
+      const id=BERGFEX_NAME_MAP_FR[name];
+      if(!id)return;
+      const liftsText=(cells[4]?.textContent||'').replace(/\s+/g,' ').trim();
+      const liftFull=liftsText.match(/(\d+)\s*\/\s*(\d+)/);
+      const liftZero=/^\s*0\s*$/.test(liftsText);
+      const entry={
+        snowTal:parseCm(cells[1].textContent),
+        snowBerg:parseCm(cells[2].textContent),
+        snowNew:parseCm(cells[3].textContent),
+        ...(liftFull?{lifteO:parseInt(liftFull[1]),lifte:parseInt(liftFull[2]),status:parseInt(liftFull[1])>0?'offen':'geschlossen'}:{}),
+        ...(liftZero&&!liftFull?{lifteO:0,status:'geschlossen'}:{})
+      };
+      if(!data[id]||((liftFull?parseInt(liftFull[1]):0)>(data[id].lifteO||0))){
+        data[id]=entry;
+      }
+    });
+    return data;
+  }catch(e){return {};}
+}
+
 // Bergfex name → station ID mapping for Swiss snow reports
 const BERGFEX_NAME_MAP={
   "Adelboden":33,"Airolo - Pesciüm":130,
@@ -531,8 +780,11 @@ const BERGFEX_NAME_MAP={
   "Torgon / Portes du Soleil":205,
   "Val Ferret - La Fouly":207,"Vals":116,
   "Verbier / 4 Vallées":21,"Vercorin":12,
+  "Veysonnaz / 4 Vallées":21,"Bruson - Verbier":21,
   "Villars - Gryon - Les Diablerets":230,
-  "Zermatt":20
+  "Zermatt":20,
+  "Brunni-Bahnen Engelberg":81,
+  "Davos Schatzalp - Strela":102
 };
 
 async function fetchBergfexCH(){
@@ -791,7 +1043,7 @@ function SkiCard({s,dist,wx,isFav,onFav}){
 function App(){
   const[tab,setTab]=useState("liste");
   const[st,setSt]=useState({
-    search:"",region:"Alle",status:"Alle",typ:"Alle",mpF:"Alle",
+    search:"",land:"Alle",region:"Alle",status:"Alle",typ:"Alle",mpF:"Alle",
     bergR:[400,3900],talR:[400,2200],
     sortBy:"km",sortDir:"desc",userInput:"",userCoords:null,
     lifteR:[0,500],pistenR:[0,1200]
@@ -814,16 +1066,20 @@ function App(){
     setLiveLoading(true);
     try{
       const withSlugs=STATIONS.filter(s=>s.skiresort_slug);
-      // Run all 3 data sources in parallel: bergfex CH, bergfex AT, skiresort.ch (FR/IT)
-      const[bergfexCHData,bergfexATData,skiresortData]=await Promise.all([
+      // Run all 5 data sources in parallel: bergfex CH, AT, IT, FR + skiresort.ch (extra IT)
+      const[bergfexCHData,bergfexATData,bergfexITData,bergfexFRData,skiresortData]=await Promise.all([
         fetchBergfexCH(),
         fetchBergfexAT(),
+        fetchBergfexIT(),
+        fetchBergfexFR(),
         withSlugs.length?fetchLiveStatus(withSlugs):Promise.resolve({})
       ]);
       const merged={
         ...Object.fromEntries(Object.entries(skiresortData).filter(([,v])=>v!==null)),
         ...bergfexCHData,
-        ...bergfexATData
+        ...bergfexATData,
+        ...bergfexITData,
+        ...bergfexFRData
       };
       setLiveData(d=>({...d,...merged}));
       setLastRefresh(new Date());
@@ -882,9 +1138,10 @@ function App(){
   useEffect(()=>{fetchWx(STATIONS);},[]);
 
   const filtered=useMemo(()=>{
-    const{search,region,status,typ,mpF,pistenR,lifteR,bergR,talR,sortBy,sortDir}=st;
+    const{search,land,region,status,typ,mpF,pistenR,lifteR,bergR,talR,sortBy,sortDir}=st;
     const r=STATIONS.map(s=>liveData[s.id]?{...s,...liveData[s.id]}:s).filter(s=>{
       if(search&&!s.name.toLowerCase().includes(search.toLowerCase()))return false;
+      if(land!=="Alle"){const lk=land.replace(/^\S+\s/,"");if(!(LAND_REGIONS[lk]||[]).includes(s.region))return false;}
       if(region!=="Alle"&&s.region!==region)return false;
       if(status!=="Alle"&&s.status!==status)return false;
       if(typ!=="Alle"&&s.typ!==typ)return false;
@@ -909,7 +1166,7 @@ function App(){
   return(
     <div style={{height:"100vh",display:"flex",flexDirection:"column",background:"#060d1a",fontFamily:"'Syne',sans-serif",color:"#f1f5f9",overflow:"hidden"}}>
       <div style={{flexShrink:0,background:"rgba(13,27,42,0.97)",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",padding:"0 16px",height:50,gap:12}}>
-        <div style={{fontSize:13,fontWeight:800}}>⛷ Ski Dashboard CH·FR·IT</div>
+        <div style={{fontSize:13,fontWeight:800}}>⛷ Magic Ski Dashboard</div>
         <div style={{display:"flex",gap:8,marginLeft:12}}>
           {[["liste","Liste"],["karte","\ud83d\uddfa Karte"],["favoriten","Favoriten"]].map(([k,l])=><button key={k} onClick={()=>setTab(k)} style={{border:"none",padding:"6px 10px",borderRadius:8,background:tab===k?"rgba(56,189,248,0.2)":"rgba(255,255,255,0.06)",color:tab===k?"#38bdf8":"#94a3b8",cursor:"pointer"}}>{l}</button>)}
         </div>
@@ -923,23 +1180,28 @@ function App(){
       </div>
 
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+
         <div style={{width:300,flexShrink:0,background:"rgba(10,20,35,0.98)",borderRight:"1px solid rgba(255,255,255,0.05)",padding:"16px",overflowY:"auto"}}>
           <div style={{fontSize:10,color:"#475569",marginBottom:7,fontFamily:"monospace"}}>Mein Standort</div>
+   
           <div style={{display:"flex",gap:6,marginBottom:10}}>
             <input value={st.userInput} onChange={e=>set("userInput",e.target.value)} onKeyDown={e=>e.key==="Enter"&&geocode()} placeholder="Ort oder PLZ" style={{flex:1,padding:"7px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",fontSize:12}}/>
             <button onClick={geocode} disabled={geo} style={{padding:"7px 10px",borderRadius:8,background:"rgba(56,189,248,0.15)",border:"1px solid rgba(56,189,248,0.3)",color:"#38bdf8",cursor:"pointer"}}>{geo?"…":"→"}</button>
           </div>
-
+         <div style={{marginTop:8,fontSize:10,color:"#475569",fontFamily:"monospace"}}>{filtered.length} Gebiete gefunden</div>
           <input value={st.search} onChange={e=>set("search",e.target.value)} placeholder="Skigebiet suchen" style={{width:"100%",padding:"8px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",marginBottom:12}}/>
-
+        
           <div style={{fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>MagicPass</div>
           <Chips opts={MP_OPTS} val={st.mpF} onChange={v=>set("mpF",v)}/>
 
           <div style={{marginTop:12,fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>Status</div>
           <Chips opts={STATUS_OPTS} val={st.status} onChange={v=>set("status",v)}/>
 
+          <div style={{marginTop:12,fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>Land</div>
+          <Chips opts={LAENDER} val={st.land} onChange={v=>{set("land",v);set("region","Alle");}}/>
+
           <div style={{marginTop:12,fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>Region</div>
-          <Chips opts={REGIONS} val={st.region} onChange={v=>set("region",v)} cmap={RC}/>
+          <Chips opts={st.land==="Alle"?REGIONS:["Alle",...(LAND_REGIONS[st.land.replace(/^\S+\s/,"")]||[])]} val={st.region} onChange={v=>set("region",v)} cmap={RC}/>
 
           <div style={{marginTop:12,fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>Grösse</div>
           <Chips opts={TYP_OPTS} val={st.typ} onChange={v=>set("typ",v)}/>
@@ -951,7 +1213,6 @@ function App(){
             <RangeInput min={400} max={2200} value={st.talR} onChange={v=>set("talR",v)} label="Talstation"/>
           </div>
 
-          <div style={{marginTop:8,fontSize:10,color:"#475569",fontFamily:"monospace"}}>{filtered.length} Gebiete gefunden</div>
         </div>
 
         <div style={{flex:1,overflow:tab==="karte"?"hidden":"auto",padding:tab==="karte"?0:"18px 16px",position:"relative"}}>
