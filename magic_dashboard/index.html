@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MagicPass – Skigebiete Dashboard</title>
+  <title>Ski Dashboard – CH · FR · IT</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -43,128 +43,313 @@
 <script type="text/babel">
 const{useState,useMemo,useEffect,useRef,useCallback}=React;
 
-// ═══════════════════════════════════════════════════════════════════════
-// STATIONS — vollständige MagicPass 2025/26 Liste + Nicht-MP Gebiete
-// Datenquelle: magicpass.ch/de/stations/opening (Stand März 2026)
-// offenePisten / offeneLifte: Echte Werte von magicpass.ch
-// ═══════════════════════════════════════════════════════════════════════
 const STATIONS=[
-// ── WALLIS ───────────────────────────────────────────────────────────
-{id:1,  name:"Grimentz-Zinal",         region:"Wallis",    mp:true,  status:"offen",      lifte:21,lifteO:18, km:115, kmO:95,  berg:2900,tal:1570,diff:1330,typ:"Gross", lat:46.175,lng:7.625, url:"https://www.grimentz-zinal.ch"},
-{id:2,  name:"Saas-Fee",               region:"Wallis",    mp:true,  status:"offen",      lifte:23,lifteO:20, km:100, kmO:85,  berg:3573,tal:1800,diff:1773,typ:"Gross", lat:46.107,lng:7.928, url:"https://www.saas-fee.ch"},
-{id:3,  name:"Anzère",                 region:"Wallis",    mp:true,  status:"offen",      lifte:12,lifteO:10, km:44,  kmO:38,  berg:2420,tal:1500,diff:920, typ:"Mittel",lat:46.300,lng:7.398, url:"https://www.anzere.ch"},
-{id:4,  name:"Nendaz",                 region:"Wallis",    mp:true,  status:"offen",      lifte:8, lifteO:7,  km:30,  kmO:25,  berg:2200,tal:1365,diff:835, typ:"Mittel",lat:46.189,lng:7.306, url:"https://www.nendaz.ch"},
-{id:5,  name:"Ovronnaz",               region:"Wallis",    mp:true,  status:"offen",      lifte:7, lifteO:6,  km:40,  kmO:27,  berg:2500,tal:1400,diff:1100,typ:"Mittel",lat:46.226,lng:7.199, url:"https://www.ovronnaz.ch"},
-{id:6,  name:"Bellwald",               region:"Wallis",    mp:true,  status:"offen",      lifte:7, lifteO:6,  km:30,  kmO:25,  berg:2600,tal:1560,diff:1040,typ:"Mittel",lat:46.429,lng:8.201, url:"https://www.bellwald.ch"},
-{id:7,  name:"Bettmeralp",             region:"Wallis",    mp:true,  status:"offen",      lifte:12,lifteO:10, km:45,  kmO:38,  berg:2869,tal:1950,diff:919, typ:"Mittel",lat:46.392,lng:8.072, url:"https://www.aletscharena.ch"},
-{id:8,  name:"Riederalp",              region:"Wallis",    mp:true,  status:"offen",      lifte:12,lifteO:10, km:45,  kmO:32,  berg:2869,tal:1900,diff:969, typ:"Mittel",lat:46.376,lng:8.028, url:"https://www.aletscharena.ch"},
-{id:9,  name:"Belalp",                 region:"Wallis",    mp:true,  status:"offen",      lifte:9, lifteO:8,  km:40,  kmO:32,  berg:3112,tal:1450,diff:1662,typ:"Mittel",lat:46.357,lng:7.992, url:"https://www.belalp.ch"},
-{id:10, name:"Leukerbad (Torrent & Gemmi)",region:"Wallis",mp:true,  status:"offen",      lifte:9, lifteO:9,  km:50,  kmO:39,  berg:2350,tal:1411,diff:939, typ:"Mittel",lat:46.379,lng:7.636, url:"https://www.leukerbad.ch"},
-{id:11, name:"St-Luc / Chandolin",     region:"Wallis",    mp:true,  status:"offen",      lifte:15,lifteO:15, km:60,  kmO:57,  berg:2900,tal:1650,diff:1250,typ:"Mittel",lat:46.225,lng:7.608, url:"https://www.valdanniviers.ch"},
-{id:12, name:"Vercorin",               region:"Wallis",    mp:true,  status:"offen",      lifte:7, lifteO:6,  km:25,  kmO:20,  berg:2400,tal:1300,diff:1100,typ:"Klein", lat:46.257,lng:7.559, url:"https://www.vercorin.ch"},
-{id:13, name:"Nax / Mont-Noble",       region:"Wallis",    mp:true,  status:"offen",      lifte:5, lifteO:4,  km:15,  kmO:12,  berg:2500,tal:1000,diff:1500,typ:"Klein", lat:46.233,lng:7.446, url:"https://www.nax.ch"},
-{id:14, name:"Thyon 2000",             region:"Wallis",    mp:true,  status:"offen",      lifte:6, lifteO:5,  km:20,  kmO:16,  berg:2200,tal:1900,diff:300, typ:"Klein", lat:46.196,lng:7.372, url:"https://www.thyon-region.ch"},
-{id:15, name:"Unterbäch",              region:"Wallis",    mp:true,  status:"offen",      lifte:6, lifteO:6,  km:20,  kmO:16,  berg:2300,tal:1228,diff:1072,typ:"Klein", lat:46.311,lng:7.762, url:"https://www.unterbaech.ch"},
-{id:16, name:"Eischoll",               region:"Wallis",    mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:13,  kmO:0,   berg:2000,tal:1220,diff:780, typ:"Klein", lat:46.298,lng:7.800, url:"https://www.eischoll.ch"},
-{id:17, name:"Espace Dent-Blanche (Arolla)",region:"Wallis",mp:true, status:"offen",      lifte:8, lifteO:6,  km:30,  kmO:22,  berg:3000,tal:1950,diff:1050,typ:"Mittel",lat:46.027,lng:7.477, url:"https://www.arolla.com"},
-{id:18, name:"Mayens de Conthey",      region:"Wallis",    mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:10,  kmO:0,   berg:2000,tal:1200,diff:800, typ:"Klein", lat:46.215,lng:7.328, url:"https://www.nendaz.ch"},
-{id:19, name:"Gspon",                  region:"Wallis",    mp:true,  status:"geschlossen",lifte:2, lifteO:0,  km:5,   kmO:0,   berg:2000,tal:1893,diff:107, typ:"Klein", lat:46.218,lng:7.866, url:"https://www.saastal.ch"},
-{id:20, name:"Grachen",               region:"Wallis",    mp:true,  status:"offen",      lifte:10,lifteO:6,  km:40,  kmO:10,  berg:2869,tal:1620,diff:1249,typ:"Mittel",lat:46.193,lng:7.836, url:"https://www.grachen.ch"},
-{id:21, name:"Rosswald",               region:"Wallis",    mp:true,  status:"offen",      lifte:4, lifteO:3,  km:12,  kmO:8,   berg:2200,tal:1790,diff:410, typ:"Klein", lat:46.313,lng:8.232, url:"https://www.rosswald.ch"},
-{id:22, name:"La Tzoumaz / Savoleyres",region:"Wallis",    mp:true,  status:"offen",      lifte:6, lifteO:5,  km:25,  kmO:18,  berg:2350,tal:1500,diff:850, typ:"Klein", lat:46.115,lng:7.210, url:"https://www.verbier4vallees.ch"},
-{id:23, name:"Les Marécottes",         region:"Wallis",    mp:true,  status:"offen",      lifte:4, lifteO:3,  km:27,  kmO:21,  berg:2200,tal:1100,diff:1100,typ:"Klein", lat:46.087,lng:7.055, url:"https://www.marécottes.ch"},
-{id:24, name:"Devero",                 region:"Italien",   mp:true,  status:"geschlossen",lifte:5, lifteO:0,  km:7,   kmO:0,   berg:2400,tal:1640,diff:760, typ:"Klein", lat:46.282,lng:8.225, url:"https://www.devero.it"},
-{id:25, name:"Domobianca 365",         region:"Italien",   mp:true,  status:"geschlossen",lifte:9, lifteO:0,  km:21,  kmO:0,   berg:1600,tal:700, diff:900, typ:"Klein", lat:45.942,lng:8.484, url:"https://www.domobianca.it"},
-// Nicht-MP Wallis
-{id:26, name:"Zermatt",                region:"Wallis",    mp:false, status:"offen",      lifte:54,lifteO:48, km:360, kmO:310, berg:3883,tal:1620,diff:2263,typ:"Gross", lat:46.020,lng:7.749, url:"https://www.zermatt.ch"},
-{id:27, name:"Verbier / 4 Vallées",   region:"Wallis",    mp:false, status:"offen",      lifte:35,lifteO:30, km:125, kmO:100, berg:3330,tal:820, diff:2510,typ:"Gross", lat:46.096,lng:7.228, url:"https://www.verbier4vallees.ch"},
-{id:28, name:"Crans-Montana",          region:"Wallis",    mp:false, status:"offen",      lifte:23,lifteO:18, km:140, kmO:110, berg:3000,tal:1500,diff:1500,typ:"Gross", lat:46.312,lng:7.479, url:"https://www.crans-montana.ch"},
-// ── BERN ─────────────────────────────────────────────────────────────
-{id:30, name:"Gstaad – Rinderberg/Zweisimmen",region:"Bern",mp:true,status:"offen",      lifte:8, lifteO:7,  km:35,  kmO:28,  berg:2000,tal:1000,diff:1000,typ:"Mittel",lat:46.479,lng:7.287, url:"https://www.bergbahnen-destination-gstaad.ch"},
-{id:31, name:"Gstaad – Eggli/Rougemont",region:"Bern",    mp:true,  status:"offen",      lifte:6, lifteO:5,  km:20,  kmO:16,  berg:1800,tal:1050,diff:750, typ:"Klein", lat:46.470,lng:7.279, url:"https://www.bergbahnen-destination-gstaad.ch"},
-{id:32, name:"Gstaad – Schönried/Saanenmöser",region:"Bern",mp:true,status:"offen",      lifte:8, lifteO:7,  km:30,  kmO:24,  berg:1950,tal:1000,diff:950, typ:"Mittel",lat:46.502,lng:7.267, url:"https://www.bergbahnen-destination-gstaad.ch"},
-{id:33, name:"Gstaad – Horneggli/St.Stephan",region:"Bern",mp:true, status:"offen",      lifte:5, lifteO:4,  km:15,  kmO:12,  berg:1900,tal:950, diff:950, typ:"Klein", lat:46.498,lng:7.421, url:"https://www.bergbahnen-destination-gstaad.ch"},
-{id:34, name:"Meiringen-Hasliberg",    region:"Bern",      mp:true,  status:"offen",      lifte:16,lifteO:12, km:60,  kmO:32,  berg:2433,tal:1060,diff:1373,typ:"Mittel",lat:46.727,lng:8.185, url:"https://www.haslital.ch"},
-{id:35, name:"Axalp",                  region:"Bern",      mp:true,  status:"offen",      lifte:3, lifteO:3,  km:9,   kmO:7,   berg:1900,tal:1100,diff:800, typ:"Klein", lat:46.745,lng:8.044, url:"https://www.axalp.ch"},
-{id:36, name:"Linden",                 region:"Bern",      mp:true,  status:"geschlossen",lifte:2, lifteO:0,  km:5,   kmO:0,   berg:1300,tal:900, diff:400, typ:"Klein", lat:46.788,lng:7.811, url:"https://www.linden-ski.ch"},
-{id:37, name:"Balmberg",               region:"Solothurn", mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:8,   kmO:0,   berg:1100,tal:700, diff:400, typ:"Klein", lat:47.226,lng:7.572, url:"https://www.balmberg.ch"},
-{id:38, name:"Grimmialp",              region:"Bern",      mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:10,  kmO:0,   berg:1750,tal:1120,diff:630, typ:"Klein", lat:46.637,lng:7.567, url:"https://www.grimmialp.ch"},
-{id:39, name:"Jaun",                   region:"Bern/Freiburg",mp:true,status:"geschlossen",lifte:5,lifteO:0,  km:15,  kmO:0,   berg:1750,tal:1000,diff:750, typ:"Klein", lat:46.597,lng:7.318, url:"https://www.jaunpass.ch"},
-{id:40, name:"Habkern",                region:"Bern",      mp:true,  status:"geschlossen",lifte:2, lifteO:0,  km:8,   kmO:0,   berg:1600,tal:1050,diff:550, typ:"Klein", lat:46.735,lng:7.868, url:"https://www.skilifthabkern.ch"},
-{id:41, name:"Springenboden",          region:"Bern",      mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:6,   kmO:0,   berg:1600,tal:1000,diff:600, typ:"Klein", lat:46.651,lng:8.000, url:"https://www.springenboden.ch"},
-{id:42, name:"Bumbach Schangnau",      region:"Bern",      mp:true,  status:"geschlossen",lifte:4, lifteO:0,  km:9,   kmO:0,   berg:1500,tal:900, diff:600, typ:"Klein", lat:46.790,lng:7.960, url:"https://www.bumbach.ch"},
-{id:43, name:"Eriz",                   region:"Bern",      mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:6,   kmO:0,   berg:1400,tal:900, diff:500, typ:"Klein", lat:46.720,lng:7.790, url:"https://www.eriz.ch"},
-{id:44, name:"Gurnigelbad",            region:"Bern",      mp:true,  status:"geschlossen",lifte:1, lifteO:0,  km:2,   kmO:0,   berg:1560,tal:1150,diff:410, typ:"Klein", lat:46.756,lng:7.451, url:"https://www.gurnigel.ch"},
-{id:45, name:"Riffenmatt",             region:"Bern",      mp:true,  status:"geschlossen",lifte:4, lifteO:0,  km:8,   kmO:0,   berg:1400,tal:900, diff:500, typ:"Klein", lat:46.720,lng:7.390, url:"https://www.riffenmatt.ch"},
-{id:46, name:"Rathvel",                region:"Bern",      mp:true,  status:"geschlossen",lifte:4, lifteO:0,  km:8,   kmO:0,   berg:1300,tal:800, diff:500, typ:"Klein", lat:46.620,lng:7.170, url:"https://www.rathvel.ch"},
-{id:47, name:"Tramelan",               region:"Bern",      mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:12,  kmO:0,   berg:1200,tal:750, diff:450, typ:"Klein", lat:47.220,lng:7.099, url:"https://www.tramelan.ch"},
-{id:48, name:"Valbirse",               region:"Bern",      mp:true,  status:"geschlossen",lifte:1, lifteO:0,  km:1,   kmO:0,   berg:900, tal:700, diff:200, typ:"Klein", lat:47.202,lng:7.328, url:"https://www.valbirse.ch"},
-{id:49, name:"Ottenleue",              region:"Bern",      mp:true,  status:"geschlossen",lifte:1, lifteO:0,  km:5,   kmO:0,   berg:1200,tal:800, diff:400, typ:"Klein", lat:46.852,lng:7.922, url:"https://www.ottenleue.ch"},
-// Nicht-MP Bern
-{id:50, name:"Adelboden-Lenk",         region:"Bern",      mp:false, status:"offen",      lifte:57,lifteO:50, km:210, kmO:180, berg:2362,tal:1050,diff:1312,typ:"Gross", lat:46.490,lng:7.558, url:"https://www.adelboden-lenk.ch"},
-{id:51, name:"Grindelwald / Jungfrau", region:"Bern",      mp:false, status:"offen",      lifte:46,lifteO:42, km:213, kmO:195, berg:2971,tal:1034,diff:1937,typ:"Gross", lat:46.624,lng:8.041, url:"https://www.jungfrau.ch"},
-// ── WAADT ────────────────────────────────────────────────────────────
-{id:60, name:"Les Diablerets / Villars",region:"Waadt",    mp:true,  status:"offen",      lifte:8, lifteO:6,  km:25,  kmO:20,  berg:2120,tal:1224,diff:896, typ:"Mittel",lat:46.298,lng:7.058, url:"https://www.villars.ch"},
-{id:61, name:"Glacier 3000",           region:"Waadt",     mp:true,  status:"offen",      lifte:10,lifteO:8,  km:31,  kmO:28,  berg:3000,tal:1800,diff:1200,typ:"Mittel",lat:46.349,lng:7.119, url:"https://www.glacier3000.ch"},
-{id:62, name:"Leysin",                 region:"Waadt",     mp:true,  status:"offen",      lifte:16,lifteO:13, km:60,  kmO:45,  berg:2205,tal:1260,diff:945, typ:"Mittel",lat:46.340,lng:7.004, url:"https://www.leysin.ch"},
-{id:63, name:"Les Mosses / La Lécherette",region:"Waadt", mp:true,  status:"offen",      lifte:14,lifteO:6,  km:40,  kmO:10,  berg:1914,tal:1200,diff:714, typ:"Mittel",lat:46.393,lng:7.097, url:"https://www.lesmosses.ch"},
-{id:64, name:"Château-d'Œx",           region:"Waadt",     mp:true,  status:"geschlossen",lifte:7, lifteO:0,  km:20,  kmO:0,   berg:1630,tal:1000,diff:630, typ:"Klein", lat:46.479,lng:7.136, url:"https://www.chateau-doex.ch"},
-{id:65, name:"Les Pléiades",           region:"Waadt",     mp:true,  status:"geschlossen",lifte:6, lifteO:0,  km:8,   kmO:0,   berg:1360,tal:800, diff:560, typ:"Klein", lat:46.487,lng:6.909, url:"https://www.lapleiades.ch"},
-{id:66, name:"Les Rochers-de-Naye",    region:"Waadt",     mp:true,  status:"geschlossen",lifte:5, lifteO:0,  km:8,   kmO:0,   berg:2042,tal:400, diff:1642,typ:"Klein", lat:46.440,lng:6.980, url:"https://www.mob.ch"},
-{id:67, name:"Ste-Croix / Les Rasses", region:"Waadt",     mp:true,  status:"geschlossen",lifte:9, lifteO:0,  km:19,  kmO:0,   berg:1600,tal:1000,diff:600, typ:"Klein", lat:46.822,lng:6.500, url:"https://www.ste-croix.ch"},
-{id:68, name:"Vallée de Joux",         region:"Waadt",     mp:true,  status:"offen",      lifte:6, lifteO:6,  km:40,  kmO:33,  berg:1440,tal:1000,diff:440, typ:"Klein", lat:46.621,lng:6.268, url:"https://www.valleedejoux.ch"},
-{id:69, name:"Les Paccots",            region:"Waadt",     mp:true,  status:"geschlossen",lifte:10,lifteO:0,  km:15,  kmO:0,   berg:1600,tal:880, diff:720, typ:"Klein", lat:46.540,lng:6.991, url:"https://www.lespaccots.ch"},
-{id:70, name:"Crêt-du-Puy",            region:"Waadt",     mp:true,  status:"geschlossen",lifte:2, lifteO:0,  km:10,  kmO:0,   berg:1200,tal:700, diff:500, typ:"Klein", lat:46.519,lng:6.654, url:"https://www.cret-du-puy.ch"},
-{id:71, name:"Prés-d'Orvin",           region:"Bern",      mp:true,  status:"offen",      lifte:23,lifteO:18, km:67,  kmO:51,  berg:1300,tal:700, diff:600, typ:"Mittel",lat:47.162,lng:7.213, url:"https://www.presorvin.ch"},
-// ── FREIBURG ─────────────────────────────────────────────────────────
-{id:72, name:"Moléson",                region:"Freiburg",  mp:true,  status:"offen",      lifte:10,lifteO:10, km:45,  kmO:32,  berg:2002,tal:1100,diff:902, typ:"Mittel",lat:46.543,lng:7.019, url:"https://www.moleson.ch"},
-{id:73, name:"Charmey",                region:"Freiburg",  mp:true,  status:"geschlossen",lifte:7, lifteO:0,  km:30,  kmO:1,   berg:1640,tal:900, diff:740, typ:"Klein", lat:46.618,lng:7.189, url:"https://www.charmey.ch"},
-{id:74, name:"La Berra",               region:"Freiburg",  mp:true,  status:"offen",      lifte:6, lifteO:5,  km:40,  kmO:32,  berg:1719,tal:1050,diff:669, typ:"Klein", lat:46.680,lng:7.053, url:"https://www.laberra.ch"},
-{id:75, name:"Schwarzsee",             region:"Freiburg",  mp:true,  status:"offen",      lifte:5, lifteO:4,  km:20,  kmO:16,  berg:1900,tal:1050,diff:850, typ:"Klein", lat:46.640,lng:7.318, url:"https://www.schwarzsee.ch"},
-{id:76, name:"Grandvillard",           region:"Freiburg",  mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:10,  kmO:0,   berg:1540,tal:900, diff:640, typ:"Klein", lat:46.631,lng:7.236, url:"https://www.grandvillard.ch"},
-{id:77, name:"Hirmentaz",              region:"Frankreich",mp:true,  status:"offen",      lifte:10,lifteO:8,  km:35,  kmO:28,  berg:1607,tal:900, diff:707, typ:"Klein", lat:46.287,lng:6.558, url:"https://www.hirmentaz.com"},
-// ── SOLOTHURN ────────────────────────────────────────────────────────
-{id:78, name:"Weissenstein",           region:"Solothurn", mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:10,  kmO:0,   berg:1284,tal:750, diff:534, typ:"Klein", lat:47.231,lng:7.509, url:"https://www.weissenstein.ch"},
-{id:79, name:"Grenchenberg",           region:"Solothurn", mp:true,  status:"geschlossen",lifte:2, lifteO:0,  km:1,   kmO:0,   berg:1100,tal:700, diff:400, typ:"Klein", lat:47.196,lng:7.417, url:"https://www.grenchenberg.ch"},
-// ── NEUENBURG ────────────────────────────────────────────────────────
-{id:80, name:"Les Bugnenets-Savagnières",region:"Neuenburg",mp:true, status:"geschlossen",lifte:8, lifteO:0,  km:30,  kmO:0,   berg:1285,tal:750, diff:535, typ:"Klein", lat:47.057,lng:6.918, url:"https://www.bugnenets.ch"},
-{id:81, name:"La Vue-des-Alpes",       region:"Neuenburg", mp:true,  status:"geschlossen",lifte:4, lifteO:0,  km:8,   kmO:0,   berg:1283,tal:900, diff:383, typ:"Klein", lat:47.010,lng:6.836, url:"https://www.vudesalpes.ch"},
-{id:82, name:"Tête de Ran",            region:"Neuenburg", mp:true,  status:"geschlossen",lifte:2, lifteO:0,  km:4,   kmO:0,   berg:1422,tal:1000,diff:422, typ:"Klein", lat:47.032,lng:6.799, url:"https://www.tete-de-ran.ch"},
-// ── NIDWALDEN ────────────────────────────────────────────────────────
-{id:83, name:"Klewenalp-Stockhütte",   region:"Nidwalden", mp:true,  status:"offen",      lifte:5, lifteO:4,  km:25,  kmO:20,  berg:1961,tal:435, diff:1526,typ:"Klein", lat:46.928,lng:8.458, url:"https://www.klewenalp.ch"},
-{id:84, name:"Engelberg-Titlis",       region:"Nidwalden", mp:false, status:"offen",      lifte:26,lifteO:22, km:82,  kmO:70,  berg:3020,tal:1050,diff:1970,typ:"Gross", lat:46.820,lng:8.408, url:"https://www.engelberg.ch"},
-// ── OBWALDEN ─────────────────────────────────────────────────────────
-{id:85, name:"Melchsee-Frutt",         region:"Obwalden",  mp:true,  status:"offen",      lifte:12,lifteO:10, km:42,  kmO:30,  berg:2255,tal:1920,diff:335, typ:"Mittel",lat:46.817,lng:8.268, url:"https://www.melchsee-frutt.ch"},
-{id:86, name:"Mörlialp",               region:"Obwalden",  mp:true,  status:"geschlossen",lifte:3, lifteO:0,  km:8,   kmO:0,   berg:1750,tal:1100,diff:650, typ:"Klein", lat:46.889,lng:8.198, url:"https://www.moerlialp.ch"},
-// ── LUZERN ───────────────────────────────────────────────────────────
-{id:87, name:"Sörenberg",              region:"Luzern",    mp:true,  status:"offen",      lifte:12,lifteO:2,  km:42,  kmO:10,  berg:2350,tal:1165,diff:1185,typ:"Mittel",lat:46.835,lng:8.037, url:"https://www.sörenberg.ch"},
-// ── SCHWYZ ───────────────────────────────────────────────────────────
-{id:88, name:"Stoos",                  region:"Schwyz",    mp:true,  status:"offen",      lifte:9, lifteO:8,  km:35,  kmO:28,  berg:1900,tal:800, diff:1100,typ:"Mittel",lat:47.004,lng:8.673, url:"https://www.stoos.ch"},
-// ── FRANKREICH ───────────────────────────────────────────────────────
-{id:90, name:"Le Grand-Bornand",       region:"Frankreich",mp:true,  status:"offen",      lifte:25,lifteO:21, km:77,  kmO:71,  berg:2100,tal:1000,diff:1100,typ:"Gross", lat:45.943,lng:6.423, url:"https://www.legrandbornand.com"},
-{id:91, name:"La Clusaz",              region:"Frankreich",mp:true,  status:"offen",      lifte:55,lifteO:48, km:125, kmO:100, berg:2600,tal:1100,diff:1500,typ:"Gross", lat:45.907,lng:6.424, url:"https://www.laclusaz.com"},
-{id:92, name:"Les Contamines-Montjoie",region:"Frankreich",mp:true, status:"offen",      lifte:27,lifteO:24, km:110, kmO:88,  berg:2487,tal:1164,diff:1323,typ:"Gross", lat:45.821,lng:6.727, url:"https://www.lescontamines.net"},
-{id:93, name:"Praz de Lys – Sommand",  region:"Frankreich",mp:true,  status:"offen",      lifte:23,lifteO:18, km:67,  kmO:51,  berg:1800,tal:1000,diff:800, typ:"Mittel",lat:46.150,lng:6.608, url:"https://www.prazdelys-sommand.com"},
-{id:94, name:"Les Habères",            region:"Frankreich",mp:true,  status:"offen",      lifte:6, lifteO:3,  km:15,  kmO:4,   berg:1700,tal:900, diff:800, typ:"Klein", lat:46.233,lng:6.508, url:"https://www.leshaberes.com"},
-{id:95, name:"Thollon-les-Mémises",    region:"Frankreich",mp:true,  status:"offen",      lifte:15,lifteO:15, km:15,  kmO:14,  berg:1985,tal:900, diff:1085,typ:"Klein", lat:46.403,lng:6.698, url:"https://www.thollon.org"},
-{id:96, name:"Les Gets",               region:"Frankreich",mp:false, status:"offen",      lifte:48,lifteO:44, km:120, kmO:100, berg:2002,tal:1172,diff:830, typ:"Gross", lat:46.157,lng:6.666, url:"https://www.lesgets.com"},
-{id:97, name:"Megève / Saint-Gervais", region:"Frankreich",mp:false, status:"offen",      lifte:83,lifteO:72, km:445, kmO:380, berg:2350,tal:1050,diff:1300,typ:"Gross", lat:45.857,lng:6.617, url:"https://www.megeve.com"},
-{id:98, name:"Morillon / Samoëns",     region:"Frankreich",mp:false, status:"geschlossen",lifte:45,lifteO:0,  km:90,  kmO:0,   berg:2480,tal:700, diff:1780,typ:"Gross", lat:46.084,lng:6.718, url:"https://www.samoens.com"},
-// ── ITALIEN ──────────────────────────────────────────────────────────
-{id:100,name:"Alagna / Gressoney / Champoluc",region:"Italien",mp:true,status:"offen",   lifte:57,lifteO:50, km:180, kmO:150, berg:3275,tal:1100,diff:2175,typ:"Gross", lat:45.857,lng:7.937, url:"https://www.alagna.it"},
-{id:101,name:"Pila",                   region:"Italien",   mp:true,  status:"offen",      lifte:15,lifteO:13, km:70,  kmO:58,  berg:2752,tal:1800,diff:952, typ:"Mittel",lat:45.726,lng:7.334, url:"https://www.pila.it"},
-{id:102,name:"Breuil-Cervinia",        region:"Italien",   mp:true,  status:"offen",      lifte:29,lifteO:26, km:155, kmO:130, berg:3480,tal:2006,diff:1474,typ:"Gross", lat:45.938,lng:7.626, url:"https://www.cervinia.it"},
+{id:1,name:"Grimentz-Zinal",region:"Wallis",mp:true,status:"offen",lifte:21,lifteO:18,km:115,kmO:95,berg:2900,tal:1570,diff:1330,typ:"Gross",lat:46.175,lng:7.625,url:"https://www.grimentz-zinal.ch"},
+{id:2,name:"Saas-Fee",region:"Wallis",mp:true,status:"offen",lifte:23,lifteO:20,km:100,kmO:85,berg:3573,tal:1800,diff:1773,typ:"Gross",lat:46.107,lng:7.928,url:"https://www.saas-fee.ch"},
+{id:3,name:"Anzere",region:"Wallis",mp:true,status:"offen",lifte:12,lifteO:10,km:44,kmO:38,berg:2420,tal:1500,diff:920,typ:"Mittel",lat:46.300,lng:7.398,url:"https://www.anzere.ch"},
+{id:4,name:"Nendaz",region:"Wallis",mp:true,status:"offen",lifte:8,lifteO:7,km:30,kmO:25,berg:2200,tal:1365,diff:835,typ:"Mittel",lat:46.189,lng:7.306,url:"https://www.nendaz.ch"},
+{id:5,name:"Ovronnaz",region:"Wallis",mp:true,status:"offen",lifte:7,lifteO:6,km:40,kmO:27,berg:2500,tal:1400,diff:1100,typ:"Mittel",lat:46.226,lng:7.199,url:"https://www.ovronnaz.ch"},
+{id:6,name:"Bellwald",region:"Wallis",mp:true,status:"offen",lifte:7,lifteO:6,km:30,kmO:25,berg:2600,tal:1560,diff:1040,typ:"Mittel",lat:46.429,lng:8.201,url:"https://www.bellwald.ch"},
+{id:7,name:"Bettmeralp",region:"Wallis",mp:true,status:"offen",lifte:12,lifteO:10,km:45,kmO:38,berg:2869,tal:1950,diff:919,typ:"Mittel",lat:46.392,lng:8.072,url:"https://www.aletscharena.ch"},
+{id:8,name:"Riederalp",region:"Wallis",mp:true,status:"offen",lifte:12,lifteO:10,km:45,kmO:32,berg:2869,tal:1900,diff:969,typ:"Mittel",lat:46.376,lng:8.028,url:"https://www.aletscharena.ch"},
+{id:9,name:"Belalp",region:"Wallis",mp:true,status:"offen",lifte:9,lifteO:8,km:40,kmO:32,berg:3112,tal:1450,diff:1662,typ:"Mittel",lat:46.357,lng:7.992,url:"https://www.belalp.ch"},
+{id:10,name:"Leukerbad (Torrent & Gemmi)",region:"Wallis",mp:true,status:"offen",lifte:9,lifteO:9,km:50,kmO:39,berg:2350,tal:1411,diff:939,typ:"Mittel",lat:46.379,lng:7.636,url:"https://www.leukerbad.ch"},
+{id:11,name:"St-Luc / Chandolin",region:"Wallis",mp:true,status:"offen",lifte:15,lifteO:15,km:60,kmO:57,berg:2900,tal:1650,diff:1250,typ:"Mittel",lat:46.225,lng:7.608,url:"https://www.valdanniviers.ch"},
+{id:12,name:"Vercorin",region:"Wallis",mp:true,status:"offen",lifte:7,lifteO:6,km:25,kmO:20,berg:2400,tal:1300,diff:1100,typ:"Klein",lat:46.257,lng:7.559,url:"https://www.vercorin.ch"},
+{id:13,name:"Nax / Mont-Noble",region:"Wallis",mp:true,status:"offen",lifte:5,lifteO:4,km:15,kmO:12,berg:2500,tal:1000,diff:1500,typ:"Klein",lat:46.233,lng:7.446,url:"https://www.mont-noble.ch"},
+{id:14,name:"Thyon 2000",region:"Wallis",mp:true,status:"offen",lifte:6,lifteO:5,km:20,kmO:16,berg:2200,tal:1900,diff:300,typ:"Klein",lat:46.196,lng:7.372,url:"https://www.thyon-region.ch"},
+{id:15,name:"Unterbach",region:"Wallis",mp:true,status:"offen",lifte:6,lifteO:6,km:20,kmO:16,berg:2300,tal:1228,diff:1072,typ:"Klein",lat:46.311,lng:7.762,url:"https://www.unterbaech.ch"},
+{id:16,name:"Grachen",region:"Wallis",mp:true,status:"offen",lifte:10,lifteO:6,km:40,kmO:10,berg:2869,tal:1620,diff:1249,typ:"Mittel",lat:46.193,lng:7.836,url:"https://www.grachen.ch"},
+{id:17,name:"Rosswald",region:"Wallis",mp:true,status:"offen",lifte:4,lifteO:3,km:12,kmO:8,berg:2200,tal:1790,diff:410,typ:"Klein",lat:46.313,lng:8.232,url:"https://www.rosswald.ch"},
+{id:18,name:"La Tzoumaz / Savoleyres",region:"Wallis",mp:true,status:"offen",lifte:6,lifteO:5,km:25,kmO:18,berg:2350,tal:1500,diff:850,typ:"Klein",lat:46.115,lng:7.210,url:"https://www.verbier4vallees.ch"},
+{id:19,name:"Les Marecottes",region:"Wallis",mp:true,status:"offen",lifte:4,lifteO:3,km:27,kmO:21,berg:2200,tal:1100,diff:1100,typ:"Klein",lat:46.087,lng:7.055,url:"https://www.marecottes.ch"},
+{id:20,name:"Zermatt",region:"Wallis",mp:false,status:"offen",lifte:54,lifteO:48,km:360,kmO:310,berg:3883,tal:1620,diff:2263,typ:"Gross",lat:46.020,lng:7.749,url:"https://www.zermatt.ch"},
+{id:21,name:"Verbier / 4 Vallees",region:"Wallis",mp:false,status:"offen",lifte:35,lifteO:30,km:125,kmO:100,berg:3330,tal:820,diff:2510,typ:"Gross",lat:46.096,lng:7.228,url:"https://www.verbier4vallees.ch"},
+{id:22,name:"Crans-Montana",region:"Wallis",mp:false,status:"offen",lifte:23,lifteO:18,km:140,kmO:110,berg:3000,tal:1500,diff:1500,typ:"Gross",lat:46.312,lng:7.479,url:"https://www.crans-montana.ch"},
+{id:23,name:"Aletsch Arena",region:"Wallis",mp:false,status:"offen",lifte:35,lifteO:28,km:104,kmO:82,berg:2869,tal:925,diff:1944,typ:"Gross",lat:46.406,lng:8.050,url:"https://www.aletscharena.ch"},
+{id:24,name:"Champery / Portes du Soleil",region:"Wallis",mp:false,status:"offen",lifte:20,lifteO:17,km:100,kmO:80,berg:2277,tal:1035,diff:1242,typ:"Gross",lat:46.181,lng:6.869,url:"https://www.champery.ch"},
+
+{id:30,name:"Gstaad - Rinderberg/Zweisimmen",region:"Bern",mp:true,status:"offen",lifte:8,lifteO:7,km:35,kmO:28,berg:2000,tal:1000,diff:1000,typ:"Mittel",lat:46.479,lng:7.287,url:"https://www.gstaad.ch"},
+{id:31,name:"Meiringen-Hasliberg",region:"Bern",mp:true,status:"offen",lifte:16,lifteO:12,km:60,kmO:32,berg:2433,tal:1060,diff:1373,typ:"Mittel",lat:46.727,lng:8.185,url:"https://www.meiringen-hasliberg.ch"},
+{id:32,name:"Axalp",region:"Bern",mp:true,status:"offen",lifte:3,lifteO:3,km:9,kmO:7,berg:1900,tal:1100,diff:800,typ:"Klein",lat:46.745,lng:8.044,url:"https://www.axalp.ch"},
+{id:33,name:"Adelboden-Lenk",region:"Bern",mp:false,status:"offen",lifte:57,lifteO:50,km:210,kmO:180,berg:2362,tal:1050,diff:1312,typ:"Gross",lat:46.490,lng:7.558,url:"https://www.adelboden-lenk.ch"},
+{id:34,name:"Jungfrau Ski Region",region:"Bern",mp:false,status:"offen",lifte:46,lifteO:42,km:213,kmO:195,berg:2971,tal:1034,diff:1937,typ:"Gross",lat:46.624,lng:8.041,url:"https://www.jungfrau.ch"},
+{id:35,name:"Murren-Schilthorn",region:"Bern",mp:false,status:"offen",lifte:15,lifteO:13,km:54,kmO:45,berg:2970,tal:796,diff:2174,typ:"Mittel",lat:46.559,lng:7.891,url:"https://www.schilthorn.ch"},
+{id:36,name:"Grindelwald-First",region:"Bern",mp:false,status:"offen",lifte:10,lifteO:9,km:49,kmO:40,berg:2500,tal:1050,diff:1450,typ:"Mittel",lat:46.658,lng:8.053,url:"https://www.jungfrau.ch"},
+{id:37,name:"Hasliberg Bidmi",region:"Bern",mp:false,status:"offen",lifte:8,lifteO:6,km:34,kmO:25,berg:2100,tal:1080,diff:1020,typ:"Mittel",lat:46.752,lng:8.221,url:"https://www.meiringen-hasliberg.ch"},
+{id:38,name:"Kandersteg",region:"Bern",mp:false,status:"offen",lifte:11,lifteO:9,km:55,kmO:45,berg:2600,tal:1176,diff:1424,typ:"Mittel",lat:46.499,lng:7.672,url:"https://www.kandersteg.ch"},
+{id:39,name:"Beatenberg-Niederhorn",region:"Bern",mp:false,status:"geschlossen",lifte:4,lifteO:0,km:18,kmO:0,berg:1950,tal:900,diff:1050,typ:"Klein",lat:46.705,lng:7.780,url:"https://www.niederhorn.ch"},
+
+{id:40,name:"Les Diablerets / Villars",region:"Waadt",mp:true,status:"offen",lifte:8,lifteO:6,km:25,kmO:20,berg:2120,tal:1224,diff:896,typ:"Mittel",lat:46.298,lng:7.058,url:"https://www.villars.ch"},
+{id:41,name:"Glacier 3000",region:"Waadt",mp:true,status:"offen",lifte:10,lifteO:8,km:31,kmO:28,berg:3000,tal:1800,diff:1200,typ:"Mittel",lat:46.349,lng:7.119,url:"https://www.glacier3000.ch"},
+{id:42,name:"Leysin",region:"Waadt",mp:true,status:"offen",lifte:16,lifteO:13,km:60,kmO:45,berg:2205,tal:1260,diff:945,typ:"Mittel",lat:46.340,lng:7.004,url:"https://www.leysin.ch"},
+{id:43,name:"Les Mosses / La Lecherette",region:"Waadt",mp:true,status:"offen",lifte:14,lifteO:6,km:40,kmO:10,berg:1914,tal:1200,diff:714,typ:"Mittel",lat:46.393,lng:7.097,url:"https://www.lesmosses.ch"},
+{id:44,name:"Vallée de Joux",region:"Waadt",mp:true,status:"offen",lifte:6,lifteO:6,km:40,kmO:33,berg:1440,tal:1000,diff:440,typ:"Klein",lat:46.621,lng:6.268,url:"https://www.valleedejoux.ch"},
+{id:45,name:"Rochers-de-Naye",region:"Waadt",mp:true,status:"geschlossen",lifte:5,lifteO:0,km:8,kmO:0,berg:2042,tal:400,diff:1642,typ:"Klein",lat:46.440,lng:6.980,url:"https://www.mob.ch"},
+
+{id:50,name:"Moléson",region:"Freiburg",mp:true,status:"offen",lifte:10,lifteO:10,km:45,kmO:32,berg:2002,tal:1100,diff:902,typ:"Mittel",lat:46.543,lng:7.019,url:"https://www.moleson.ch"},
+{id:51,name:"Charmey",region:"Freiburg",mp:true,status:"geschlossen",lifte:7,lifteO:0,km:30,kmO:1,berg:1640,tal:900,diff:740,typ:"Klein",lat:46.618,lng:7.189,url:"https://www.charmey.ch"},
+{id:52,name:"La Berra",region:"Freiburg",mp:true,status:"offen",lifte:6,lifteO:5,km:40,kmO:32,berg:1719,tal:1050,diff:669,typ:"Klein",lat:46.680,lng:7.053,url:"https://www.laberra.ch"},
+{id:53,name:"Schwarzsee",region:"Freiburg",mp:true,status:"offen",lifte:5,lifteO:4,km:20,kmO:16,berg:1900,tal:1050,diff:850,typ:"Klein",lat:46.640,lng:7.318,url:"https://www.schwarzsee.ch"},
+
+{id:60,name:"Stoos",region:"Schwyz",mp:true,status:"offen",lifte:9,lifteO:8,km:35,kmO:28,berg:1900,tal:800,diff:1100,typ:"Mittel",lat:47.004,lng:8.673,url:"https://www.stoos.ch"},
+{id:61,name:"Hoch-Ybrig",region:"Schwyz",mp:false,status:"offen",lifte:16,lifteO:14,km:60,kmO:50,berg:1852,tal:1050,diff:802,typ:"Mittel",lat:47.015,lng:8.778,url:"https://www.hochybrig.ch"},
+{id:62,name:"Sattel-Hochstuckli",region:"Schwyz",mp:false,status:"offen",lifte:5,lifteO:4,km:14,kmO:10,berg:1600,tal:780,diff:820,typ:"Klein",lat:47.083,lng:8.633,url:"https://www.sattel-hochstuckli.ch"},
+
+{id:70,name:"Sorenberg",region:"Luzern",mp:true,status:"offen",lifte:12,lifteO:2,km:42,kmO:10,berg:2350,tal:1165,diff:1185,typ:"Mittel",lat:46.835,lng:8.037,url:"https://www.soerenberg.ch"},
+
+{id:80,name:"Klewenalp-Stockhutte",region:"Nidwalden",mp:true,status:"offen",lifte:5,lifteO:4,km:25,kmO:20,berg:1961,tal:435,diff:1526,typ:"Klein",lat:46.928,lng:8.458,url:"https://www.klewenalp.ch"},
+{id:81,name:"Engelberg-Titlis",region:"Nidwalden",mp:false,status:"offen",lifte:26,lifteO:22,km:82,kmO:70,berg:3020,tal:1050,diff:1970,typ:"Gross",lat:46.820,lng:8.408,url:"https://www.titlis.ch"},
+
+{id:90,name:"Melchsee-Frutt",region:"Obwalden",mp:true,status:"offen",lifte:12,lifteO:10,km:42,kmO:30,berg:2255,tal:1920,diff:335,typ:"Mittel",lat:46.817,lng:8.268,url:"https://www.melchsee-frutt.ch"},
+{id:91,name:"Morlialp",region:"Obwalden",mp:true,status:"geschlossen",lifte:3,lifteO:0,km:8,kmO:0,berg:1750,tal:1100,diff:650,typ:"Klein",lat:46.889,lng:8.198,url:"https://www.moerlialp.ch"},
+
+{id:100,name:"Flims Laax Falera",region:"Graubünden",mp:false,status:"offen",lifte:28,lifteO:26,km:214,kmO:190,berg:3018,tal:1100,diff:1918,typ:"Gross",lat:46.834,lng:9.199,url:"https://www.laax.com"},
+{id:101,name:"Arosa Lenzerheide",region:"Graubünden",mp:false,status:"offen",lifte:43,lifteO:40,km:225,kmO:200,berg:2865,tal:1230,diff:1635,typ:"Gross",lat:46.782,lng:9.676,url:"https://www.arosalenzerheide.ch"},
+{id:102,name:"Davos Klosters Parsenn",region:"Graubünden",mp:false,status:"offen",lifte:57,lifteO:52,km:300,kmO:275,berg:2844,tal:810,diff:2034,typ:"Gross",lat:46.800,lng:9.838,url:"https://www.davos.ch"},
+{id:103,name:"Corviglia / St. Moritz",region:"Graubünden",mp:false,status:"offen",lifte:22,lifteO:20,km:158,kmO:140,berg:3057,tal:1722,diff:1335,typ:"Gross",lat:46.499,lng:9.844,url:"https://www.engadin.ch"},
+{id:104,name:"Corvatsch - Furtschellas",region:"Graubünden",mp:false,status:"offen",lifte:13,lifteO:11,km:120,kmO:100,berg:3303,tal:1800,diff:1503,typ:"Gross",lat:46.438,lng:9.816,url:"https://www.corvatsch.ch"},
+{id:105,name:"Diavolezza - Lagalb",region:"Graubünden",mp:false,status:"offen",lifte:7,lifteO:6,km:30,kmO:28,berg:3092,tal:1815,diff:1277,typ:"Mittel",lat:46.413,lng:9.969,url:"https://www.diavolezza.ch"},
+{id:106,name:"Samnaun / Ischgl",region:"Graubünden",mp:false,status:"offen",lifte:45,lifteO:42,km:239,kmO:220,berg:2872,tal:1400,diff:1472,typ:"Gross",lat:46.966,lng:10.393,url:"https://www.samnaun.ch"},
+{id:107,name:"Scuol Motta Naluns",region:"Graubünden",mp:false,status:"offen",lifte:14,lifteO:12,km:80,kmO:70,berg:2783,tal:1250,diff:1533,typ:"Mittel",lat:46.797,lng:10.290,url:"https://www.scuol.ch"},
+{id:108,name:"Andermatt - Oberalp - Sedrun",region:"Uri/Graubünden",mp:false,status:"offen",lifte:22,lifteO:20,km:180,kmO:155,berg:3000,tal:1436,diff:1564,typ:"Gross",lat:46.636,lng:8.594,url:"https://www.andermatt.ch"},
+{id:109,name:"Savognin",region:"Graubünden",mp:false,status:"offen",lifte:9,lifteO:8,km:60,kmO:50,berg:2713,tal:1200,diff:1513,typ:"Mittel",lat:46.585,lng:9.580,url:"https://www.savognin.ch"},
+{id:110,name:"Disentis",region:"Graubünden",mp:false,status:"offen",lifte:10,lifteO:9,km:60,kmO:50,berg:2840,tal:1150,diff:1690,typ:"Mittel",lat:46.702,lng:8.858,url:"https://www.disentis-mountains.ch"},
+{id:111,name:"Obersaxen Mundaun",region:"Graubünden",mp:false,status:"offen",lifte:14,lifteO:12,km:55,kmO:45,berg:2315,tal:1250,diff:1065,typ:"Mittel",lat:46.730,lng:9.113,url:"https://www.obersaxen-mundaun.ch"},
+{id:112,name:"Brigels Waltensburg Andiast",region:"Graubünden",mp:false,status:"offen",lifte:8,lifteO:7,km:40,kmO:34,berg:2420,tal:1000,diff:1420,typ:"Mittel",lat:46.770,lng:9.048,url:"https://www.brigels.ch"},
+{id:113,name:"Davos Jakobshorn",region:"Graubünden",mp:false,status:"offen",lifte:10,lifteO:9,km:53,kmO:45,berg:2590,tal:1560,diff:1030,typ:"Mittel",lat:46.770,lng:9.855,url:"https://www.davos.ch"},
+{id:114,name:"Davos Rinerhorn",region:"Graubünden",mp:false,status:"offen",lifte:4,lifteO:3,km:18,kmO:15,berg:2490,tal:1560,diff:930,typ:"Klein",lat:46.755,lng:9.801,url:"https://www.davos.ch"},
+{id:115,name:"Splugen / Rheinwald",region:"Graubünden",mp:false,status:"geschlossen",lifte:7,lifteO:0,km:30,kmO:0,berg:2300,tal:1457,diff:843,typ:"Klein",lat:46.540,lng:9.322,url:"https://www.spluegen.ch"},
+{id:116,name:"Vals",region:"Graubünden",mp:false,status:"geschlossen",lifte:4,lifteO:0,km:12,kmO:0,berg:2500,tal:1250,diff:1250,typ:"Klein",lat:46.626,lng:9.183,url:"https://www.vals.ch"},
+{id:117,name:"San Bernardino",region:"Graubünden",mp:false,status:"offen",lifte:6,lifteO:5,km:28,kmO:22,berg:2100,tal:1620,diff:480,typ:"Klein",lat:46.463,lng:9.182,url:"https://www.sanbernardino.ch"},
+{id:118,name:"Bivio",region:"Graubünden",mp:false,status:"geschlossen",lifte:3,lifteO:0,km:15,kmO:0,berg:2700,tal:1769,diff:931,typ:"Klein",lat:46.476,lng:9.654,url:"https://www.bivio.ch"},
+{id:119,name:"Bergun - Filisur / Darlux",region:"Graubünden",mp:false,status:"geschlossen",lifte:4,lifteO:0,km:12,kmO:0,berg:2100,tal:1370,diff:730,typ:"Klein",lat:46.629,lng:9.745,url:"https://www.berguen-filisur.ch"},
+
+{id:130,name:"Airolo - Pescium",region:"Tessin",mp:false,status:"geschlossen",lifte:7,lifteO:0,km:35,kmO:0,berg:2320,tal:1140,diff:1180,typ:"Mittel",lat:46.532,lng:8.612,url:"https://www.airolo.ch"},
+{id:131,name:"Bosco Gurin",region:"Tessin",mp:false,status:"geschlossen",lifte:5,lifteO:0,km:18,kmO:0,berg:2480,tal:1506,diff:974,typ:"Klein",lat:46.312,lng:8.491,url:"https://www.boscogurin.ch"},
+{id:132,name:"Cari",region:"Tessin",mp:false,status:"geschlossen",lifte:5,lifteO:0,km:13,kmO:0,berg:1700,tal:900,diff:800,typ:"Klein",lat:46.295,lng:8.954,url:"https://www.cari.ch"},
+{id:133,name:"Nara",region:"Tessin",mp:false,status:"geschlossen",lifte:4,lifteO:0,km:30,kmO:0,berg:1930,tal:850,diff:1080,typ:"Mittel",lat:46.445,lng:8.992,url:"https://www.nara.ch"},
+
+{id:140,name:"Pizol - Bad Ragaz",region:"Ostschweiz",mp:false,status:"offen",lifte:9,lifteO:8,km:44,kmO:38,berg:2227,tal:1380,diff:847,typ:"Mittel",lat:46.993,lng:9.494,url:"https://www.pizol.com"},
+{id:141,name:"Flumserberg",region:"Ostschweiz",mp:false,status:"offen",lifte:16,lifteO:14,km:65,kmO:55,berg:2222,tal:1400,diff:822,typ:"Mittel",lat:47.112,lng:9.270,url:"https://www.flumserberg.ch"},
+{id:142,name:"Wildhaus - Alt St. Johann",region:"Ostschweiz",mp:false,status:"offen",lifte:18,lifteO:15,km:65,kmO:55,berg:2076,tal:1100,diff:976,typ:"Mittel",lat:47.204,lng:9.353,url:"https://www.toggenburg.org"},
+{id:143,name:"Chaserrugg - Toggenburg",region:"Ostschweiz",mp:false,status:"offen",lifte:8,lifteO:7,km:30,kmO:25,berg:2262,tal:720,diff:1542,typ:"Mittel",lat:47.162,lng:9.388,url:"https://www.chaeserrugg.ch"},
+{id:144,name:"Kronberg",region:"Ostschweiz",mp:false,status:"geschlossen",lifte:5,lifteO:0,km:12,kmO:0,berg:1663,tal:780,diff:883,typ:"Klein",lat:47.305,lng:9.197,url:"https://www.kronberg.ch"},
+
+{id:150,name:"Andermatt Gemsstock",region:"Uri",mp:false,status:"offen",lifte:8,lifteO:7,km:30,kmO:24,berg:2963,tal:1447,diff:1516,typ:"Mittel",lat:46.628,lng:8.593,url:"https://www.andermatt-sedrun-disentis.ch"},
+
+{id:160,name:"SkiArena Andermatt-Sedrun",region:"Uri/Graubünden",mp:false,status:"offen",lifte:22,lifteO:20,km:180,kmO:155,berg:3000,tal:1436,diff:1564,typ:"Gross",lat:46.636,lng:8.594,url:"https://www.andermatt-sedrun-disentis.ch"},
+
+// ── WALLIS (ergänzt von bergfex) ─────────────────────────────────────────────
+{id:200,name:"Champex-Lac",region:"Wallis",mp:false,status:"offen",lifte:4,lifteO:3,km:15,kmO:12,berg:2194,tal:1480,diff:714,typ:"Klein",lat:46.034,lng:7.166,url:"https://www.champex.ch"},
+{id:201,name:"Saas Almagell",region:"Wallis",mp:false,status:"offen",lifte:7,lifteO:5,km:12,kmO:9,berg:2400,tal:1673,diff:727,typ:"Klein",lat:46.062,lng:7.962,url:"https://www.saas-almagell.ch"},
+{id:202,name:"Saas Grund",region:"Wallis",mp:false,status:"offen",lifte:10,lifteO:8,km:30,kmO:24,berg:2950,tal:1559,diff:1391,typ:"Mittel",lat:46.085,lng:7.941,url:"https://www.saas-grund.ch"},
+{id:203,name:"Arolla",region:"Wallis",mp:false,status:"offen",lifte:6,lifteO:4,km:25,kmO:18,berg:3000,tal:2006,diff:994,typ:"Klein",lat:46.013,lng:7.481,url:"https://www.arolla.ch"},
+{id:204,name:"Liddes - Vichères",region:"Wallis",mp:false,status:"offen",lifte:5,lifteO:4,km:17,kmO:14,berg:2267,tal:1346,diff:921,typ:"Klein",lat:45.960,lng:7.225,url:"https://www.vicheres.ch"},
+{id:205,name:"Torgon",region:"Wallis",mp:false,status:"offen",lifte:12,lifteO:10,km:25,kmO:20,berg:1964,tal:1080,diff:884,typ:"Mittel",lat:46.270,lng:6.851,url:"https://www.torgon.ch"},
+{id:206,name:"Evolène - Val d'Hérens",region:"Wallis",mp:false,status:"offen",lifte:5,lifteO:4,km:25,kmO:20,berg:2730,tal:1380,diff:1350,typ:"Klein",lat:46.113,lng:7.503,url:"https://www.evolene-region.ch"},
+{id:207,name:"La Fouly - Val Ferret",region:"Wallis",mp:false,status:"offen",lifte:4,lifteO:3,km:8,kmO:6,berg:1900,tal:1590,diff:310,typ:"Klein",lat:45.884,lng:7.093,url:"https://www.lafouly.ch"},
+{id:208,name:"Morgins",region:"Wallis",mp:false,status:"offen",lifte:8,lifteO:7,km:25,kmO:20,berg:2277,tal:1350,diff:927,typ:"Klein",lat:46.238,lng:6.862,url:"https://www.morgins.ch"},
+{id:209,name:"Bürchen - Untersäss",region:"Wallis",mp:false,status:"offen",lifte:8,lifteO:7,km:20,kmO:16,berg:2340,tal:1228,diff:1112,typ:"Klein",lat:46.320,lng:7.790,url:"https://www.buerchen.ch"},
+{id:210,name:"Leuk-Susten",region:"Wallis",mp:false,status:"offen",lifte:4,lifteO:3,km:10,kmO:8,berg:1850,tal:830,diff:1020,typ:"Klein",lat:46.320,lng:7.636,url:"https://www.leuk.ch"},
+{id:211,name:"Nendaz / 4 Vallées",region:"Wallis",mp:false,status:"offen",lifte:23,lifteO:20,km:420,kmO:360,berg:3330,tal:1365,diff:1965,typ:"Gross",lat:46.189,lng:7.306,url:"https://www.nendaz-4-vallees.ch"},
+{id:212,name:"Thyon / 4 Vallées",region:"Wallis",mp:false,status:"offen",lifte:73,lifteO:60,km:420,kmO:360,berg:2450,tal:1900,diff:550,typ:"Gross",lat:46.196,lng:7.372,url:"https://www.thyon-4-vallees.ch"},
+
+// ── BERNER OBERLAND (ergänzt) ────────────────────────────────────────────────
+{id:220,name:"Elsigen-Metsch",region:"Bern",mp:false,status:"offen",lifte:10,lifteO:8,km:28,kmO:22,berg:1967,tal:960,diff:1007,typ:"Mittel",lat:46.556,lng:7.594,url:"https://www.elsigen-metsch.ch"},
+{id:221,name:"Engstligenalp",region:"Bern",mp:false,status:"offen",lifte:6,lifteO:6,km:17,kmO:17,berg:2373,tal:1963,diff:410,typ:"Klein",lat:46.448,lng:7.524,url:"https://www.engstligenalp.ch"},
+{id:222,name:"Diemtigen",region:"Bern",mp:false,status:"geschlossen",lifte:6,lifteO:0,km:10,kmO:0,berg:1900,tal:1020,diff:880,typ:"Klein",lat:46.647,lng:7.421,url:"https://www.diemtigen.ch"},
+{id:223,name:"Habkern-Lombachalp",region:"Bern",mp:false,status:"geschlossen",lifte:5,lifteO:0,km:10,kmO:0,berg:1660,tal:940,diff:720,typ:"Klein",lat:46.723,lng:7.847,url:"https://www.habkern.ch"},
+{id:224,name:"Lenk",region:"Bern",mp:false,status:"offen",lifte:18,lifteO:15,km:120,kmO:95,berg:2362,tal:1068,diff:1294,typ:"Gross",lat:46.447,lng:7.443,url:"https://www.lenk.ch"},
+{id:225,name:"Frutigen - Schwandfeldspitz",region:"Bern",mp:false,status:"offen",lifte:5,lifteO:4,km:12,kmO:10,berg:1680,tal:795,diff:885,typ:"Klein",lat:46.585,lng:7.641,url:"https://www.frutigen.ch"},
+
+// ── WAADT (ergänzt) ─────────────────────────────────────────────────────────
+{id:230,name:"Villars-Gryon",region:"Waadt",mp:false,status:"offen",lifte:28,lifteO:24,km:84,kmO:70,berg:3000,tal:1224,diff:1776,typ:"Gross",lat:46.300,lng:7.055,url:"https://www.villars.ch"},
+{id:231,name:"Sainte-Croix - Les Rasses",region:"Waadt",mp:false,status:"offen",lifte:9,lifteO:7,km:20,kmO:16,berg:1583,tal:1060,diff:523,typ:"Klein",lat:46.824,lng:6.510,url:"https://www.sainte-croix.ch"},
+{id:232,name:"St-Cergue",region:"Waadt",mp:false,status:"geschlossen",lifte:8,lifteO:0,km:3,kmO:0,berg:1220,tal:950,diff:270,typ:"Klein",lat:46.433,lng:6.153,url:"https://www.st-cergue.ch"},
+{id:233,name:"Bretaye / Barboleuse",region:"Waadt",mp:false,status:"offen",lifte:7,lifteO:6,km:25,kmO:20,berg:1800,tal:1350,diff:450,typ:"Klein",lat:46.330,lng:7.038,url:"https://www.leysin.ch"},
+
+// ── FREIBURG (ergänzt) ───────────────────────────────────────────────────────
+{id:240,name:"Jaun - Gastlosen",region:"Freiburg",mp:false,status:"offen",lifte:5,lifteO:4,km:10,kmO:8,berg:1720,tal:1017,diff:703,typ:"Klein",lat:46.613,lng:7.282,url:"https://www.jaun.ch"},
+{id:241,name:"Plaffeien - Zollhaus",region:"Freiburg",mp:false,status:"geschlossen",lifte:4,lifteO:0,km:8,kmO:0,berg:1400,tal:860,diff:540,typ:"Klein",lat:46.744,lng:7.261,url:"https://www.plaffeien.ch"},
+
+// ── GLARUS ──────────────────────────────────────────────────────────────────
+{id:250,name:"Braunwald",region:"Glarus",mp:false,status:"offen",lifte:8,lifteO:7,km:25,kmO:20,berg:1900,tal:900,diff:1000,typ:"Mittel",lat:46.959,lng:8.990,url:"https://www.braunwald.ch"},
+{id:251,name:"Elm",region:"Glarus",mp:false,status:"offen",lifte:9,lifteO:8,km:20,kmO:16,berg:2100,tal:968,diff:1132,typ:"Klein",lat:46.927,lng:9.174,url:"https://www.elm.ch"},
+{id:252,name:"Amden-Weesen",region:"Ostschweiz",mp:false,status:"offen",lifte:8,lifteO:6,km:28,kmO:22,berg:1750,tal:430,diff:1320,typ:"Mittel",lat:47.158,lng:9.142,url:"https://www.amden.ch"},
+
+// ── ZENTRALSCHWEIZ (ergänzt) ─────────────────────────────────────────────────
+{id:260,name:"Rigi",region:"Schwyz",mp:false,status:"offen",lifte:12,lifteO:10,km:15,kmO:12,berg:1797,tal:435,diff:1362,typ:"Mittel",lat:47.054,lng:8.480,url:"https://www.rigi.ch"},
+{id:261,name:"Ibergeregg",region:"Schwyz",mp:false,status:"offen",lifte:4,lifteO:3,km:6,kmO:4,berg:1406,tal:909,diff:497,typ:"Klein",lat:47.012,lng:8.730,url:"https://www.ibergeregg.ch"},
+{id:262,name:"Frutt - Kehlenalp",region:"Obwalden",mp:false,status:"offen",lifte:5,lifteO:4,km:8,kmO:6,berg:2077,tal:1900,diff:177,typ:"Klein",lat:46.830,lng:8.270,url:"https://www.melchsee-frutt.ch"},
+{id:263,name:"Pilatus - Frakmüntegg",region:"Nidwalden",mp:false,status:"geschlossen",lifte:3,lifteO:0,km:6,kmO:0,berg:1416,tal:900,diff:516,typ:"Klein",lat:46.979,lng:8.252,url:"https://www.pilatus.ch"},
+
+// ── OSTSCHWEIZ (ergänzt) ─────────────────────────────────────────────────────
+{id:270,name:"Atzmännig",region:"Ostschweiz",mp:false,status:"geschlossen",lifte:5,lifteO:0,km:8,kmO:0,berg:1277,tal:700,diff:577,typ:"Klein",lat:47.288,lng:9.021,url:"https://www.atzmaennig.ch"},
+{id:271,name:"Toggenburg Obertoggenburg",region:"Ostschweiz",mp:false,status:"offen",lifte:22,lifteO:18,km:75,kmO:60,berg:2262,tal:1000,diff:1262,typ:"Mittel",lat:47.185,lng:9.370,url:"https://www.toggenburg.org"},
+
+// ── GRAUBÜNDEN (ergänzt) ──────────────────────────────────────────────────────
+{id:280,name:"Arosa",region:"Graubünden",mp:false,status:"offen",lifte:14,lifteO:12,km:70,kmO:58,berg:2653,tal:1740,diff:913,typ:"Mittel",lat:46.781,lng:9.675,url:"https://www.arosa.ch"},
+{id:281,name:"Madrisa - Klosters",region:"Graubünden",mp:false,status:"offen",lifte:6,lifteO:5,km:30,kmO:25,berg:2586,tal:1124,diff:1462,typ:"Mittel",lat:46.882,lng:9.875,url:"https://www.davos.ch"},
+{id:282,name:"Davos Pischa",region:"Graubünden",mp:false,status:"offen",lifte:3,lifteO:2,km:9,kmO:7,berg:2483,tal:1560,diff:923,typ:"Klein",lat:46.748,lng:9.876,url:"https://www.davos.ch"},
+{id:283,name:"Zuoz - Maloja",region:"Graubünden",mp:false,status:"geschlossen",lifte:7,lifteO:0,km:12,kmO:0,berg:2690,tal:1690,diff:1000,typ:"Klein",lat:46.596,lng:9.940,url:"https://www.engadin.ch"},
+{id:284,name:"Pontresina",region:"Graubünden",mp:false,status:"offen",lifte:4,lifteO:3,km:20,kmO:16,berg:2984,tal:1805,diff:1179,typ:"Klein",lat:46.491,lng:9.901,url:"https://www.pontresina.ch"},
+{id:285,name:"Parpan - Lenzerheide",region:"Graubünden",mp:false,status:"offen",lifte:12,lifteO:10,km:50,kmO:42,berg:2865,tal:1476,diff:1389,typ:"Mittel",lat:46.726,lng:9.544,url:"https://www.arosalenzerheide.ch"},
+{id:286,name:"Müstair - Lai da Rims",region:"Graubünden",mp:false,status:"geschlossen",lifte:3,lifteO:0,km:8,kmO:0,berg:2200,tal:1250,diff:950,typ:"Klein",lat:46.624,lng:10.447,url:"https://www.muestair.ch"},
+{id:287,name:"Livigno / Mottolino",region:"Graubünden",mp:false,status:"offen",lifte:30,lifteO:26,km:115,kmO:95,berg:2797,tal:1816,diff:981,typ:"Gross",lat:46.538,lng:10.138,url:"https://www.livigno.eu"},
+
+// ── JURA ────────────────────────────────────────────────────────────────────
+{id:290,name:"Jura - La Vue des Alpes",region:"Neuenburg",mp:false,status:"offen",lifte:12,lifteO:9,km:15,kmO:12,berg:1283,tal:1000,diff:283,typ:"Klein",lat:47.012,lng:6.842,url:"https://www.neige-jura.ch"},
+{id:291,name:"Chasseral",region:"Bern",mp:false,status:"geschlossen",lifte:4,lifteO:0,km:8,kmO:0,berg:1607,tal:900,diff:707,typ:"Klein",lat:47.131,lng:7.058,url:"https://www.chasseral.ch"},
+
+// ── FEHLENDE GEBIETE (aus skiresort.ch) ─────────────────────────────────────────────
+{id:300,name:"Lauchernalp – Lötschental",region:"Wallis",mp:false,status:"offen",lifte:6,lifteO:5,km:31,kmO:25,berg:2690,tal:1380,diff:1310,typ:"Mittel",lat:46.418,lng:7.769,url:"https://www.loetschental.ch"},
+{id:301,name:"Grüsch Danusa",region:"Graubünden",mp:false,status:"offen",lifte:6,lifteO:5,km:25,kmO:20,berg:1870,tal:950,diff:920,typ:"Mittel",lat:46.982,lng:9.643,url:"https://www.grueschdanusa.ch"},
+{id:302,name:"Minschuns – Val Müstair",region:"Graubünden",mp:false,status:"offen",lifte:4,lifteO:3,km:10,kmO:8,berg:2345,tal:1640,diff:705,typ:"Klein",lat:46.628,lng:10.414,url:"https://www.minschuns.ch"},
+{id:303,name:"Eggli – Gstaad/Saanen/Rougemont",region:"Bern",mp:false,status:"offen",lifte:9,lifteO:7,km:35,kmO:28,berg:1893,tal:1000,diff:893,typ:"Mittel",lat:46.476,lng:7.299,url:"https://www.gstaad.ch"},
+{id:304,name:"Kleine Scheidegg/Männlichen",region:"Bern",mp:false,status:"offen",lifte:23,lifteO:20,km:193,kmO:160,berg:2472,tal:943,diff:1529,typ:"Gross",lat:46.601,lng:7.944,url:"https://www.maennlichen.ch"},
+{id:305,name:"Zuoz – Pizzet/Albanas",region:"Graubünden",mp:false,status:"offen",lifte:5,lifteO:4,km:12,kmO:10,berg:2690,tal:1693,diff:997,typ:"Klein",lat:46.596,lng:9.951,url:"https://www.zuoz.ch"},
+{id:306,name:"Hahnenmoos – Adelboden",region:"Bern",mp:false,status:"offen",lifte:8,lifteO:7,km:50,kmO:42,berg:2247,tal:1355,diff:892,typ:"Mittel",lat:46.480,lng:7.561,url:"https://www.adelboden.ch"},
+{id:307,name:"Bergbühl – Unterterzen (Flumserberg)",region:"Ostschweiz",mp:false,status:"offen",lifte:4,lifteO:3,km:12,kmO:10,berg:1600,tal:520,diff:1080,typ:"Klein",lat:47.082,lng:9.247,url:"https://www.flumserberg.ch"},
+{id:308,name:"Ahorn – Mörel",region:"Wallis",mp:false,status:"offen",lifte:4,lifteO:3,km:10,kmO:8,berg:2340,tal:990,diff:1350,typ:"Klein",lat:46.354,lng:8.046,url:"https://www.aletscharena.ch"},
+
+// ── FRANKREICH ───────────────────────────────────────────────────────────────
+{id:400,name:"Les 3 Vallées (Val Thorens/Méribel/Courchevel)",region:"Frankreich",mp:false,status:"offen",lifte:159,lifteO:140,km:600,kmO:550,berg:3230,tal:1100,diff:2130,typ:"Gross",lat:45.298,lng:6.584,url:"https://www.les3vallees.com",skiresort_slug:"les-3-valles-val-thorens-mribel-courchevel"},
+{id:401,name:"Les Portes du Soleil",region:"Frankreich",mp:false,status:"offen",lifte:164,lifteO:150,km:580,kmO:520,berg:2466,tal:1000,diff:1466,typ:"Gross",lat:46.245,lng:6.770,url:"https://www.portesdusoleil.com",skiresort_slug:"les-portes-du-soleil"},
+{id:402,name:"Tignes / Val d'Isère",region:"Frankreich",mp:false,status:"offen",lifte:80,lifteO:72,km:300,kmO:270,berg:3450,tal:1550,diff:1900,typ:"Gross",lat:45.469,lng:6.907,url:"https://www.tignes.net",skiresort_slug:"tignes-val-disere"},
+{id:403,name:"La Plagne (Paradiski)",region:"Frankreich",mp:false,status:"offen",lifte:74,lifteO:65,km:250,kmO:220,berg:3250,tal:1250,diff:2000,typ:"Gross",lat:45.508,lng:6.675,url:"https://www.la-plagne.com",skiresort_slug:"la-plagne-paradiski"},
+{id:404,name:"Serre Chevalier",region:"Frankreich",mp:false,status:"offen",lifte:59,lifteO:52,km:250,kmO:220,berg:2842,tal:1200,diff:1642,typ:"Gross",lat:44.930,lng:6.535,url:"https://www.serre-chevalier.com",skiresort_slug:"serre-chevalier"},
+{id:405,name:"Alpe d'Huez",region:"Frankreich",mp:false,status:"offen",lifte:68,lifteO:60,km:250,kmO:220,berg:3330,tal:1119,diff:2211,typ:"Gross",lat:45.090,lng:6.069,url:"https://www.alpedhuez.com",skiresort_slug:"alpe-dhuez"},
+{id:406,name:"Les 2 Alpes",region:"Frankreich",mp:false,status:"offen",lifte:40,lifteO:35,km:200,kmO:175,berg:3600,tal:1300,diff:2300,typ:"Gross",lat:45.005,lng:6.126,url:"https://www.les2alpes.com",skiresort_slug:"les-2-alpes"},
+{id:407,name:"Les Arcs / Peisey-Vallandry (Paradiski)",region:"Frankreich",mp:false,status:"offen",lifte:52,lifteO:46,km:200,kmO:175,berg:3226,tal:1200,diff:2026,typ:"Gross",lat:45.573,lng:6.820,url:"https://www.lesarcs.com",skiresort_slug:"les-arcs-peisey-vallandry-paradiski"},
+{id:408,name:"Megève / Saint-Gervais",region:"Frankreich",mp:false,status:"offen",lifte:60,lifteO:52,km:445,kmO:390,berg:2350,tal:850,diff:1500,typ:"Gross",lat:45.856,lng:6.617,url:"https://www.megeve.com",skiresort_slug:"megeve-saint-gervais"},
+{id:409,name:"Le Grand Massif (Flaine)",region:"Frankreich",mp:false,status:"offen",lifte:62,lifteO:55,km:265,kmO:235,berg:2480,tal:700,diff:1780,typ:"Gross",lat:46.001,lng:6.680,url:"https://www.grandmassif.com",skiresort_slug:"le-grand-massif-flaine"},
+{id:410,name:"Les Sybelles",region:"Frankreich",mp:false,status:"offen",lifte:61,lifteO:54,km:275,kmO:245,berg:2620,tal:1060,diff:1560,typ:"Gross",lat:45.193,lng:6.397,url:"https://www.sybelles.ski",skiresort_slug:"les-sybelles"},
+{id:411,name:"Espace Diamant",region:"Frankreich",mp:false,status:"offen",lifte:80,lifteO:70,km:192,kmO:170,berg:2069,tal:1000,diff:1069,typ:"Gross",lat:45.723,lng:6.573,url:"https://www.espace-diamant.com",skiresort_slug:"espace-diamant"},
+{id:412,name:"La Clusaz / Manigod",region:"Frankreich",mp:false,status:"offen",lifte:49,lifteO:43,km:130,kmO:115,berg:2600,tal:1100,diff:1500,typ:"Gross",lat:45.906,lng:6.423,url:"https://www.laclusaz.com",skiresort_slug:"la-clusaz-manigod"},
+{id:413,name:"Vars / Risoul",region:"Frankreich",mp:false,status:"offen",lifte:34,lifteO:30,km:185,kmO:165,berg:2750,tal:1650,diff:1100,typ:"Gross",lat:44.558,lng:6.686,url:"https://www.vars.com",skiresort_slug:"vars-risoul"},
+{id:414,name:"Le Grand Domaine (Valmorel)",region:"Frankreich",mp:false,status:"offen",lifte:46,lifteO:40,km:165,kmO:145,berg:2550,tal:1260,diff:1290,typ:"Gross",lat:45.499,lng:6.413,url:"https://www.valmorel.com",skiresort_slug:"le-grand-domaine-valmorel"},
+{id:415,name:"Espace Lumière (Pra Loup / Val d'Allos)",region:"Frankreich",mp:false,status:"offen",lifte:36,lifteO:31,km:180,kmO:158,berg:2600,tal:1500,diff:1100,typ:"Gross",lat:44.341,lng:6.612,url:"https://www.praloup.com",skiresort_slug:"espace-lumire-pra-loup-val-dallos"},
+{id:416,name:"Galibier Thabor (Valmeinier)",region:"Frankreich",mp:false,status:"offen",lifte:30,lifteO:26,km:148,kmO:130,berg:2775,tal:1450,diff:1325,typ:"Gross",lat:45.197,lng:6.514,url:"https://www.valmeinier.com",skiresort_slug:"galibier-thabor-valmeinier"},
+{id:417,name:"Val Cenis",region:"Frankreich",mp:false,status:"offen",lifte:29,lifteO:25,km:125,kmO:110,berg:2800,tal:1380,diff:1420,typ:"Mittel",lat:45.261,lng:6.804,url:"https://www.valcenis.com",skiresort_slug:"val-cenis"},
+{id:418,name:"Espace Villard-Corrençon",region:"Frankreich",mp:false,status:"offen",lifte:19,lifteO:16,km:90,kmO:78,berg:2050,tal:1050,diff:1000,typ:"Mittel",lat:44.923,lng:5.550,url:"https://www.villard-de-lans.com",skiresort_slug:"espace-villard-corrençon"},
+{id:419,name:"Les 7 Laux",region:"Frankreich",mp:false,status:"offen",lifte:22,lifteO:19,km:140,kmO:120,berg:2450,tal:1350,diff:1100,typ:"Mittel",lat:45.317,lng:6.068,url:"https://www.les7laux.com",skiresort_slug:"les-7-laux"},
+{id:420,name:"Les Contamines",region:"Frankreich",mp:false,status:"offen",lifte:24,lifteO:21,km:120,kmO:105,berg:2487,tal:1165,diff:1322,typ:"Mittel",lat:45.823,lng:6.724,url:"https://www.lescontamines.com",skiresort_slug:"les-contamines"},
+{id:421,name:"Le Grand Bornand",region:"Frankreich",mp:false,status:"offen",lifte:25,lifteO:22,km:90,kmO:78,berg:2100,tal:1000,diff:1100,typ:"Mittel",lat:45.943,lng:6.440,url:"https://www.legrandbornand.com",skiresort_slug:"le-grand-bornand"},
+{id:422,name:"Les Houches",region:"Frankreich",mp:false,status:"offen",lifte:15,lifteO:13,km:55,kmO:48,berg:1900,tal:1008,diff:892,typ:"Mittel",lat:45.894,lng:6.797,url:"https://www.leshouches.com",skiresort_slug:"les-houches"},
+{id:423,name:"Les Orres",region:"Frankreich",mp:false,status:"offen",lifte:17,lifteO:15,km:100,kmO:88,berg:2720,tal:1550,diff:1170,typ:"Mittel",lat:44.481,lng:6.538,url:"https://www.lesorres.com",skiresort_slug:"les-orres"},
+{id:424,name:"Chamrousse",region:"Frankreich",mp:false,status:"offen",lifte:16,lifteO:14,km:90,kmO:78,berg:2254,tal:1650,diff:604,typ:"Mittel",lat:45.117,lng:5.882,url:"https://www.chamrousse.com",skiresort_slug:"chamrousse"},
+{id:425,name:"Dévoluy",region:"Frankreich",mp:false,status:"offen",lifte:20,lifteO:17,km:100,kmO:87,berg:2515,tal:1450,diff:1065,typ:"Mittel",lat:44.698,lng:5.843,url:"https://www.superdevoluy.com",skiresort_slug:"dvoluy"},
+{id:426,name:"Orcières Merlette",region:"Frankreich",mp:false,status:"offen",lifte:26,lifteO:22,km:100,kmO:85,berg:2725,tal:1450,diff:1275,typ:"Mittel",lat:44.698,lng:6.330,url:"https://www.orcieres.com",skiresort_slug:"orcières-merlette"},
+{id:427,name:"Puy-Saint-Vincent",region:"Frankreich",mp:false,status:"offen",lifte:11,lifteO:9,km:75,kmO:65,berg:2700,tal:1400,diff:1300,typ:"Mittel",lat:44.846,lng:6.484,url:"https://www.puy-saint-vincent.com",skiresort_slug:"puy-saint-vincent"},
+{id:428,name:"Isola 2000",region:"Frankreich",mp:false,status:"offen",lifte:20,lifteO:17,km:120,kmO:105,berg:2610,tal:1800,diff:810,typ:"Mittel",lat:44.186,lng:7.159,url:"https://www.isola2000.com",skiresort_slug:"isola-2000"},
+{id:429,name:"Auron",region:"Frankreich",mp:false,status:"offen",lifte:16,lifteO:13,km:134,kmO:115,berg:2450,tal:1600,diff:850,typ:"Mittel",lat:44.198,lng:6.929,url:"https://www.auron.com",skiresort_slug:"auron"},
+{id:430,name:"Valberg / Beuil",region:"Frankreich",mp:false,status:"offen",lifte:23,lifteO:19,km:100,kmO:85,berg:2066,tal:1430,diff:636,typ:"Mittel",lat:44.086,lng:6.906,url:"https://www.valberg.com",skiresort_slug:"valberg-beuil"},
+{id:431,name:"Ax 3 Domaines",region:"Frankreich",mp:false,status:"offen",lifte:21,lifteO:18,km:100,kmO:87,berg:2400,tal:1400,diff:1000,typ:"Mittel",lat:42.719,lng:1.840,url:"https://www.ax-ski.com",skiresort_slug:"ax-3-domaines"},
+{id:432,name:"Grand Tourmalet",region:"Frankreich",mp:false,status:"offen",lifte:30,lifteO:26,km:100,kmO:87,berg:2500,tal:1400,diff:1100,typ:"Mittel",lat:42.858,lng:0.149,url:"https://www.grand-tourmalet.com",skiresort_slug:"grand-tourmalet"},
+{id:433,name:"Saint-Lary-Soulan",region:"Frankreich",mp:false,status:"offen",lifte:24,lifteO:21,km:100,kmO:87,berg:2515,tal:830,diff:1685,typ:"Mittel",lat:42.817,lng:0.321,url:"https://www.saintlary.com",skiresort_slug:"saint-lary-soulan"},
+{id:434,name:"Les Angles",region:"Frankreich",mp:false,status:"offen",lifte:23,lifteO:19,km:80,kmO:68,berg:2400,tal:1600,diff:800,typ:"Mittel",lat:42.551,lng:2.040,url:"https://www.lesangles.com",skiresort_slug:"les-angles"},
+{id:435,name:"Font-Romeu / Bolquère",region:"Frankreich",mp:false,status:"offen",lifte:23,lifteO:19,km:45,kmO:38,berg:2213,tal:1650,diff:563,typ:"Mittel",lat:42.502,lng:2.034,url:"https://www.font-romeu.fr",skiresort_slug:"font-romeu-bolquère"},
+{id:436,name:"Peyragudes",region:"Frankreich",mp:false,status:"offen",lifte:19,lifteO:16,km:60,kmO:52,berg:2400,tal:1600,diff:800,typ:"Mittel",lat:42.788,lng:0.424,url:"https://www.peyragudes.com",skiresort_slug:"peyragudes"},
+{id:437,name:"Arêches Beaufort",region:"Frankreich",mp:false,status:"offen",lifte:14,lifteO:12,km:60,kmO:52,berg:2300,tal:1080,diff:1220,typ:"Mittel",lat:45.695,lng:6.564,url:"https://www.areches-beaufort.com",skiresort_slug:"arèches-beaufort"},
+{id:438,name:"Sainte-Foy-Tarentaise",region:"Frankreich",mp:false,status:"offen",lifte:6,lifteO:5,km:60,kmO:52,berg:2620,tal:1550,diff:1070,typ:"Mittel",lat:45.579,lng:6.957,url:"https://www.saintefoy.net",skiresort_slug:"sainte-foy-tarentaise"},
+{id:439,name:"Brévent / Flégère (Chamonix)",region:"Frankreich",mp:false,status:"offen",lifte:17,lifteO:14,km:150,kmO:130,berg:2525,tal:1035,diff:1490,typ:"Mittel",lat:45.928,lng:6.857,url:"https://www.chamonix.com",skiresort_slug:"brévent-flégère-chamonix"},
+{id:440,name:"Les Karellis",region:"Frankreich",mp:false,status:"offen",lifte:17,lifteO:14,km:60,kmO:52,berg:2520,tal:1600,diff:920,typ:"Klein",lat:45.286,lng:6.464,url:"https://www.leskarellis.com",skiresort_slug:"les-karellis"},
+{id:441,name:"La Norma",region:"Frankreich",mp:false,status:"offen",lifte:13,lifteO:11,km:70,kmO:60,berg:2750,tal:1350,diff:1400,typ:"Klein",lat:45.214,lng:6.762,url:"https://www.la-norma.com",skiresort_slug:"la-norma"},
+{id:442,name:"Aussois",region:"Frankreich",mp:false,status:"offen",lifte:7,lifteO:6,km:55,kmO:47,berg:2750,tal:1500,diff:1250,typ:"Klein",lat:45.231,lng:6.741,url:"https://www.aussois.com",skiresort_slug:"aussois"},
+{id:443,name:"Super Sauze",region:"Frankreich",mp:false,status:"offen",lifte:19,lifteO:16,km:80,kmO:68,berg:2450,tal:1400,diff:1050,typ:"Mittel",lat:44.278,lng:6.691,url:"https://www.super-sauze.com",skiresort_slug:"super-sauze"},
+{id:444,name:"Valfréjus",region:"Frankreich",mp:false,status:"offen",lifte:9,lifteO:7,km:32,kmO:27,berg:2738,tal:1550,diff:1188,typ:"Klein",lat:45.213,lng:6.672,url:"https://www.valfrjus.com",skiresort_slug:"valfréjus"},
+{id:445,name:"Praz de Lys / Sommand",region:"Frankreich",mp:false,status:"offen",lifte:23,lifteO:19,km:55,kmO:47,berg:1800,tal:1100,diff:700,typ:"Mittel",lat:46.112,lng:6.588,url:"https://www.prazdely.com",skiresort_slug:"praz-de-lys-sommand"},
+{id:446,name:"Les Portes du Mont-Blanc",region:"Frankreich",mp:false,status:"offen",lifte:20,lifteO:17,km:80,kmO:68,berg:2000,tal:950,diff:1050,typ:"Mittel",lat:46.016,lng:6.709,url:"https://www.portesdumontblanc.com",skiresort_slug:"les-portes-du-mont-blanc"},
+{id:447,name:"Espace San Bernardo – La Rosière / La Thuile",region:"Frankreich",mp:false,status:"offen",lifte:38,lifteO:33,km:160,kmO:140,berg:2642,tal:1175,diff:1467,typ:"Gross",lat:45.705,lng:6.892,url:"https://www.larosiere.net",skiresort_slug:"espace-san-bernardo-la-rosire-la-thuile"},
+{id:448,name:"Bernex",region:"Frankreich",mp:true,status:"offen",lifte:10,lifteO:8,km:30,kmO:25,berg:1900,tal:958,diff:942,typ:"Klein",lat:46.358,lng:6.666,url:"https://www.bernex-ski.fr",skiresort_slug:"bernex"},
+{id:449,name:"Crêt-du-Puy (La Chapelle d'Abondance)",region:"Frankreich",mp:true,status:"offen",lifte:6,lifteO:5,km:20,kmO:16,berg:1800,tal:1020,diff:780,typ:"Klein",lat:46.265,lng:6.749,url:"https://www.cret-du-puy.fr",skiresort_slug:""},
+
+// ── ITALIEN ──────────────────────────────────────────────────────────────────
+{id:500,name:"Dolomiti Superski – Sella Ronda",region:"Italien",mp:false,status:"offen",lifte:450,lifteO:400,km:1200,kmO:1050,berg:3342,tal:988,diff:2354,typ:"Gross",lat:46.540,lng:11.820,url:"https://www.dolomitisuperski.com",skiresort_slug:""},
+{id:501,name:"Gröden / Val Gardena",region:"Italien",mp:false,status:"offen",lifte:79,lifteO:70,km:175,kmO:155,berg:2521,tal:1236,diff:1285,typ:"Gross",lat:46.574,lng:11.777,url:"https://winter.valgardena.it",skiresort_slug:"groeden-val-gardena"},
+{id:502,name:"Alta Badia",region:"Italien",mp:false,status:"offen",lifte:53,lifteO:47,km:130,kmO:115,berg:2778,tal:1321,diff:1457,typ:"Gross",lat:46.593,lng:11.881,url:"https://www.altabadia.org",skiresort_slug:"alta-badia"},
+{id:503,name:"Kronplatz (Plan de Corones)",region:"Italien",mp:false,status:"offen",lifte:31,lifteO:28,km:119,kmO:105,berg:2275,tal:742,diff:1533,typ:"Gross",lat:46.741,lng:11.920,url:"https://www.kronplatz.com",skiresort_slug:"kronplatz-plan-de-corones"},
+{id:504,name:"Madonna di Campiglio / Pinzolo / Marilleva",region:"Italien",mp:false,status:"offen",lifte:58,lifteO:52,km:150,kmO:133,berg:2602,tal:754,diff:1848,typ:"Gross",lat:46.234,lng:10.829,url:"https://skicarosello.it",skiresort_slug:"madonna-di-campiglio-pinzolo-folgarida-marilleva"},
+{id:505,name:"Via Lattea – Sestriere / Sauze d'Oulx / Mongenèvre",region:"Italien",mp:false,status:"offen",lifte:70,lifteO:62,km:400,kmO:350,berg:2823,tal:1390,diff:1433,typ:"Gross",lat:44.958,lng:6.881,url:"https://www.vialattea.it",skiresort_slug:"via-lattea-sestriere-sauze-doulx-san-sicario-claviere-montgenevre"},
+{id:506,name:"Livigno",region:"Italien",mp:false,status:"offen",lifte:32,lifteO:28,km:115,kmO:100,berg:2797,tal:1816,diff:981,typ:"Gross",lat:46.538,lng:10.138,url:"https://www.livigno.eu",skiresort_slug:"livigno"},
+{id:507,name:"Cervinia / Valtournenche – Matterhorn",region:"Italien",mp:false,status:"offen",lifte:51,lifteO:45,km:145,kmO:128,berg:3883,tal:1524,diff:2359,typ:"Gross",lat:45.938,lng:7.631,url:"https://www.cervinia.it",skiresort_slug:"zermatt-breuil-cervinia-valtournenche-matterhorn"},
+{id:508,name:"Arabba / Marmolada",region:"Italien",mp:false,status:"offen",lifte:26,lifteO:22,km:65,kmO:57,berg:3270,tal:1602,diff:1668,typ:"Mittel",lat:46.499,lng:11.875,url:"https://www.arabba.it",skiresort_slug:"arabba-marmolada"},
+{id:509,name:"Cortina d'Ampezzo",region:"Italien",mp:false,status:"offen",lifte:25,lifteO:21,km:115,kmO:100,berg:2932,tal:1224,diff:1708,typ:"Gross",lat:46.540,lng:12.140,url:"https://www.cortina.dolomiti.org",skiresort_slug:"cortina-dampezzo"},
+{id:510,name:"Ponte di Legno / Tonale",region:"Italien",mp:false,status:"offen",lifte:30,lifteO:26,km:100,kmO:88,berg:3016,tal:1120,diff:1896,typ:"Gross",lat:46.257,lng:10.509,url:"https://www.pontedilegno-tonale.it",skiresort_slug:"ponte-di-legno-tonale-presena-gletscher-temu-pontedilegno-tonale"},
+{id:511,name:"Alagna / Gressoney / Champoluc (Monterosa Ski)",region:"Italien",mp:false,status:"offen",lifte:20,lifteO:17,km:180,kmO:158,berg:3275,tal:1200,diff:2075,typ:"Gross",lat:45.862,lng:7.944,url:"https://www.monterosaski.com",skiresort_slug:"alagna-valsesia-gressoney-la-trinite-champoluc-frachey-monterosa-ski"},
+{id:512,name:"Seiser Alm (Alpe di Siusi)",region:"Italien",mp:false,status:"offen",lifte:21,lifteO:18,km:55,kmO:48,berg:2350,tal:1844,diff:506,typ:"Mittel",lat:46.534,lng:11.639,url:"https://www.seiseralm.it",skiresort_slug:"seiser-alm-alpe-di-siusi"},
+{id:513,name:"Latemar – Obereggen / Pampeago / Predazzo",region:"Italien",mp:false,status:"offen",lifte:18,lifteO:15,km:50,kmO:43,berg:2400,tal:1182,diff:1218,typ:"Mittel",lat:46.359,lng:11.538,url:"https://www.obereggen.com",skiresort_slug:"latemar-obereggen-pampeago-predazzo"},
+{id:514,name:"Bormio",region:"Italien",mp:false,status:"offen",lifte:12,lifteO:10,km:50,kmO:43,berg:3012,tal:1225,diff:1787,typ:"Mittel",lat:46.460,lng:10.371,url:"https://www.bormio.eu",skiresort_slug:"bormio-cima-bianca"},
+{id:515,name:"Gitschberg Jochtal",region:"Italien",mp:false,status:"offen",lifte:14,lifteO:12,km:55,kmO:48,berg:2500,tal:828,diff:1672,typ:"Mittel",lat:46.791,lng:11.626,url:"https://www.gitschberg-jochtal.com",skiresort_slug:"gitschberg-jochtal"},
+{id:516,name:"Civetta – Alleghe / Selva di Cadore",region:"Italien",mp:false,status:"offen",lifte:23,lifteO:19,km:80,kmO:68,berg:2473,tal:1010,diff:1463,typ:"Mittel",lat:46.409,lng:12.025,url:"https://www.civetta.ski",skiresort_slug:"civetta-alleghe-selva-di-cadore-palafavera-zoldo"},
+{id:517,name:"San Martino di Castrozza",region:"Italien",mp:false,status:"offen",lifte:21,lifteO:18,km:60,kmO:52,berg:2651,tal:1467,diff:1184,typ:"Mittel",lat:46.261,lng:11.815,url:"https://www.sanmartino.com",skiresort_slug:"san-martino-di-castrozza"},
+{id:518,name:"Folgaria / Fiorentini",region:"Italien",mp:false,status:"offen",lifte:28,lifteO:24,km:100,kmO:87,berg:1850,tal:1200,diff:650,typ:"Mittel",lat:45.923,lng:11.175,url:"https://www.folgaria.com",skiresort_slug:"folgaria-fiorentini"},
+{id:519,name:"Paganella – Andalo",region:"Italien",mp:false,status:"offen",lifte:15,lifteO:13,km:50,kmO:43,berg:2125,tal:1042,diff:1083,typ:"Mittel",lat:46.158,lng:11.007,url:"https://www.skipaganella.it",skiresort_slug:"paganella-andalo"},
+{id:520,name:"Sulden am Ortler",region:"Italien",mp:false,status:"offen",lifte:11,lifteO:9,km:40,kmO:34,berg:3250,tal:1850,diff:1400,typ:"Mittel",lat:46.527,lng:10.574,url:"https://www.sulden.com",skiresort_slug:"sulden-am-ortler-solda-allortles"},
+{id:521,name:"Schnalstaler Gletscher",region:"Italien",mp:false,status:"offen",lifte:11,lifteO:9,km:35,kmO:30,berg:3210,tal:2020,diff:1190,typ:"Mittel",lat:46.788,lng:10.852,url:"https://www.schnals.com",skiresort_slug:"schnalstaler-gletscher-schnalstal"},
+{id:522,name:"Klausberg – Skiworld Ahrntal",region:"Italien",mp:false,status:"offen",lifte:11,lifteO:9,km:30,kmO:26,berg:2500,tal:1590,diff:910,typ:"Mittel",lat:47.054,lng:12.039,url:"https://www.klausberg.it",skiresort_slug:"klausberg-skiworld-ahrntal"},
+{id:523,name:"Meran 2000",region:"Italien",mp:false,status:"offen",lifte:8,lifteO:7,km:40,kmO:34,berg:2300,tal:1670,diff:630,typ:"Mittel",lat:46.665,lng:11.140,url:"https://www.meran2000.com",skiresort_slug:"meran-2000"},
+{id:524,name:"Pila",region:"Italien",mp:false,status:"offen",lifte:13,lifteO:11,km:70,kmO:60,berg:2700,tal:1000,diff:1700,typ:"Mittel",lat:45.743,lng:7.301,url:"https://www.pila.it",skiresort_slug:"pila"},
+{id:525,name:"Bardonecchia",region:"Italien",mp:false,status:"offen",lifte:22,lifteO:19,km:140,kmO:122,berg:2750,tal:1312,diff:1438,typ:"Mittel",lat:45.077,lng:6.702,url:"https://www.bardonecchia.it",skiresort_slug:"bardonecchia"},
+{id:526,name:"Pejo 3000",region:"Italien",mp:false,status:"offen",lifte:7,lifteO:6,km:40,kmO:34,berg:3000,tal:1390,diff:1610,typ:"Mittel",lat:46.356,lng:10.681,url:"https://www.peio.it",skiresort_slug:"pejo-3000"},
+{id:527,name:"Zoncolan – Ravascletto",region:"Italien",mp:false,status:"offen",lifte:11,lifteO:9,km:40,kmO:34,berg:1750,tal:443,diff:1307,typ:"Mittel",lat:46.568,lng:12.898,url:"https://www.zoncolan.org",skiresort_slug:"zoncolan-ravascletto-sutrio"},
+{id:528,name:"Aprica",region:"Italien",mp:false,status:"offen",lifte:16,lifteO:13,km:50,kmO:43,berg:2000,tal:1172,diff:828,typ:"Mittel",lat:46.158,lng:10.157,url:"https://www.aptavalle.it",skiresort_slug:"aprica"},
+{id:529,name:"Schöneben / Haideralm – Reschen",region:"Italien",mp:false,status:"offen",lifte:10,lifteO:8,km:60,kmO:52,berg:2500,tal:1500,diff:1000,typ:"Mittel",lat:46.832,lng:10.553,url:"https://www.haideralm.com",skiresort_slug:"schoeneben-haideralm-reschen-st-valentin-auf-der-haide"},
+{id:530,name:"3 Zinnen Dolomiten",region:"Italien",mp:false,status:"offen",lifte:19,lifteO:16,km:100,kmO:87,berg:2200,tal:1213,diff:987,typ:"Mittel",lat:46.737,lng:12.350,url:"https://www.3zinnen.info",skiresort_slug:"3-zinnen-dolomiten-helm-stiergarten-rotwand-kreuzbergpass"},
+{id:531,name:"Belvedere / Canazei / Val di Fassa",region:"Italien",mp:false,status:"offen",lifte:35,lifteO:30,km:55,kmO:47,berg:2485,tal:1320,diff:1165,typ:"Mittel",lat:46.476,lng:11.774,url:"https://www.fassa.com",skiresort_slug:"belvedere-col-rodella-ciampac-buffaure-canazei-campitello-alba-pozza-di-fassa"},
+{id:532,name:"Alto Sangro – Roccaraso",region:"Italien",mp:false,status:"offen",lifte:23,lifteO:19,km:100,kmO:87,berg:2141,tal:1236,diff:905,typ:"Mittel",lat:41.840,lng:14.072,url:"https://www.roccaraso.net",skiresort_slug:"alto-sangro-roccaraso-rivisondoli"},
+{id:533,name:"Mondolè Ski – Artesina / Prato Nevoso",region:"Italien",mp:false,status:"offen",lifte:24,lifteO:20,km:80,kmO:68,berg:2100,tal:1300,diff:800,typ:"Mittel",lat:44.254,lng:7.857,url:"https://www.pratonevoso.com",skiresort_slug:"mondole-ski-artesina-frabosa-soprana-prato-nevoso"},
+{id:534,name:"Santa Caterina Valfurva",region:"Italien",mp:false,status:"offen",lifte:9,lifteO:7,km:50,kmO:43,berg:2725,tal:1740,diff:985,typ:"Mittel",lat:46.415,lng:10.487,url:"https://www.santacaterina.it",skiresort_slug:"santa-caterina-valfurva"}
 ];
 
 const REGIONS=["Alle",...Array.from(new Set(STATIONS.map(s=>s.region))).sort()];
 const STATUS_OPTS=["Alle","offen","geschlossen"];
 const TYP_OPTS=["Alle","Gross","Mittel","Klein"];
 const MP_OPTS=["Alle","Im MagicPass","Nicht im MagicPass"];
-const RC={"Wallis":"#e63946","Bern":"#2a9d8f","Waadt":"#457b9d","Frankreich":"#f4a261","Freiburg":"#8338ec","Solothurn":"#06d6a0","Nidwalden":"#fb8500","Obwalden":"#3a86ff","Schwyz":"#ff006e","Luzern":"#8ecae6","Italien":"#264653","Neuenburg":"#f59e0b","Bern/Freiburg":"#2a9d8f"};
+const RC={
+  "Wallis":"#e63946","Bern":"#2a9d8f","Waadt":"#457b9d","Frankreich":"#f4a261",
+  "Freiburg":"#8338ec","Solothurn":"#06d6a0","Nidwalden":"#fb8500","Obwalden":"#3a86ff",
+  "Schwyz":"#ff006e","Luzern":"#8ecae6","Italien":"#2ec4b6","Neuenburg":"#f59e0b",
+  "Bern/Freiburg":"#2a9d8f","Graubünden":"#e76f51","Ostschweiz":"#2dc653","Uri":"#577590",
+  "Uri/Graubünden":"#a8dadc","Tessin":"#ffd166","Zürich":"#6c757d","Glarus":"#22d3ee"
+};
 
-// ═══════════════════════════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════════════════════════
+const CORS_PROXY="https://corsproxy.io/?url=";
+async function fetchLiveStatus(stationsToRefresh){
+  const results={};
+  for(let i=0;i<stationsToRefresh.length;i+=5){
+    const chunk=stationsToRefresh.slice(i,i+5).filter(s=>s.skiresort_slug);
+    await Promise.all(chunk.map(async s=>{
+      try{
+        const url=`${CORS_PROXY}https://www.skiresort.ch/skigebiet/${s.skiresort_slug}/schneebericht/`;
+        const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
+        const html=await r.text();
+        const doc=new DOMParser().parseFromString(html,"text/html");
+        // Parse open/closed status
+        const statusEl=doc.querySelector(".open-closed-status,.resort-open-status,[class*='status']");
+        let newStatus=s.status;
+        const bodyText=doc.body?.textContent||"";
+        if(/ge[öo]ffnet|offen|open/i.test(bodyText))newStatus="offen";
+        else if(/geschlossen|closed/i.test(bodyText))newStatus="geschlossen";
+        // Parse open lifts: look for pattern like "12 / 30 Lifte"
+        const liftMatch=bodyText.match(/(\d+)\s*\/\s*(\d+)\s*Lif/i);
+        // Parse open km: look for pattern like "45 / 100 km"
+        const kmMatch=bodyText.match(/(\d+)\s*\/\s*(\d+)\s*km/i);
+        results[s.id]={
+          status:newStatus,
+          lifteO:liftMatch?parseInt(liftMatch[1]):s.lifteO,
+          lifte:liftMatch?parseInt(liftMatch[2]):s.lifte,
+          kmO:kmMatch?parseInt(kmMatch[1]):s.kmO,
+          km:kmMatch?parseInt(kmMatch[2]):s.km
+        };
+      }catch(e){results[s.id]=null;}
+    }));
+    if(i+5<stationsToRefresh.length)await new Promise(r=>setTimeout(r,300));
+  }
+  return results;
+}
+
 function haversine(lat1,lng1,lat2,lng2){
   const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
   const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
@@ -174,34 +359,64 @@ function wIcon(c){if(c===0)return"☀️";if(c<=2)return"🌤️";if(c<=3)return
 function pct(o,t){return t>0?Math.round((o/t)*100):0;}
 function barColor(p){return p>60?"#22c55e":p>30?"#f59e0b":"#ef4444";}
 
-// ═══════════════════════════════════════════════════════════════════════
-// SHARED COMPONENTS
-// ═══════════════════════════════════════════════════════════════════════
-function RangeInput({min,max,value,onChange,label,unit}){
+function MapView({stations,wx,dists,userCoords}){
+  const mapRef=useRef(null);
+  const lmap=useRef(null);
+  const markers=useRef([]);
+  useEffect(()=>{
+    if(!mapRef.current)return;
+    if(!lmap.current){
+      lmap.current=L.map(mapRef.current,{zoomControl:true}).setView([46.0,8.0],6);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19}).addTo(lmap.current);
+    }
+    markers.current.forEach(m=>m.remove());
+    markers.current=[];
+    stations.forEach(s=>{
+      const open=s.status==="offen";
+      const rc=RC[s.region]||"#64748b";
+      const w=wx[s.id];
+      const d=dists?.[s.id];
+      const popup=`<div style="font-family:sans-serif;min-width:160px">
+        <strong style="font-size:13px">${s.name}</strong>
+        <div style="color:#666;font-size:11px;margin-bottom:5px">${s.region}</div>
+        <div style="color:${open?"#16a34a":"#dc2626"};font-weight:bold;font-size:11px;margin-bottom:4px">${open?"\u25cf OFFEN":"\u25cb GESCHLOSSEN"}</div>
+        ${w?`<div style="font-size:11px">${wIcon(w.code)} ${w.temp}\u00b0C &middot; \u2744 ${w.snow}cm</div>`:''}        <div style="font-size:11px;margin-top:3px">\u2191${s.berg}m &nbsp; \u2193${s.tal}m &nbsp; ${s.km}km</div>
+        <div style="font-size:11px">${s.lifte} Lifte${d?` &nbsp; \ud83d\udccd ${d}km`:''}</div>
+        ${s.mp?'<div style="font-size:10px;color:#6366f1;margin-top:2px">&starf; MagicPass</div>':''}
+        ${s.url?`<a href="${s.url}" target="_blank" rel="noopener" style="font-size:10px;display:block;margin-top:4px">\ud83c\udf10 Website</a>`:''}
+      </div>`;
+      const icon=L.divIcon({className:'',html:`<div style="width:14px;height:14px;border-radius:50%;background:${rc};border:2px solid ${open?"#fff":"#666"};opacity:${open?1:0.6};box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,iconSize:[14,14],iconAnchor:[7,7]});
+      const m=L.marker([s.lat,s.lng],{icon}).addTo(lmap.current).bindPopup(popup);
+      markers.current.push(m);
+    });
+    if(userCoords){
+      const icon=L.divIcon({className:'user-pin',html:'<div style="width:16px;height:16px;border-radius:50%;background:#38bdf8;border:3px solid #fff;box-shadow:0 0 8px #38bdf8"></div>',iconSize:[16,16],iconAnchor:[8,8]});
+      const m=L.marker([userCoords.lat,userCoords.lng],{icon}).addTo(lmap.current).bindPopup(`<strong>\ud83d\udccd ${userCoords.name||"Mein Standort"}</strong>`);
+      markers.current.push(m);
+    }
+    // Invalidate size in case container was hidden
+    setTimeout(()=>lmap.current&&lmap.current.invalidateSize(),50);
+  },[stations,dists,userCoords,wx]);
+  return <div ref={mapRef} style={{width:"100%",height:"100%"}}/>;
+}
+
+function RangeInput({min,max,value,onChange,label}){
   const sty={width:"100%",padding:"5px 8px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:7,color:"#e2e8f0",fontSize:12,fontFamily:"'DM Mono',monospace",outline:"none",textAlign:"center"};
   const cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,isNaN(v)?lo:v));
-  const p=(v)=>((v-min)/(max-min))*100;
+  const p=v=>((v-min)/(max-min))*100;
   return(
     <div style={{marginBottom:20}}>
       <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{label}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:6,alignItems:"center",marginBottom:8}}>
-        <div>
-          <div style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.1em",fontFamily:"monospace",marginBottom:3,textAlign:"center"}}>MIN</div>
-          <input type="number" min={min} max={value[1]-1} value={value[0]} onChange={e=>onChange([cl(+e.target.value,min,value[1]-1),value[1]])} onFocus={e=>e.target.style.borderColor="#38bdf8"} onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.1)"} style={sty}/>
-        </div>
-        <div style={{fontSize:10,color:"#334155",fontFamily:"monospace",paddingTop:14,textAlign:"center"}}>—</div>
-        <div>
-          <div style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.1em",fontFamily:"monospace",marginBottom:3,textAlign:"center"}}>MAX</div>
-          <input type="number" min={value[0]+1} max={max} value={value[1]} onChange={e=>onChange([value[0],cl(+e.target.value,value[0]+1,max)])} onFocus={e=>e.target.style.borderColor="#818cf8"} onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.1)"} style={sty}/>
-        </div>
+        <input type="number" min={min} max={value[1]-1} value={value[0]} onChange={e=>onChange([cl(+e.target.value,min,value[1]-1),value[1]])} style={sty}/>
+        <div style={{fontSize:10,color:"#334155",fontFamily:"monospace"}}>—</div>
+        <input type="number" min={value[0]+1} max={max} value={value[1]} onChange={e=>onChange([value[0],cl(+e.target.value,value[0]+1,max)])} style={sty}/>
       </div>
       <div style={{position:"relative",height:18,display:"flex",alignItems:"center"}}>
         <div style={{position:"absolute",left:0,right:0,height:3,background:"rgba(255,255,255,0.08)",borderRadius:2}}/>
         <div style={{position:"absolute",left:`${p(value[0])}%`,right:`${100-p(value[1])}%`,height:3,background:"linear-gradient(90deg,#38bdf8,#818cf8)",borderRadius:2}}/>
         <input type="range" min={min} max={max} value={value[0]} onChange={e=>onChange([Math.min(+e.target.value,value[1]-1),value[1]])} style={{position:"absolute",width:"100%",opacity:0,cursor:"pointer",height:18,zIndex:2}}/>
         <input type="range" min={min} max={max} value={value[1]} onChange={e=>onChange([value[0],Math.max(+e.target.value,value[0]+1)])} style={{position:"absolute",width:"100%",opacity:0,cursor:"pointer",height:18,zIndex:3}}/>
-        <div style={{position:"absolute",left:`calc(${p(value[0])}% - 5px)`,width:10,height:10,borderRadius:"50%",background:"#38bdf8",boxShadow:"0 0 6px #38bdf8",border:"2px solid #060d1a",zIndex:4,pointerEvents:"none"}}/>
-        <div style={{position:"absolute",left:`calc(${p(value[1])}% - 5px)`,width:10,height:10,borderRadius:"50%",background:"#818cf8",boxShadow:"0 0 6px #818cf8",border:"2px solid #060d1a",zIndex:4,pointerEvents:"none"}}/>
       </div>
     </div>
   );
@@ -212,49 +427,33 @@ function Chips({opts,val,onChange,cmap}){
     <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
       {opts.map(o=>{
         const a=val===o,c=cmap?.[o]||"#38bdf8";
-        return <button key={o} onClick={()=>onChange(o)} style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontFamily:"'DM Mono',monospace",cursor:"pointer",border:"none",background:a?(o==="Alle"?"rgba(56,189,248,0.2)":`${c}25`):"rgba(255,255,255,0.05)",color:a?(o==="Alle"?"#38bdf8":c):"#475569",outline:a?`1px solid ${o==="Alle"?"#38bdf8":c}44`:"1px solid transparent"}}>{o}</button>;
+        return <button key={o} onClick={()=>onChange(o)} style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontFamily:"'DM Mono',monospace",cursor:"pointer",border:"none",background:a?(o==="Alle"?"rgba(56,189,248,0.2)":`${c}25`):"rgba(255,255,255,0.05)",color:a?(o==="Alle"?"#38bdf8":c):"#475569"}}>{o}</button>;
       })}
     </div>
   );
 }
 
-function Pill({label,value,accent}){
-  return(
-    <div style={{background:"rgba(255,255,255,0.04)",border:`1px solid ${accent?"rgba(99,102,241,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:10,padding:"10px 14px",flex:1,minWidth:88}}>
-      <div style={{fontSize:18,fontWeight:700,color:accent||"#f1f5f9",fontFamily:"'DM Mono',monospace"}}>{value}</div>
-      <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em",marginTop:2}}>{label}</div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// SKI CARD
-// ═══════════════════════════════════════════════════════════════════════
 function SkiCard({s,dist,wx,isFav,onFav}){
   const rc=RC[s.region]||"#64748b";
   const open=s.status==="offen";
-  const kpct=pct(s.kmO,s.km), lpct=pct(s.lifteO,s.lifte);
+  const kpct=pct(s.kmO,s.km),lpct=pct(s.lifteO,s.lifte);
   return(
-    <div className="ski-card" style={{background:"rgba(13,27,42,0.92)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,padding:18,display:"flex",flexDirection:"column",gap:11,boxShadow:"0 2px 20px rgba(0,0,0,0.3)",borderLeft:`3px solid ${open?"#22c55e":"#ef4444"}`}}>
-      {/* Header */}
+    <div className="ski-card" style={{background:"rgba(13,27,42,0.92)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,padding:18,display:"flex",flexDirection:"column",gap:11,borderLeft:`3px solid ${open?"#22c55e":"#ef4444"}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:6}}>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9",lineHeight:1.3,fontFamily:"'Syne',sans-serif",whiteSpace:"normal"}}>{s.name}</div>
-          <div style={{marginTop:3,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-            <span style={{width:7,height:7,borderRadius:"50%",background:rc,display:"inline-block",flexShrink:0,boxShadow:`0 0 5px ${rc}`}}/>
+          <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9",lineHeight:1.3,fontFamily:"'Syne',sans-serif"}}>{s.name}</div>
+          <div style={{marginTop:3,display:"flex",alignItems:"center",gap:5}}>
+            <span style={{width:7,height:7,borderRadius:"50%",background:rc,display:"inline-block"}}/>
             <span style={{fontSize:10,color:"#64748b",fontFamily:"monospace"}}>{s.region}</span>
           </div>
         </div>
-        <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
-          <button onClick={e=>{e.stopPropagation();onFav(s.id)}} style={{background:"none",border:"none",cursor:"pointer",fontSize:15,opacity:isFav?1:0.3,transition:"all .15s",transform:isFav?"scale(1.2)":"scale(1)"}} title="Favorit">⭐</button>
-          {s.mp&&<div style={{padding:"2px 6px",borderRadius:20,fontSize:9,fontFamily:"monospace",fontWeight:700,background:"rgba(99,102,241,0.18)",color:"#a5b4fc",border:"1px solid rgba(99,102,241,0.3)",whiteSpace:"nowrap"}}>✦ MP</div>}
-          <div style={{padding:"2px 7px",borderRadius:20,fontSize:9,fontFamily:"monospace",fontWeight:700,background:open?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)",color:open?"#22c55e":"#ef4444",border:`1px solid ${open?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}`,whiteSpace:"nowrap"}}>
-            {open?"● OFFEN":"○ ZU"}
-          </div>
+        <div style={{display:"flex",gap:5,alignItems:"center"}}>
+          <button onClick={e=>{e.stopPropagation();onFav(s.id)}} style={{background:"none",border:"none",cursor:"pointer",fontSize:15,opacity:isFav?1:0.3}} title="Favorit">⭐</button>
+          {s.mp&&<div style={{padding:"2px 6px",borderRadius:20,fontSize:9,fontFamily:"monospace",fontWeight:700,background:"rgba(99,102,241,0.18)",color:"#a5b4fc"}}>✦ MP</div>}
+          <div style={{padding:"2px 7px",borderRadius:20,fontSize:9,fontFamily:"monospace",fontWeight:700,background:open?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)",color:open?"#22c55e":"#ef4444"}}>{open?"● OFFEN":"○ ZU"}</div>
         </div>
       </div>
 
-      {/* Weather + Distance */}
       {(wx||dist!=null)&&(
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
           {wx&&(
@@ -262,304 +461,125 @@ function SkiCard({s,dist,wx,isFav,onFav}){
               <span style={{fontSize:17}}>{wIcon(wx.code)}</span>
               <div>
                 <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",fontFamily:"'DM Mono',monospace"}}>{wx.temp}°C</div>
-                <div style={{fontSize:9,color:"#475569"}}>❄️ {wx.snow}cm · 💨 {wx.wind}km/h</div>
+                <div style={{fontSize:9,color:"#475569"}}>❄ {wx.snow}cm · 💨 {wx.wind}km/h</div>
               </div>
             </div>
           )}
           {dist!=null&&(
-            <div style={{background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:8,padding:"5px 9px",display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-              <span style={{fontSize:13}}>📍</span>
-              <div>
-                <div style={{fontSize:13,fontWeight:600,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{dist} km</div>
-                <div style={{fontSize:9,color:"#475569"}}>Entfernung</div>
-              </div>
+            <div style={{background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:8,padding:"5px 9px"}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{dist} km</div>
+              <div style={{fontSize:9,color:"#475569"}}>Entfernung</div>
             </div>
           )}
         </div>
       )}
 
-      {/* Pisten & Lifte mit Balken */}
       <div style={{display:"flex",flexDirection:"column",gap:7}}>
         <div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:3}}>
-            <span style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>🎿 Pisten</span>
-            <span style={{fontSize:12,fontFamily:"monospace"}}>
-              <span style={{fontWeight:700,color:barColor(kpct)}}>{s.kmO}</span>
-              <span style={{color:"#475569"}}> / {s.km} km</span>
-              <span style={{fontSize:10,color:"#64748b",marginLeft:3}}>({kpct}%)</span>
-            </span>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+            <span style={{fontSize:10,color:"#475569"}}>Pisten</span>
+            <span style={{fontSize:12,fontFamily:"monospace"}}><span style={{fontWeight:700,color:barColor(kpct)}}>{s.kmO}</span> / {s.km} km ({kpct}%)</span>
           </div>
-          <div style={{height:5,background:"rgba(255,255,255,0.06)",borderRadius:3,overflow:"hidden"}}>
-            <div style={{height:"100%",width:`${kpct}%`,borderRadius:3,background:kpct>60?`linear-gradient(90deg,#16a34a,#22c55e)`:kpct>30?`linear-gradient(90deg,#d97706,#f59e0b)`:`linear-gradient(90deg,#dc2626,#ef4444)`}}/>
-          </div>
+          <div style={{height:5,background:"rgba(255,255,255,0.06)",borderRadius:3}}><div style={{height:"100%",width:`${kpct}%`,borderRadius:3,background:barColor(kpct)}}/></div>
         </div>
         <div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:3}}>
-            <span style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>🚡 Lifte</span>
-            <span style={{fontSize:12,fontFamily:"monospace"}}>
-              <span style={{fontWeight:700,color:barColor(lpct)}}>{s.lifteO}</span>
-              <span style={{color:"#475569"}}> / {s.lifte}</span>
-              <span style={{fontSize:10,color:"#64748b",marginLeft:3}}>({lpct}%)</span>
-            </span>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+            <span style={{fontSize:10,color:"#475569"}}>Lifte</span>
+            <span style={{fontSize:12,fontFamily:"monospace"}}><span style={{fontWeight:700,color:barColor(lpct)}}>{s.lifteO}</span> / {s.lifte} ({lpct}%)</span>
           </div>
-          <div style={{height:5,background:"rgba(255,255,255,0.06)",borderRadius:3,overflow:"hidden"}}>
-            <div style={{height:"100%",width:`${lpct}%`,borderRadius:3,background:lpct>60?`linear-gradient(90deg,#0369a1,#38bdf8)`:lpct>30?`linear-gradient(90deg,#d97706,#f59e0b)`:`linear-gradient(90deg,#dc2626,#ef4444)`}}/>
-          </div>
+          <div style={{height:5,background:"rgba(255,255,255,0.06)",borderRadius:3}}><div style={{height:"100%",width:`${lpct}%`,borderRadius:3,background:barColor(lpct)}}/></div>
         </div>
       </div>
 
-      {/* Höhen + Diff */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5}}>
         {[{v:`▲${s.berg}m`,l:"Gipfel"},{v:`▼${s.tal}m`,l:"Tal"},{v:`↕${s.diff}m`,l:"Diff."}].map(({v,l})=>(
           <div key={l} style={{background:"rgba(255,255,255,0.03)",borderRadius:7,padding:"5px 7px"}}>
             <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0",fontFamily:"monospace"}}>{v}</div>
-            <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.07em"}}>{l}</div>
+            <div style={{fontSize:9,color:"#475569"}}>{l}</div>
           </div>
         ))}
       </div>
 
-      {/* Website Link */}
+      {wx?.forecast?.length>0&&(
+        <div style={{marginTop:2}}>
+          <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",fontFamily:"monospace",marginBottom:5}}>2-Tages Prognose</div>
+          <div style={{display:"flex",gap:5}}>
+            {wx.forecast.map((f,i)=>(
+              <div key={i} style={{flex:1,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:"6px 4px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#64748b",marginBottom:2,fontFamily:"monospace"}}>{f.dateLabel}</div>
+                <div style={{fontSize:16}}>{wIcon(f.code)}</div>
+                <div style={{fontSize:11,fontFamily:"'DM Mono',monospace",fontWeight:600,color:"#e2e8f0"}}>{f.maxTemp}°</div>
+                <div style={{fontSize:9,color:"#64748b"}}>{f.minTemp}°</div>
+                {f.precip>0&&<div style={{fontSize:9,color:"#60a5fa"}}>💧{f.precip}mm</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {s.url&&(
-        <a href={s.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}
-          style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontSize:11,fontFamily:"'DM Mono',monospace",textDecoration:"none",transition:"all .15s"}}
-          onMouseEnter={e=>{e.currentTarget.style.color="#38bdf8";e.currentTarget.style.borderColor="rgba(56,189,248,0.3)";}}
-          onMouseLeave={e=>{e.currentTarget.style.color="#64748b";e.currentTarget.style.borderColor="rgba(255,255,255,0.07)";}}>
-          <span style={{fontSize:12}}>🌐</span>
+        <a href={s.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontSize:11,fontFamily:"'DM Mono',monospace",textDecoration:"none"}}>
+          <span>🌐</span>
           <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.url.replace("https://www.","").replace("https://","")}</span>
-          <span style={{marginLeft:"auto",fontSize:10}}>↗</span>
         </a>
       )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// MAP VIEW
-// ═══════════════════════════════════════════════════════════════════════
-function MapView({stations,userCoords,favorites,onFav,wx,dists}){
-  const mapRef=useRef(null);
-  const mapInst=useRef(null);
-  const markers=useRef([]);
-
-  useEffect(()=>{
-    if(mapInst.current)return;
-    const map=L.map(mapRef.current,{center:[46.5,8.0],zoom:7});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
-    mapInst.current=map;
-    return()=>{map.remove();mapInst.current=null;};
-  },[]);
-
-  useEffect(()=>{
-    const map=mapInst.current;
-    if(!map)return;
-    markers.current.forEach(m=>map.removeLayer(m));
-    markers.current=[];
-
-    stations.forEach(s=>{
-      const open=s.status==="offen";
-      const isFav=favorites.includes(s.id);
-      const dist=dists?.[s.id];
-      const w=wx?.[s.id];
-      const col=open?"#22c55e":"#ef4444";
-      const sz=isFav?16:s.mp?13:11;
-      const br=s.mp?"3px":"50%";
-      const ico=L.divIcon({className:"",html:`<div style="width:${sz}px;height:${sz}px;border-radius:${br};background:${col};border:2px solid ${isFav?"#fbbf24":s.mp?"rgba(165,180,252,0.7)":"rgba(255,255,255,0.2)"};box-shadow:0 0 ${isFav?10:6}px ${col}88;cursor:pointer;"></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
-      const marker=L.marker([s.lat,s.lng],{ico}).addTo(map);
-
-      const kp=pct(s.kmO,s.km),lp=pct(s.lifteO,s.lifte);
-      const mpTag=s.mp?`<span style="padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)">✦ MP</span>`:`<span style="padding:1px 6px;border-radius:10px;font-size:9px;background:rgba(255,255,255,0.06);color:#475569;border:1px solid rgba(255,255,255,0.08)">Kein MP</span>`;
-      const wTag=w?`<div style="display:flex;align-items:center;gap:5px;padding:4px 7px;background:rgba(255,255,255,0.05);border-radius:6px;margin-top:6px"><span style="font-size:16px">${wIcon(w.code)}</span><div><div style="font-size:12px;font-weight:600;color:#e2e8f0">${w.temp}°C</div><div style="font-size:9px;color:#64748b">❄️${w.snow}cm 💨${w.wind}km/h</div></div></div>`:"";
-      const dTag=dist!=null?`<div style="font-size:11px;color:#38bdf8;font-family:monospace;margin-top:4px">📍 ${dist} km entfernt</div>`:"";
-      const urlTag=s.url?`<a href="${s.url}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:4px;margin-top:7px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:#94a3b8;font-size:10px;font-family:monospace;text-decoration:none">🌐 Website besuchen ↗</a>`:"";
-
-      marker.bindPopup(`
-        <div style="font-family:'Syne',sans-serif;min-width:210px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap">
-            <strong style="font-size:14px;color:#f1f5f9;line-height:1.3;flex:1">${s.name}</strong>
-            <span style="padding:2px 7px;border-radius:12px;font-size:9px;font-weight:700;white-space:nowrap;background:${open?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)"};color:${open?"#22c55e":"#ef4444"};border:1px solid ${open?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}">${open?"● OFFEN":"○ ZU"}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
-            <span style="font-size:10px;color:#64748b">${s.region}</span>${mpTag}
-          </div>
-          ${wTag}${dTag}
-          <div style="margin-top:7px">
-            <div style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">🎿 Pisten</div>
-            <div style="font-size:12px;font-weight:600;color:#e2e8f0;font-family:monospace"><span style="color:${barColor(kp)}">${s.kmO}</span> / ${s.km} km (${kp}%)</div>
-            <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:3px"><div style="height:100%;width:${kp}%;background:${barColor(kp)};border-radius:2px"></div></div>
-          </div>
-          <div style="margin-top:5px">
-            <div style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">🚡 Lifte</div>
-            <div style="font-size:12px;font-weight:600;color:#e2e8f0;font-family:monospace"><span style="color:${barColor(lp)}">${s.lifteO}</span> / ${s.lifte} (${lp}%)</div>
-            <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:3px"><div style="height:100%;width:${lp}%;background:${barColor(lp)};border-radius:2px"></div></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px">
-            <div style="background:rgba(255,255,255,0.04);border-radius:5px;padding:4px 6px"><div style="font-size:11px;font-weight:600;color:#e2e8f0;font-family:monospace">▲${s.berg}m</div><div style="font-size:8px;color:#475569">Gipfel</div></div>
-            <div style="background:rgba(255,255,255,0.04);border-radius:5px;padding:4px 6px"><div style="font-size:11px;font-weight:600;color:#e2e8f0;font-family:monospace">▼${s.tal}m</div><div style="font-size:8px;color:#475569">Tal</div></div>
-          </div>
-          ${urlTag}
-          <button onclick="window._fav(${s.id})" style="margin-top:7px;width:100%;padding:4px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:${isFav?"#fbbf24":"#94a3b8"};cursor:pointer;font-size:10px;font-family:monospace">${isFav?"⭐ Favorit entfernen":"☆ Als Favorit speichern"}</button>
-        </div>
-      `,{maxWidth:270});
-      markers.current.push(marker);
-    });
-
-    if(userCoords){
-      const ui=L.divIcon({className:"",html:`<div class="user-pin" style="width:14px;height:14px;border-radius:50%;background:#38bdf8;border:2px solid white;box-shadow:0 0 12px #38bdf8"></div>`,iconSize:[14,14],iconAnchor:[7,7]});
-      const um=L.marker([userCoords.lat,userCoords.lng],{icon:ui,zIndexOffset:1000}).addTo(map);
-      um.bindPopup(`<div style="font-family:'Syne',sans-serif;padding:2px"><strong style="color:#38bdf8">📍 ${userCoords.name||"Dein Standort"}</strong></div>`);
-      markers.current.push(um);
-    }
-  },[stations,favorites,wx,dists,userCoords]);
-
-  useEffect(()=>{window._fav=onFav;},[onFav]);
-
-  return(
-    <div style={{position:"relative",height:"100%"}}>
-      <div ref={mapRef} style={{width:"100%",height:"100%"}}/>
-      <div style={{position:"absolute",bottom:24,left:16,zIndex:1000,background:"rgba(13,27,42,0.93)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,padding:"10px 14px",backdropFilter:"blur(8px)"}}>
-        <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:7,fontFamily:"monospace"}}>Legende</div>
-        {[["#22c55e","50%","none","Offen"],["#ef4444","50%","none","Geschlossen"],["#38bdf8","50%","none","Dein Standort"],["#22c55e","3px","rgba(165,180,252,0.6)","Im MagicPass (■)"],["#22c55e","50%","#fbbf24","Favorit"]].map(([c,r,b,l])=>(
-          <div key={l} style={{display:"flex",alignItems:"center",gap:7,marginBottom:4}}>
-            <div style={{width:9,height:9,borderRadius:r,background:c,border:b&&b!=="none"?`2px solid ${b}`:"none",boxShadow:`0 0 4px ${c}66`,flexShrink:0}}/>
-            <span style={{fontSize:10,color:"#64748b",fontFamily:"monospace"}}>{l}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// SIDEBAR
-// ═══════════════════════════════════════════════════════════════════════
-function Sidebar({state,set,onReset,onGeo,geo,resultCount}){
-  const{search,region,status,typ,mpF,pistenR,lifteR,bergR,talR,sortBy,sortDir,userInput,userCoords}=state;
-  const S=set;
-  return(
-    <div style={{display:"flex",flexDirection:"column",gap:18,height:"100%"}}>
-      <div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:34,height:34,background:"linear-gradient(135deg,#38bdf8,#818cf8)",borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>⛷</div>
-          <div>
-            <div style={{fontSize:15,fontWeight:800,color:"#f1f5f9",fontFamily:"'Syne',sans-serif"}}>MagicPass</div>
-            <div style={{fontSize:9,color:"#334155",fontFamily:"monospace",letterSpacing:"0.15em"}}>SKIGEBIETE DASHBOARD</div>
-          </div>
-        </div>
-        <div style={{height:1,background:"rgba(255,255,255,0.05)",marginTop:14}}/>
-      </div>
-
-      {/* Standort */}
-      <div>
-        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:7,fontFamily:"monospace"}}>📍 Mein Standort</div>
-        <div style={{display:"flex",gap:6}}>
-          <input value={userInput} onChange={e=>S("userInput",e.target.value)} onKeyDown={e=>e.key==="Enter"&&onGeo()} placeholder="Ort oder PLZ…"
-            style={{flex:1,padding:"7px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",fontSize:12,outline:"none",fontFamily:"inherit"}}/>
-          <button onClick={onGeo} disabled={geo} style={{padding:"7px 12px",borderRadius:8,background:"rgba(56,189,248,0.15)",border:"1px solid rgba(56,189,248,0.3)",color:"#38bdf8",cursor:geo?"wait":"pointer",fontSize:13,fontFamily:"monospace"}}>
-            {geo?"…":"→"}
-          </button>
-        </div>
-        {userCoords&&<div style={{fontSize:10,color:"#22c55e",marginTop:4,fontFamily:"monospace"}}>✓ {userCoords.name}</div>}
-      </div>
-
-      {/* Search */}
-      <input value={search} onChange={e=>S("search",e.target.value)} placeholder="Skigebiet suchen…"
-        style={{width:"100%",padding:"8px 12px",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-
-      <div>
-        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:7,fontFamily:"monospace"}}>MagicPass</div>
-        <div style={{display:"flex",flexDirection:"column",gap:4}}>
-          {MP_OPTS.map(o=>{
-            const a=mpF===o;
-            const c=o==="Im MagicPass"?"#a5b4fc":o==="Nicht im MagicPass"?"#94a3b8":"#38bdf8";
-            return(
-              <button key={o} onClick={()=>S("mpF",o)} style={{padding:"5px 10px",borderRadius:8,fontSize:11,fontFamily:"'DM Mono',monospace",cursor:"pointer",border:"none",textAlign:"left",display:"flex",alignItems:"center",gap:7,background:a?`${c}18`:"rgba(255,255,255,0.04)",color:a?c:"#475569",outline:a?`1px solid ${c}44`:"1px solid transparent"}}>
-                <div style={{width:8,height:8,borderRadius:o==="Im MagicPass"?"2px":"50%",background:a?c:"#334155",flexShrink:0}}/>
-                {o}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div><div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:7,fontFamily:"monospace"}}>Status</div><Chips opts={STATUS_OPTS} val={status} onChange={v=>S("status",v)}/></div>
-      <div><div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:7,fontFamily:"monospace"}}>Region</div><Chips opts={REGIONS} val={region} onChange={v=>S("region",v)} cmap={RC}/></div>
-      <div><div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:7,fontFamily:"monospace"}}>Grösse</div><Chips opts={TYP_OPTS} val={typ} onChange={v=>S("typ",v)}/></div>
-
-      <div>
-        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,fontFamily:"monospace"}}>Pisten &amp; Lifte</div>
-        <RangeInput min={0} max={450} value={pistenR} onChange={v=>S("pistenR",v)} label="Pistenkilometer" unit=" km"/>
-        <RangeInput min={0} max={90}  value={lifteR}  onChange={v=>S("lifteR",v)}  label="Anzahl Lifte"    unit=""/>
-      </div>
-      <div>
-        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,fontFamily:"monospace"}}>Höhen</div>
-        <RangeInput min={400} max={3900} value={bergR} onChange={v=>S("bergR",v)} label="Bergstation" unit="m"/>
-        <RangeInput min={400} max={2200} value={talR}  onChange={v=>S("talR",v)}  label="Talstation"  unit="m"/>
-      </div>
-
-      <div>
-        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:7,fontFamily:"monospace"}}>Sortieren</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-          {[{k:"km",l:"Pisten"},{k:"lifte",l:"Lifte"},{k:"berg",l:"Berghöhe"},{k:"diff",l:"Höhendiff"},{k:"distance",l:"Entfernung"}].map(o=>(
-            <button key={o.k} onClick={()=>{if(sortBy===o.k)S("sortDir",sortDir==="desc"?"asc":"desc");else{S("sortBy",o.k);S("sortDir",o.k==="distance"?"asc":"desc");}}}
-              disabled={o.k==="distance"&&!userCoords}
-              style={{padding:"3px 9px",borderRadius:20,fontSize:10,fontFamily:"'DM Mono',monospace",cursor:o.k==="distance"&&!userCoords?"not-allowed":"pointer",border:"none",opacity:o.k==="distance"&&!userCoords?.4:1,background:sortBy===o.k?"rgba(56,189,248,0.15)":"rgba(255,255,255,0.04)",color:sortBy===o.k?"#38bdf8":"#475569",outline:sortBy===o.k?"1px solid rgba(56,189,248,0.3)":"1px solid transparent"}}>
-              {o.l}{sortBy===o.k?(sortDir==="desc"?"↓":"↑"):""}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{fontSize:11,color:"#334155",fontFamily:"monospace",textAlign:"center"}}>{resultCount} Skigebiete</div>
-
-      <button onClick={onReset} style={{marginTop:"auto",padding:"8px",width:"100%",borderRadius:9,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",color:"#475569",fontSize:11,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:"0.08em",textTransform:"uppercase"}}>
-        Filter zurücksetzen
-      </button>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// APP
-// ═══════════════════════════════════════════════════════════════════════
 function App(){
   const[tab,setTab]=useState("liste");
   const[st,setSt]=useState({
-    search:"",region:"Alle",status:"Alle",typ:"Alle",mpF:"Im MagicPass",
-    pistenR:[0,450],lifteR:[0,90],bergR:[400,3900],talR:[400,2200],
+    search:"",region:"Alle",status:"Alle",typ:"Alle",mpF:"Alle",
+    bergR:[400,3900],talR:[400,2200],
     sortBy:"km",sortDir:"desc",userInput:"",userCoords:null,
+    lifteR:[0,500],pistenR:[0,1200]
   });
   const set=(k,v)=>setSt(p=>({...p,[k]:v}));
 
   const[wx,setWx]=useState({});
   const[loading,setLoading]=useState(false);
+  const[liveLoading,setLiveLoading]=useState(false);
+  const[lastRefresh,setLastRefresh]=useState(null);
+  const[liveData,setLiveData]=useState({});
   const[geo,setGeo]=useState(false);
   const[favs,setFavs]=useState(()=>{try{return JSON.parse(localStorage.getItem("mp_favs")||"[]")}catch{return[]}});
-  const[drawer,setDrawer]=useState(false);
 
   useEffect(()=>{localStorage.setItem("mp_favs",JSON.stringify(favs));},[favs]);
   const toggleFav=useCallback(id=>setFavs(f=>f.includes(id)?f.filter(x=>x!==id):[...f,id]),[]);
 
-  // Geocoding
+  const refreshLive=useCallback(async()=>{
+    if(liveLoading)return;
+    setLiveLoading(true);
+    try{
+      const withSlugs=STATIONS.filter(s=>s.skiresort_slug);
+      const results=await fetchLiveStatus(withSlugs);
+      setLiveData(d=>({...d,...Object.fromEntries(Object.entries(results).filter(([,v])=>v!==null))}));
+      setLastRefresh(new Date());
+    }catch(e){}
+    setLiveLoading(false);
+  },[liveLoading]);
+
   const geocode=async()=>{
     const q=st.userInput.trim();
     if(!q)return;
     setGeo(true);
     try{
-      const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,{headers:{"Accept-Language":"de","User-Agent":"MagicPassDash/2.0"}});
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,{headers:{"Accept-Language":"de","User-Agent":"MagicPassDash/2.1"}});
       const d=await r.json();
       if(d&&d.length>0){
         const coords={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon),name:d[0].display_name.split(",")[0]};
         set("userCoords",coords);
         set("sortBy","distance");
         set("sortDir","asc");
-      } else {
-        alert(`"${q}" nicht gefunden. Bitte eine andere Schreibweise versuchen.`);
+      }else{
+        alert(`"${q}" nicht gefunden.`);
       }
-    }catch{alert("Verbindungsfehler. Bitte Internet prüfen.");}
+    }catch{
+      alert("Verbindungsfehler.");
+    }
     setGeo(false);
   };
 
-  // Distanzen
   const dists=useMemo(()=>{
     if(!st.userCoords)return null;
     const d={};
@@ -567,36 +587,31 @@ function App(){
     return d;
   },[st.userCoords]);
 
-  // Wetter laden — alle Stationen in Batches
   const fetchWx=useCallback(async(list)=>{
     if(loading)return;
     setLoading(true);
     const newW={};
-    const chunks=[];
-    for(let i=0;i<list.length;i+=8)chunks.push(list.slice(i,i+8));
-    for(const chunk of chunks){
+    for(let i=0;i<list.length;i+=10){
+      const chunk=list.slice(i,i+10);
       await Promise.all(chunk.map(async s=>{
         try{
-          const url=`https://api.open-meteo.com/v1/forecast?latitude=${s.lat}&longitude=${s.lng}&current=temperature_2m,weather_code,wind_speed_10m,snow_depth&wind_speed_unit=kmh&timezone=Europe%2FBerlin`;
+          const url=`https://api.open-meteo.com/v1/forecast?latitude=${s.lat}&longitude=${s.lng}&current=temperature_2m,weather_code,wind_speed_10m,snow_depth&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum&wind_speed_unit=kmh&timezone=Europe%2FBerlin&forecast_days=3`;
           const r=await fetch(url);
           const d=await r.json();
-          if(d.current){newW[s.id]={temp:Math.round(d.current.temperature_2m),code:d.current.weather_code,wind:Math.round(d.current.wind_speed_10m),snow:Math.round((d.current.snow_depth||0)*100)};}
-        }catch{/*skip*/}
+          if(d.current)newW[s.id]={temp:Math.round(d.current.temperature_2m),code:d.current.weather_code,wind:Math.round(d.current.wind_speed_10m),snow:Math.round((d.current.snow_depth||0)*100),forecast:d.daily?[1,2].map(i=>({dateLabel:new Date(d.daily.time[i]).toLocaleDateString("de-CH",{weekday:"short"}),maxTemp:Math.round(d.daily.temperature_2m_max[i]),minTemp:Math.round(d.daily.temperature_2m_min[i]),code:d.daily.weather_code[i],precip:Math.round(d.daily.precipitation_sum[i]||0)})):[]};
+        }catch{}
       }));
-      // kleine Pause zwischen Batches für Rate-Limit
-      await new Promise(r=>setTimeout(r,200));
+      await new Promise(r=>setTimeout(r,150));
     }
     setWx(w=>({...w,...newW}));
     setLoading(false);
   },[loading]);
 
-  // Beim Start: alle Stationen laden
   useEffect(()=>{fetchWx(STATIONS);},[]);
 
-  // Filter + Sort
   const filtered=useMemo(()=>{
     const{search,region,status,typ,mpF,pistenR,lifteR,bergR,talR,sortBy,sortDir}=st;
-    let r=STATIONS.filter(s=>{
+    const r=STATIONS.map(s=>liveData[s.id]?{...s,...liveData[s.id]}:s).filter(s=>{
       if(search&&!s.name.toLowerCase().includes(search.toLowerCase()))return false;
       if(region!=="Alle"&&s.region!==region)return false;
       if(status!=="Alle"&&s.status!==status)return false;
@@ -609,116 +624,92 @@ function App(){
       if(s.tal<talR[0]||s.tal>talR[1])return false;
       return true;
     });
-    return[...r].sort((a,b)=>{
-      if(sortBy==="distance"&&dists)return sortDir==="asc"?(dists[a.id]||9999)-(dists[b.id]||9999):(dists[b.id]||9999)-(dists[a.id]||9999);
+    return [...r].sort((a,b)=>{
+      if(sortBy==="distance"&&dists){
+        return sortDir==="asc"?(dists[a.id]||9999)-(dists[b.id]||9999):(dists[b.id]||9999)-(dists[a.id]||9999);
+      }
       return sortDir==="desc"?b[sortBy]-a[sortBy]:a[sortBy]-b[sortBy];
     });
-  },[st,dists]);
+  },[st,dists,liveData]);
 
   const favStations=useMemo(()=>STATIONS.filter(s=>favs.includes(s.id)),[favs]);
-  const openCount=filtered.filter(s=>s.status==="offen").length;
-  const mpCount=filtered.filter(s=>s.mp).length;
-  const totalKm=filtered.reduce((a,s)=>a+s.kmO,0);
-
-  const resetAll=()=>setSt(p=>({...p,search:"",region:"Alle",status:"Alle",typ:"Alle",mpF:"Im MagicPass",pistenR:[0,450],lifteR:[0,90],bergR:[400,3900],talR:[400,2200]}));
-
-  const TABS=[{k:"liste",i:"☰",l:"Liste"},{k:"karte",i:"🗺",l:"Karte"},{k:"favoriten",i:"⭐",l:`Favoriten (${favs.length})`}];
-
-  const sidebarEl=<Sidebar state={st} set={set} onReset={resetAll} onGeo={geocode} geo={geo} resultCount={filtered.length}/>;
 
   return(
     <div style={{height:"100vh",display:"flex",flexDirection:"column",background:"#060d1a",fontFamily:"'Syne',sans-serif",color:"#f1f5f9",overflow:"hidden"}}>
-      {/* TOP BAR */}
-      <div style={{flexShrink:0,background:"rgba(13,27,42,0.97)",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",padding:"0 16px",height:50,gap:12,zIndex:20}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-          <div style={{fontSize:18}}>⛷</div>
-          <div style={{fontSize:13,fontWeight:800}}>MagicPass</div>
+      <div style={{flexShrink:0,background:"rgba(13,27,42,0.97)",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",padding:"0 16px",height:50,gap:12}}>
+        <div style={{fontSize:13,fontWeight:800}}>⛷ Ski Dashboard CH·FR·IT</div>
+        <div style={{display:"flex",gap:8,marginLeft:12}}>
+          {[["liste","Liste"],["karte","\ud83d\uddfa Karte"],["favoriten","Favoriten"]].map(([k,l])=><button key={k} onClick={()=>setTab(k)} style={{border:"none",padding:"6px 10px",borderRadius:8,background:tab===k?"rgba(56,189,248,0.2)":"rgba(255,255,255,0.06)",color:tab===k?"#38bdf8":"#94a3b8",cursor:"pointer"}}>{l}</button>)}
         </div>
-        <div style={{display:"flex",flex:1,gap:0}}>
-          {TABS.map(t=>(
-            <button key={t.k} onClick={()=>setTab(t.k)} className={`tab-btn${tab===t.k?" active":""}`} style={{padding:"0 12px",height:50,background:"none",border:"none",color:tab===t.k?"#f1f5f9":"#475569",cursor:"pointer",fontSize:12,fontFamily:"'Syne',sans-serif",fontWeight:tab===t.k?700:400,display:"flex",alignItems:"center",gap:5,whiteSpace:"nowrap"}}>
-              <span>{t.i}</span>
-              <span className="tab-label-full">{t.l}</span>
-              <span className="tab-label-short">{t.k==="favoriten"?`⭐${favs.length}`:t.i}</span>
-            </button>
-          ))}
+        {loading&&<div style={{marginLeft:"auto",fontSize:11,color:"#38bdf8",fontFamily:"monospace"}}>Wetter wird geladen…</div>}
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          {lastRefresh&&<div style={{fontSize:10,color:"#475569",fontFamily:"monospace"}}>Live: {lastRefresh.toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"})}</div>}
+          <button onClick={refreshLive} disabled={liveLoading} title="Status, Lifte & Pisten live von skiresort.ch aktualisieren" style={{padding:"5px 10px",borderRadius:8,background:liveLoading?"rgba(255,255,255,0.06)":"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",color:liveLoading?"#475569":"#22c55e",cursor:liveLoading?"default":"pointer",fontSize:11,fontFamily:"monospace",whiteSpace:"nowrap"}}>
+            {liveLoading?"⏳ Aktualisiere…":"🔄 Live-Daten"}
+          </button>
         </div>
-        {loading&&<div style={{fontSize:10,color:"#38bdf8",fontFamily:"monospace",flexShrink:0}}>🌤 Wetter…</div>}
-        <button onClick={()=>setDrawer(o=>!o)} className="mobile-only" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"5px 10px",color:"#94a3b8",fontSize:12,cursor:"pointer"}}>⚙</button>
       </div>
 
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-        {/* Desktop Sidebar */}
-        <div className="sidebar-desktop" style={{width:285,flexShrink:0,background:"rgba(10,20,35,0.98)",borderRight:"1px solid rgba(255,255,255,0.05)",padding:"20px 16px",overflowY:"auto"}}>
-          {sidebarEl}
+        <div style={{width:300,flexShrink:0,background:"rgba(10,20,35,0.98)",borderRight:"1px solid rgba(255,255,255,0.05)",padding:"16px",overflowY:"auto"}}>
+          <div style={{fontSize:10,color:"#475569",marginBottom:7,fontFamily:"monospace"}}>Mein Standort</div>
+          <div style={{display:"flex",gap:6,marginBottom:10}}>
+            <input value={st.userInput} onChange={e=>set("userInput",e.target.value)} onKeyDown={e=>e.key==="Enter"&&geocode()} placeholder="Ort oder PLZ" style={{flex:1,padding:"7px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",fontSize:12}}/>
+            <button onClick={geocode} disabled={geo} style={{padding:"7px 10px",borderRadius:8,background:"rgba(56,189,248,0.15)",border:"1px solid rgba(56,189,248,0.3)",color:"#38bdf8",cursor:"pointer"}}>{geo?"…":"→"}</button>
+          </div>
+
+          <input value={st.search} onChange={e=>set("search",e.target.value)} placeholder="Skigebiet suchen" style={{width:"100%",padding:"8px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,color:"#e2e8f0",marginBottom:12}}/>
+
+          <div style={{fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>MagicPass</div>
+          <Chips opts={MP_OPTS} val={st.mpF} onChange={v=>set("mpF",v)}/>
+
+          <div style={{marginTop:12,fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>Status</div>
+          <Chips opts={STATUS_OPTS} val={st.status} onChange={v=>set("status",v)}/>
+
+          <div style={{marginTop:12,fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>Region</div>
+          <Chips opts={REGIONS} val={st.region} onChange={v=>set("region",v)} cmap={RC}/>
+
+          <div style={{marginTop:12,fontSize:10,color:"#475569",marginBottom:6,fontFamily:"monospace"}}>Grösse</div>
+          <Chips opts={TYP_OPTS} val={st.typ} onChange={v=>set("typ",v)}/>
+
+          <div style={{marginTop:12}}>
+            <RangeInput min={0} max={1200} value={st.pistenR} onChange={v=>set("pistenR",v)} label="Pistenkilometer"/>
+            <RangeInput min={0} max={500} value={st.lifteR} onChange={v=>set("lifteR",v)} label="Lifte"/>
+            <RangeInput min={400} max={3900} value={st.bergR} onChange={v=>set("bergR",v)} label="Bergstation"/>
+            <RangeInput min={400} max={2200} value={st.talR} onChange={v=>set("talR",v)} label="Talstation"/>
+          </div>
+
+          <div style={{marginTop:8,fontSize:10,color:"#475569",fontFamily:"monospace"}}>{filtered.length} Gebiete gefunden</div>
         </div>
 
-        {/* Mobile Drawer */}
-        {drawer&&(
-          <div style={{position:"fixed",inset:0,zIndex:200}} onClick={()=>setDrawer(false)}>
-            <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.65)",backdropFilter:"blur(4px)"}}/>
-            <div style={{position:"absolute",left:0,top:0,bottom:0,width:300,background:"rgba(10,20,35,0.99)",padding:"20px 16px",overflowY:"auto",zIndex:1}} onClick={e=>e.stopPropagation()}>
-              <button onClick={()=>setDrawer(false)} style={{position:"absolute",top:12,right:12,background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:18}}>✕</button>
-              {sidebarEl}
-            </div>
-          </div>
-        )}
-
-        {/* Content */}
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-
-          {/* LISTE */}
+        <div style={{flex:1,overflow:tab==="karte"?"hidden":"auto",padding:tab==="karte"?0:"18px 16px",position:"relative"}}>
           {tab==="liste"&&(
-            <div style={{flex:1,overflowY:"auto",padding:"18px 16px"}}>
-              <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
-                <Pill label="Stationen" value={filtered.length}/>
-                <Pill label="Offen" value={openCount}/>
-                <Pill label="✦ MagicPass" value={mpCount} accent="#a5b4fc"/>
-                <Pill label="Offene km" value={`${totalKm}`}/>
-                <Pill label="Wetter" value={`${Object.keys(wx).length}/${STATIONS.length}`}/>
-              </div>
-              {filtered.length===0?(
-                <div style={{textAlign:"center",padding:"60px 20px",color:"#334155"}}>
-                  <div style={{fontSize:40,marginBottom:12}}>🏔</div>
-                  <div style={{fontWeight:600,fontSize:15}}>Keine Skigebiete gefunden</div>
-                  <div style={{fontSize:13,marginTop:6}}>Filter anpassen</div>
-                </div>
-              ):(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(285px,1fr))",gap:14}}>
-                  {filtered.map(s=>(
-                    <SkiCard key={s.id} s={s} dist={dists?.[s.id]??null} wx={wx[s.id]} isFav={favs.includes(s.id)} onFav={toggleFav}/>
-                  ))}
-                </div>
-              )}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(285px,1fr))",gap:14}}>
+              {filtered.map(s=><SkiCard key={s.id} s={s} dist={dists?.[s.id]??null} wx={wx[s.id]} isFav={favs.includes(s.id)} onFav={toggleFav}/>) }
             </div>
           )}
-
-          {/* KARTE */}
-          {tab==="karte"&&(
-            <div style={{flex:1,overflow:"hidden"}}>
-              <MapView stations={filtered} userCoords={st.userCoords} favorites={favs} onFav={toggleFav} wx={wx} dists={dists}/>
-            </div>
-          )}
-
-          {/* FAVORITEN */}
           {tab==="favoriten"&&(
-            <div style={{flex:1,overflowY:"auto",padding:"18px 16px"}}>
-              {favStations.length===0?(
-                <div style={{textAlign:"center",padding:"80px 20px",color:"#334155"}}>
-                  <div style={{fontSize:48,marginBottom:14}}>⭐</div>
-                  <div style={{fontWeight:700,fontSize:16}}>Noch keine Favoriten</div>
-                  <div style={{fontSize:13,marginTop:8,color:"#475569"}}>Klicke auf ⭐ auf einer Karte oder im Karten-Popup um Skigebiete zu speichern.</div>
-                </div>
-              ):(
-                <>
-                  <div style={{marginBottom:16,fontSize:12,color:"#475569",fontFamily:"monospace"}}>{favStations.length} gespeicherte Skigebiete</div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(285px,1fr))",gap:14}}>
-                    {favStations.map(s=>(
-                      <SkiCard key={s.id} s={s} dist={dists?.[s.id]??null} wx={wx[s.id]} isFav={true} onFav={toggleFav}/>
-                    ))}
-                  </div>
-                </>
-              )}
+            favStations.length===0?
+              <div style={{textAlign:"center",padding:"80px 20px",color:"#475569"}}>Noch keine Favoriten gespeichert.</div>:
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(285px,1fr))",gap:14}}>
+                {favStations.map(s=><SkiCard key={s.id} s={s} dist={dists?.[s.id]??null} wx={wx[s.id]} isFav={true} onFav={toggleFav}/>) }
+              </div>
+          )}
+          {tab==="karte"&&(
+            <div style={{position:"relative",height:"100%"}}>
+              <MapView stations={filtered} wx={wx} dists={dists} userCoords={st.userCoords}/>
+              <div style={{position:"absolute",bottom:10,right:10,zIndex:1000,background:"rgba(6,13,26,0.85)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"8px 12px",fontSize:10,color:"#94a3b8",fontFamily:"monospace",pointerEvents:"none"}}>
+                {filtered.length} Gebiete &nbsp;&bull;&nbsp;
+                <span style={{color:"#22c55e"}}>{filtered.filter(s=>s.status==="offen").length} offen</span> &nbsp;&bull;&nbsp;
+                <span style={{color:"#ef4444"}}>{filtered.filter(s=>s.status!=="offen").length} geschlossen</span>
+              </div>
+              <div style={{position:"absolute",top:10,right:10,zIndex:1000,background:"rgba(6,13,26,0.85)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"8px 12px",fontSize:10,color:"#64748b",fontFamily:"monospace",maxWidth:220,pointerEvents:"none"}}>
+                {Object.entries(RC).filter(([r])=>filtered.some(s=>s.region===r)).map(([r,c])=>(
+                  <span key={r} style={{display:"inline-flex",alignItems:"center",gap:3,marginRight:8,marginBottom:2}}>
+                    <span style={{width:8,height:8,borderRadius:"50%",background:c,display:"inline-block"}}/>{r}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
