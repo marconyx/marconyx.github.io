@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Ski Dashboard – CH · FR · IT</title>
+  <title>Magic Ski Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -300,7 +300,69 @@ const STATIONS=[
 {id:531,name:"Belvedere / Canazei / Val di Fassa",region:"Italien",mp:false,status:"offen",lifte:35,lifteO:30,km:55,kmO:47,berg:2485,tal:1320,diff:1165,typ:"Mittel",lat:46.476,lng:11.774,url:"https://www.fassa.com",skiresort_slug:"belvedere-col-rodella-ciampac-buffaure-canazei-campitello-alba-pozza-di-fassa"},
 {id:532,name:"Alto Sangro – Roccaraso",region:"Italien",mp:false,status:"offen",lifte:23,lifteO:19,km:100,kmO:87,berg:2141,tal:1236,diff:905,typ:"Mittel",lat:41.840,lng:14.072,url:"https://www.roccaraso.net",skiresort_slug:"alto-sangro-roccaraso-rivisondoli"},
 {id:533,name:"Mondolè Ski – Artesina / Prato Nevoso",region:"Italien",mp:false,status:"offen",lifte:24,lifteO:20,km:80,kmO:68,berg:2100,tal:1300,diff:800,typ:"Mittel",lat:44.254,lng:7.857,url:"https://www.pratonevoso.com",skiresort_slug:"mondole-ski-artesina-frabosa-soprana-prato-nevoso"},
-{id:534,name:"Santa Caterina Valfurva",region:"Italien",mp:false,status:"offen",lifte:9,lifteO:7,km:50,kmO:43,berg:2725,tal:1740,diff:985,typ:"Mittel",lat:46.415,lng:10.487,url:"https://www.santacaterina.it",skiresort_slug:"santa-caterina-valfurva"}
+{id:534,name:"Santa Caterina Valfurva",region:"Italien",mp:false,status:"offen",lifte:9,lifteO:7,km:50,kmO:43,berg:2725,tal:1740,diff:985,typ:"Mittel",lat:46.415,lng:10.487,url:"https://www.santacaterina.it",skiresort_slug:"santa-caterina-valfurva"},
+
+// ── ÖSTERREICH – TIROL ───────────────────────────────────────────────────────
+{id:600,name:"Silvretta Arena Ischgl / Samnaun",region:"Tirol",mp:false,status:"offen",lifte:46,lifteO:41,km:239,kmO:210,berg:2872,tal:1377,diff:1495,typ:"Gross",lat:47.013,lng:10.286,url:"https://www.ischgl.com"},
+{id:601,name:"St. Anton / Arlberg",region:"Tirol",mp:false,status:"offen",lifte:85,lifteO:60,km:305,kmO:270,berg:2811,tal:1304,diff:1507,typ:"Gross",lat:47.130,lng:10.268,url:"https://www.stantonamarlberg.com"},
+{id:602,name:"Lech Zürs / Arlberg",region:"Vorarlberg",mp:false,status:"offen",lifte:85,lifteO:60,km:305,kmO:270,berg:2450,tal:1450,diff:1000,typ:"Gross",lat:47.209,lng:10.148,url:"https://www.lech-zuers.at"},
+{id:603,name:"Kitzbühel / Kirchberg",region:"Tirol",mp:false,status:"offen",lifte:56,lifteO:33,km:213,kmO:185,berg:2000,tal:760,diff:1240,typ:"Gross",lat:47.449,lng:12.392,url:"https://www.kitzbuehel.com"},
+{id:604,name:"SkiWelt Wilder Kaiser – Brixental",region:"Tirol",mp:false,status:"offen",lifte:83,lifteO:50,km:280,kmO:240,berg:1957,tal:620,diff:1337,typ:"Gross",lat:47.521,lng:12.196,url:"https://www.skiwelt.at"},
+{id:605,name:"Sölden",region:"Tirol",mp:false,status:"offen",lifte:31,lifteO:3,km:148,kmO:30,berg:3340,tal:1377,diff:1963,typ:"Gross",lat:46.966,lng:10.936,url:"https://www.soelden.com"},
+{id:606,name:"Serfaus-Fiss-Ladis",region:"Tirol",mp:false,status:"offen",lifte:38,lifteO:37,km:198,kmO:185,berg:2828,tal:1200,diff:1628,typ:"Gross",lat:47.037,lng:10.608,url:"https://www.serfaus-fiss-ladis.at"},
+{id:607,name:"Stubaier Gletscher",region:"Tirol",mp:false,status:"offen",lifte:26,lifteO:21,km:110,kmO:95,berg:3210,tal:1750,diff:1460,typ:"Gross",lat:47.097,lng:11.115,url:"https://www.stubaier-gletscher.com"},
+{id:608,name:"Mayrhofen / Ski- und Gletscherwelt Zillertal 3000",region:"Tirol",mp:false,status:"offen",lifte:63,lifteO:60,km:224,kmO:200,berg:3250,tal:630,diff:2620,typ:"Gross",lat:47.165,lng:11.869,url:"https://www.mayrhofen.at"},
+{id:609,name:"Zillertal Arena",region:"Tirol",mp:false,status:"offen",lifte:52,lifteO:45,km:166,kmO:145,berg:2500,tal:580,diff:1920,typ:"Gross",lat:47.218,lng:11.979,url:"https://www.zillertalarena.com"},
+{id:610,name:"Obergurgl-Hochgurgl",region:"Tirol",mp:false,status:"offen",lifte:25,lifteO:2,km:110,kmO:10,berg:3080,tal:1795,diff:1285,typ:"Gross",lat:46.868,lng:11.026,url:"https://www.obergurgl.com"},
+{id:611,name:"Alpbach / Ski Juwel Alpbachtal Wildschönau",region:"Tirol",mp:false,status:"offen",lifte:45,lifteO:21,km:109,kmO:90,berg:2025,tal:534,diff:1491,typ:"Gross",lat:47.396,lng:11.930,url:"https://www.skijuwel.com"},
+{id:612,name:"Hintertuxer Gletscher",region:"Tirol",mp:false,status:"offen",lifte:20,lifteO:19,km:86,kmO:80,berg:3250,tal:1500,diff:1750,typ:"Mittel",lat:47.068,lng:11.670,url:"https://www.hintertuxergletscher.at"},
+{id:613,name:"Hochfügen / Zillertal",region:"Tirol",mp:false,status:"offen",lifte:13,lifteO:11,km:42,kmO:35,berg:2500,tal:1500,diff:1000,typ:"Mittel",lat:47.233,lng:11.763,url:"https://www.hochfuegen.at"},
+{id:614,name:"Kühtai",region:"Tirol",mp:false,status:"offen",lifte:12,lifteO:11,km:44,kmO:38,berg:2520,tal:2020,diff:500,typ:"Mittel",lat:47.210,lng:11.001,url:"https://www.kuehtai.info"},
+{id:615,name:"Axamer Lizum",region:"Tirol",mp:false,status:"offen",lifte:9,lifteO:6,km:40,kmO:35,berg:2340,tal:874,diff:1466,typ:"Mittel",lat:47.195,lng:11.261,url:"https://www.axamer-lizum.at"},
+{id:616,name:"Kappl / Paznaun-Ischgl",region:"Tirol",mp:false,status:"offen",lifte:10,lifteO:9,km:40,kmO:35,berg:2680,tal:1257,diff:1423,typ:"Mittel",lat:47.026,lng:10.394,url:"https://www.kappl.com"},
+{id:617,name:"Silvapark Galtür / Paznaun",region:"Tirol",mp:false,status:"offen",lifte:10,lifteO:9,km:40,kmO:35,berg:2780,tal:1584,diff:1196,typ:"Mittel",lat:47.003,lng:10.184,url:"https://www.silvapark.com"},
+{id:618,name:"Nauders",region:"Tirol",mp:false,status:"offen",lifte:15,lifteO:15,km:67,kmO:60,berg:2750,tal:1394,diff:1356,typ:"Mittel",lat:46.887,lng:10.504,url:"https://www.nauders.com"},
+{id:619,name:"Pitztaler Gletscher",region:"Tirol",mp:false,status:"offen",lifte:13,lifteO:6,km:40,kmO:30,berg:3440,tal:1674,diff:1766,typ:"Mittel",lat:46.962,lng:10.872,url:"https://www.pitztaler-gletscher.at"},
+
+// ── ÖSTERREICH – SALZBURG ────────────────────────────────────────────────────
+{id:620,name:"Saalbach-Hinterglemm / Leogang / Fieberbrunn",region:"Salzburg",mp:false,status:"offen",lifte:70,lifteO:61,km:270,kmO:240,berg:2096,tal:840,diff:1256,typ:"Gross",lat:47.394,lng:12.636,url:"https://www.saalbach.com"},
+{id:621,name:"Snow Space Salzburg (Flachau / Wagrain / St. Johann)",region:"Salzburg",mp:false,status:"offen",lifte:45,lifteO:38,km:200,kmO:175,berg:2185,tal:760,diff:1425,typ:"Gross",lat:47.344,lng:13.387,url:"https://www.snowspace.com"},
+{id:622,name:"Schladming / Ski amade (Planai / Reiteralm / Hochwurzen / Hauser Kaibling)",region:"Salzburg",mp:false,status:"offen",lifte:54,lifteO:46,km:230,kmO:200,berg:1906,tal:745,diff:1161,typ:"Gross",lat:47.388,lng:13.696,url:"https://www.schladming-dachstein.at"},
+{id:623,name:"Kitzsteinhorn / Kaprun",region:"Salzburg",mp:false,status:"offen",lifte:24,lifteO:20,km:63,kmO:55,berg:3029,tal:911,diff:2118,typ:"Mittel",lat:47.190,lng:12.700,url:"https://www.kitzsteinhorn.at"},
+{id:624,name:"Zell am See / Schmitten",region:"Salzburg",mp:false,status:"offen",lifte:27,lifteO:14,km:77,kmO:60,berg:2000,tal:757,diff:1243,typ:"Mittel",lat:47.325,lng:12.798,url:"https://www.zellamsee-kaprun.com"},
+{id:625,name:"Hochkönig / Maria Alm / Dienten / Mühlbach",region:"Salzburg",mp:false,status:"offen",lifte:34,lifteO:22,km:120,kmO:100,berg:2941,tal:868,diff:2073,typ:"Gross",lat:47.438,lng:12.980,url:"https://www.hochkoenig.at"},
+{id:626,name:"Obertauern",region:"Salzburg",mp:false,status:"offen",lifte:26,lifteO:26,km:100,kmO:100,berg:2313,tal:1740,diff:573,typ:"Gross",lat:47.253,lng:13.568,url:"https://www.obertauern.com"},
+{id:627,name:"Skigastein / Bad Gastein (Ski amade)",region:"Salzburg",mp:false,status:"offen",lifte:18,lifteO:16,km:201,kmO:170,berg:2686,tal:838,diff:1848,typ:"Gross",lat:47.116,lng:13.133,url:"https://www.gastein.com"},
+{id:628,name:"Grosseck-Speiereck / Mauterndorf",region:"Salzburg",mp:false,status:"offen",lifte:10,lifteO:9,km:40,kmO:35,berg:2423,tal:1024,diff:1399,typ:"Mittel",lat:47.121,lng:13.695,url:"https://www.skiparc.at"},
+{id:629,name:"Wildkogel-Arena / Neukirchen / Bramberg",region:"Salzburg",mp:false,status:"offen",lifte:20,lifteO:13,km:77,kmO:60,berg:2320,tal:793,diff:1527,typ:"Mittel",lat:47.281,lng:12.331,url:"https://www.wildkogel-arena.at"},
+{id:630,name:"Lofer / Almenwelt Lofer",region:"Salzburg",mp:false,status:"offen",lifte:10,lifteO:8,km:43,kmO:35,berg:1745,tal:632,diff:1113,typ:"Mittel",lat:47.583,lng:12.693,url:"https://www.almenwelt.at"},
+
+// ── ÖSTERREICH – VORARLBERG ──────────────────────────────────────────────────
+{id:635,name:"Silvretta Montafon",region:"Vorarlberg",mp:false,status:"offen",lifte:35,lifteO:35,km:148,kmO:140,berg:2430,tal:680,diff:1750,typ:"Gross",lat:47.076,lng:9.955,url:"https://www.silvrettamontafon.at"},
+{id:636,name:"Damüls-Mellau / Bregenzerwald",region:"Vorarlberg",mp:false,status:"offen",lifte:28,lifteO:24,km:109,kmO:95,berg:1940,tal:760,diff:1180,typ:"Mittel",lat:47.284,lng:9.888,url:"https://www.damuels.at"},
+{id:637,name:"Warth-Schröcken am Arlberg",region:"Vorarlberg",mp:false,status:"offen",lifte:15,lifteO:14,km:55,kmO:50,berg:2044,tal:1495,diff:549,typ:"Mittel",lat:47.260,lng:10.184,url:"https://www.warth-schroecken.at"},
+{id:638,name:"Brandnertal",region:"Vorarlberg",mp:false,status:"offen",lifte:13,lifteO:11,km:60,kmO:52,berg:2000,tal:720,diff:1280,typ:"Mittel",lat:47.171,lng:9.761,url:"https://www.brandnertal.at"},
+{id:639,name:"Golm / Montafon",region:"Vorarlberg",mp:false,status:"offen",lifte:9,lifteO:4,km:38,kmO:30,berg:2124,tal:700,diff:1424,typ:"Mittel",lat:47.065,lng:9.881,url:"https://www.golm.at"},
+{id:640,name:"Sonnenkopf / Klostertal",region:"Vorarlberg",mp:false,status:"offen",lifte:9,lifteO:8,km:36,kmO:30,berg:2304,tal:1075,diff:1229,typ:"Klein",lat:47.194,lng:9.980,url:"https://www.sonnenkopf.at"},
+
+// ── ÖSTERREICH – KÄRNTEN ─────────────────────────────────────────────────────
+{id:645,name:"Nassfeld / Hermagor",region:"Kärnten",mp:false,status:"offen",lifte:29,lifteO:28,km:110,kmO:105,berg:2020,tal:610,diff:1410,typ:"Gross",lat:46.587,lng:12.999,url:"https://www.nassfeld.at"},
+{id:646,name:"Bad Kleinkirchheim",region:"Kärnten",mp:false,status:"offen",lifte:24,lifteO:7,km:103,kmO:70,berg:2055,tal:1089,diff:966,typ:"Mittel",lat:46.813,lng:13.811,url:"https://www.badkleinkirchheim.at"},
+{id:647,name:"Turracher Höhe",region:"Kärnten",mp:false,status:"offen",lifte:15,lifteO:5,km:38,kmO:25,berg:1780,tal:1763,diff:17,typ:"Klein",lat:46.930,lng:13.940,url:"https://www.turracherhöhe.at"},
+{id:648,name:"Gerlitzen Alpe",region:"Kärnten",mp:false,status:"offen",lifte:21,lifteO:10,km:46,kmO:35,berg:1909,tal:600,diff:1309,typ:"Mittel",lat:46.696,lng:13.900,url:"https://www.gerlitzen.com"},
+{id:649,name:"Katschberg",region:"Kärnten",mp:false,status:"offen",lifte:17,lifteO:13,km:60,kmO:50,berg:2060,tal:1640,diff:420,typ:"Mittel",lat:47.052,lng:13.620,url:"https://www.katschberg.at"},
+
+// ── ÖSTERREICH – STEIERMARK ──────────────────────────────────────────────────
+{id:655,name:"Kreischberg / Murau",region:"Steiermark",mp:false,status:"offen",lifte:12,lifteO:9,km:47,kmO:38,berg:1980,tal:1060,diff:920,typ:"Mittel",lat:47.110,lng:14.218,url:"https://www.kreischberg.at"},
+{id:656,name:"Tauplitz / Bad Mitterndorf",region:"Steiermark",mp:false,status:"offen",lifte:17,lifteO:12,km:60,kmO:45,berg:1970,tal:822,diff:1148,typ:"Mittel",lat:47.553,lng:13.989,url:"https://www.tauplitzalm.at"},
+{id:657,name:"Planneralm",region:"Steiermark",mp:false,status:"offen",lifte:6,lifteO:6,km:32,kmO:28,berg:1630,tal:1060,diff:570,typ:"Klein",lat:47.376,lng:14.038,url:"https://www.planneralm.at"},
+{id:658,name:"Riesneralm",region:"Steiermark",mp:false,status:"offen",lifte:8,lifteO:8,km:30,kmO:28,berg:1748,tal:890,diff:858,typ:"Klein",lat:47.455,lng:13.910,url:"https://www.riesneralm.at"},
+
+// ── ÖSTERREICH – NIEDERÖSTERREICH / OBERÖSTERREICH ──────────────────────────
+{id:665,name:"Stuhleck / Semmering",region:"Niederösterreich",mp:false,status:"offen",lifte:11,lifteO:2,km:26,kmO:10,berg:1782,tal:980,diff:802,typ:"Klein",lat:47.636,lng:15.831,url:"https://www.stuhleck.com"},
+{id:666,name:"Hochkar",region:"Niederösterreich",mp:false,status:"offen",lifte:8,lifteO:3,km:18,kmO:10,berg:1820,tal:900,diff:920,typ:"Klein",lat:47.873,lng:15.007,url:"https://www.hochkar.at"},
+{id:668,name:"Hinterstoder / Höss",region:"Oberösterreich",mp:false,status:"offen",lifte:13,lifteO:7,km:55,kmO:40,berg:1860,tal:590,diff:1270,typ:"Mittel",lat:47.691,lng:14.148,url:"https://www.hinterstoder.at"},
+{id:669,name:"Dachstein Krippenstein",region:"Oberösterreich",mp:false,status:"offen",lifte:7,lifteO:5,km:22,kmO:15,berg:2109,tal:511,diff:1598,typ:"Klein",lat:47.551,lng:13.710,url:"https://www.dachstein-salzkammergut.at"}
 ];
 
 const REGIONS=["Alle",...Array.from(new Set(STATIONS.map(s=>s.region))).sort()];
@@ -312,8 +374,195 @@ const RC={
   "Freiburg":"#8338ec","Solothurn":"#06d6a0","Nidwalden":"#fb8500","Obwalden":"#3a86ff",
   "Schwyz":"#ff006e","Luzern":"#8ecae6","Italien":"#2ec4b6","Neuenburg":"#f59e0b",
   "Bern/Freiburg":"#2a9d8f","Graubünden":"#e76f51","Ostschweiz":"#2dc653","Uri":"#577590",
-  "Uri/Graubünden":"#a8dadc","Tessin":"#ffd166","Zürich":"#6c757d","Glarus":"#22d3ee"
+  "Uri/Graubünden":"#a8dadc","Tessin":"#ffd166","Zürich":"#6c757d","Glarus":"#22d3ee",
+  "Tirol":"#c0392b","Salzburg":"#e74c3c","Vorarlberg":"#1abc9c",
+  "Kärnten":"#9b59b6","Steiermark":"#27ae60","Niederösterreich":"#e67e22","Oberösterreich":"#2980b9"
 };
+
+// Bergfex Austria name → station ID
+const BERGFEX_NAME_MAP_AT={
+  "Silvretta Arena Ischgl / Samnaun":600,
+  "St. Anton / Arlberg":601,"Stuben / Arlberg":601,
+  "Lech Zürs / Arlberg":602,"Warth / Schröcken am Arlberg":637,
+  "Kitzbühel / Kirchberg":603,"Panoramabahn Kitzbüheler Alpen / Mittersill":603,
+  "SkiWelt / Söll":604,"SkiWelt / Ellmau":604,"SkiWelt / Hopfgarten / Itter":604,
+  "SkiWelt / Scheffau":604,"SkiWelt / Westendorf":604,"SkiWelt / Brixen im Thale":604,
+  "Sölden":605,
+  "Serfaus - Fiss - Ladis":606,
+  "Stubaier Gletscher / Stubaital":607,
+  "Mayrhofen / Zillertal":608,
+  "Ski- und Gletscherwelt Zillertal 3000 / Zillertal":608,
+  "Eggalm Bahnen / Tux-Lanersbach / Zillertal":608,
+  "Finkenberger Almbahnen / Finkenberg - Zillertal":608,
+  "Rastkogel Bahnen / Tux-Vorderlanersbach / Zillertal":608,
+  "Gerlos / Zillertal Arena":609,"Zillertal Arena":609,
+  "Zell am Ziller / Zillertal Arena":609,
+  "Königsleiten-Wald / Zillertal Arena":609,
+  "Krimml-Hochkrimml / Zillertal Arena":609,
+  "Gerlosstein-Hainzenberg / Zillertal Arena":609,
+  "Obergurgl / Hochgurgl":610,
+  "Alpbach / Ski Juwel Alpbachtal Wildschönau":611,
+  "Wildschönau / Ski Juwel Alpbachtal Wildschönau":611,
+  "Hintertuxer Gletscher / Hintertux / Zillertal":612,
+  "Hochfügen / Zillertal":613,
+  "Kühtai":614,
+  "Axamer Lizum":615,
+  "Kappl / Paznaun-Ischgl":616,
+  "Silvapark Galtür / Paznaun-Ischgl":617,
+  "Nauders":618,
+  "Pitztaler Gletscher / Rifflsee / Pitztal":619,
+  "Saalbach Hinterglemm / Leogang / Fieberbrunn":620,
+  "Fieberbrunn / Saalbach Hinterglemm Leogang":620,
+  "Leogang / Saalbach Hinterglemm Fieberbrunn":620,
+  "Ski amade / Flachau / Snow Space Salzburg":621,
+  "Ski amade / Wagrain / Snow Space Salzburg":621,
+  "Ski amade / St. Johann Alpendorf / Snow Space Salzburg":621,
+  "Planai / Schladming / Ski amade":622,
+  "Hauser Kaibling / Schladming / Ski amade":622,
+  "Hochwurzen / Schladming / Ski amade":622,
+  "Reiteralm / Schladming / Ski amade":622,
+  "Galsterbergalm / Schladming / Ski amade":622,
+  "Kitzsteinhorn / Kaprun / Zell am See":623,
+  "Schmitten / Zell am See":624,
+  "Ski amade / Hochkönig / Maria Alm / Dienten / Mühlbach":625,
+  "Obertauern":626,
+  "Bad Gastein / Bad Hofgastein - Schlossalm / Angertal / Stubnerkogel - Skigastein - Ski amade":627,
+  "Sportgastein - Bad Gastein - Skigastein / Ski amade":627,
+  "Dorfgastein / Ski amade":627,
+  "Großeck / Speiereck / Mauterndorf":628,
+  "Wildkogel-Arena / Neukirchen / Bramberg":629,
+  "Lofer / Almenwelt Lofer":630,
+  "Silvretta Montafon":635,
+  "Skischaukel Mellau / Damüls / Faschina":636,"Damüls":636,"Faschina / Fontanella":636,
+  "Brandnertal":638,
+  "Golm / Montafon":639,
+  "Sonnenkopf / Klostertal":640,
+  "Nassfeld":645,
+  "Bad Kleinkirchheim":646,
+  "Turracher Höhe":647,
+  "Gerlitzen Alpe":648,
+  "Katschberg":649,
+  "Kreischberg / Murau":655,
+  "Tauplitz / Bad Mitterndorf / Schneebären":656,
+  "Planneralm / Schneebären":657,
+  "Riesneralm / Schneebären":658,
+  "Stuhleck / Semmering":665,
+  "Hochkar":666,
+  "Hinterstoder / Höss":668,
+  "Dachstein Krippenstein / Obertraun":669
+};
+
+async function fetchBergfexAT(){
+  try{
+    const url=`https://corsproxy.io/?url=https://www.bergfex.at/oesterreich/schneebericht/`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    const html=await r.text();
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const data={};
+    const parseCm=t=>{const m=(t||'').match(/(\d+)/);return m?parseInt(m[1]):null;};
+    doc.querySelectorAll('table tr').forEach(row=>{
+      const cells=row.querySelectorAll('td');
+      if(cells.length<5)return;
+      const name=cells[0].textContent.replace(/\s+/g,' ').trim();
+      const id=BERGFEX_NAME_MAP_AT[name];
+      if(!id)return;
+      const liftsText=(cells[4]?.textContent||'').replace(/\s+/g,' ').trim();
+      const liftFull=liftsText.match(/(\d+)\s*\/\s*(\d+)/);
+      const liftZero=/^\s*0\s*$/.test(liftsText);
+      const entry={
+        snowTal:parseCm(cells[1].textContent),
+        snowBerg:parseCm(cells[2].textContent),
+        snowNew:parseCm(cells[3].textContent),
+        ...(liftFull?{lifteO:parseInt(liftFull[1]),lifte:parseInt(liftFull[2]),status:parseInt(liftFull[1])>0?'offen':'geschlossen'}:{}),
+        ...(liftZero&&!liftFull?{lifteO:0,status:'geschlossen'}:{})
+      };
+      // Only overwrite lift counts if we have data and it's bigger (avoid sub-area overwriting)
+      if(!data[id]||((liftFull?parseInt(liftFull[1]):0)>(data[id].lifteO||0))){
+        data[id]=entry;
+      }
+    });
+    return data;
+  }catch(e){return {};}
+}
+
+// Bergfex name → station ID mapping for Swiss snow reports
+const BERGFEX_NAME_MAP={
+  "Adelboden":33,"Airolo - Pesciüm":130,
+  "Aletsch Arena / Riederalp - Bettmeralp - Fiesch-Eggishorn":23,
+  "Andermatt - Gemsstock":150,"Andermatt - Oberalp - Sedrun":108,
+  "Anzère":3,"Arolla":203,"Arosa Lenzerheide":101,
+  "Axalp / Brienz":32,"Belalp":9,"Bellwald":6,
+  "Bergün - Filisur / Darlux":119,"Bivio":118,"Bosco Gurin":131,
+  "Braunwald":250,"Brigels Waltensburg Andiast":112,
+  "Champéry - Les Crosets - Champoussin - Morgins / Portes du Soleil":24,
+  "Champex - Lac":200,"Corvatsch - Furtschellas":104,
+  "Corviglia / St. Moritz":103,"Crans - Montana":22,
+  "Davos Jakobshorn":113,"Davos Klosters Parsenn":102,
+  "Davos Pischa":282,"Davos Rinerhorn":114,
+  "Diavolezza - Lagalb":105,"Disentis":110,"Elm":251,
+  "Elsigenalp - Metschalp Frutigen":220,"Engelberg Titlis":81,
+  "Engstligenalp - Adelboden":221,
+  "Flims Laax Falera":100,"Flumserberg":141,
+  "Glacier 3000 - Les Diablerets":41,"Grächen":16,
+  "Grimentz - Zinal":1,"Gstaad":30,"Hoch-Ybrig":61,
+  "Jungfrau Ski Region Grindelwald - Wengen":34,
+  "Jungfrau Ski Region Mürren - Schilthorn":35,
+  "Klewenalp - Stockhütte":80,"Klosters Madrisa":281,
+  "La Berra - La Roche":52,"La Tzoumaz - Mayens de Riddes":18,
+  "Lauchernalp - Lötschental":300,
+  "Lenk":224,
+  "Les Diablerets - Glacier 3000":40,
+  "Les Marécottes":19,
+  "Leysin - Les Mosses - La Lécherette":42,
+  "Leukerbad":10,"Liddes - Vichères":204,
+  "Meiringen - Hasliberg":31,"Melchsee - Frutt":90,
+  "Minschuns - Val Müstair":302,
+  "Nendaz / 4 Vallées":211,"Obersaxen Mundaun":111,
+  "Ovronnaz":5,"Pizol - Bad Ragaz - Wangs":140,
+  "Rochers de Naye - Haut de Caux - Dent de Jaman":45,
+  "Rosswald":17,"Saas Almagell":201,"Saas Grund - Hohsaas":202,
+  "Saas-Fee":2,"Sainte Croix - Les Rasses":231,
+  "San Bernardino":117,"Savognin":109,"Scuol Motta Naluns":107,
+  "Schwarzsee / Kaiseregg Bahnen":53,
+  "Silvretta Arena Samnaun / Ischgl":106,
+  "Sörenberg":70,"Splügen / Rheinwald":115,
+  "Stoos":60,"Thyon / 4 Vallées":212,
+  "Toggenburg - Chäserrugg / Alt St. Johann / Unterwasser":143,
+  "Torgon / Portes du Soleil":205,
+  "Val Ferret - La Fouly":207,"Vals":116,
+  "Verbier / 4 Vallées":21,"Vercorin":12,
+  "Villars - Gryon - Les Diablerets":230,
+  "Zermatt":20
+};
+
+async function fetchBergfexCH(){
+  try{
+    const url=`https://corsproxy.io/?url=https://www.bergfex.ch/schweiz/schneebericht/`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(12000)});
+    const html=await r.text();
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const data={};
+    const parseCm=t=>{const m=(t||'').match(/(\d+)/);return m?parseInt(m[1]):null;};
+    doc.querySelectorAll('table tr').forEach(row=>{
+      const cells=row.querySelectorAll('td');
+      if(cells.length<5)return;
+      const name=cells[0].textContent.replace(/\s+/g,' ').trim();
+      const id=BERGFEX_NAME_MAP[name];
+      if(!id)return;
+      const liftsText=(cells[4]?.textContent||'').replace(/\s+/g,' ').trim();
+      const liftFull=liftsText.match(/(\d+)\s*\/\s*(\d+)/);
+      const liftZero=/^\s*0\s*$/.test(liftsText);
+      data[id]={
+        snowTal:parseCm(cells[1].textContent),
+        snowBerg:parseCm(cells[2].textContent),
+        snowNew:parseCm(cells[3].textContent),
+        ...(liftFull?{lifteO:parseInt(liftFull[1]),lifte:parseInt(liftFull[2]),status:parseInt(liftFull[1])>0?'offen':'geschlossen'}:{}),
+        ...(liftZero&&!liftFull?{lifteO:0,status:'geschlossen'}:{})
+      };
+    });
+    return data;
+  }catch(e){return {};}
+}
 
 const CORS_PROXY="https://corsproxy.io/?url=";
 async function fetchLiveStatus(stationsToRefresh){
@@ -380,8 +629,10 @@ function MapView({stations,wx,dists,userCoords}){
         <strong style="font-size:13px">${s.name}</strong>
         <div style="color:#666;font-size:11px;margin-bottom:5px">${s.region}</div>
         <div style="color:${open?"#16a34a":"#dc2626"};font-weight:bold;font-size:11px;margin-bottom:4px">${open?"\u25cf OFFEN":"\u25cb GESCHLOSSEN"}</div>
-        ${w?`<div style="font-size:11px">${wIcon(w.code)} ${w.temp}\u00b0C &middot; \u2744 ${w.snow}cm</div>`:''}        <div style="font-size:11px;margin-top:3px">\u2191${s.berg}m &nbsp; \u2193${s.tal}m &nbsp; ${s.km}km</div>
-        <div style="font-size:11px">${s.lifte} Lifte${d?` &nbsp; \ud83d\udccd ${d}km`:''}</div>
+        ${w?`<div style="font-size:11px">${wIcon(w.code)} ${w.temp}\u00b0C &middot; 💨 ${w.wind}km/h</div>`:''}
+        ${(s.snowBerg!=null||s.snowTal!=null)?`<div style="font-size:11px;color:#60a5fa;margin-top:2px">❄ ${s.snowBerg!=null?`▲${s.snowBerg}cm`:''}${s.snowBerg!=null&&s.snowTal!=null?' · ':''}${s.snowTal!=null?`▼${s.snowTal}cm`:''}${s.snowNew>0?` +${s.snowNew}cm`:''}</div>`:''}
+        <div style="font-size:11px;margin-top:3px">\u2191${s.berg}m &nbsp; \u2193${s.tal}m &nbsp; ${s.km}km</div>
+        <div style="font-size:11px">${s.lifteO!=null?s.lifteO+'/':''}${s.lifte} Lifte${d?` &nbsp; \ud83d\udccd ${d}km`:''}</div>
         ${s.mp?'<div style="font-size:10px;color:#6366f1;margin-top:2px">&starf; MagicPass</div>':''}
         ${s.url?`<a href="${s.url}" target="_blank" rel="noopener" style="font-size:10px;display:block;margin-top:4px">\ud83c\udf10 Website</a>`:''}
       </div>`;
@@ -500,6 +751,17 @@ function SkiCard({s,dist,wx,isFav,onFav}){
         ))}
       </div>
 
+      {(s.snowBerg!=null||s.snowTal!=null)&&(
+        <div style={{background:"rgba(56,189,248,0.06)",border:"1px solid rgba(56,189,248,0.12)",borderRadius:8,padding:"6px 9px"}}>
+          <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",fontFamily:"monospace",marginBottom:4}}>❄ Schneebericht (bergfex)</div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {s.snowBerg!=null&&<span style={{fontSize:11,fontFamily:"monospace",color:"#e2e8f0"}}>▲<span style={{fontWeight:700}}>{s.snowBerg}</span>cm</span>}
+            {s.snowTal!=null&&<span style={{fontSize:11,fontFamily:"monospace",color:"#94a3b8"}}>▼<span style={{fontWeight:700}}>{s.snowTal}</span>cm</span>}
+            {s.snowNew!=null&&s.snowNew>0&&<span style={{fontSize:11,fontFamily:"monospace",color:"#60a5fa"}}>+<span style={{fontWeight:700}}>{s.snowNew}</span>cm</span>}
+          </div>
+        </div>
+      )}
+
       {wx?.forecast?.length>0&&(
         <div style={{marginTop:2}}>
           <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",fontFamily:"monospace",marginBottom:5}}>2-Tages Prognose</div>
@@ -552,8 +814,18 @@ function App(){
     setLiveLoading(true);
     try{
       const withSlugs=STATIONS.filter(s=>s.skiresort_slug);
-      const results=await fetchLiveStatus(withSlugs);
-      setLiveData(d=>({...d,...Object.fromEntries(Object.entries(results).filter(([,v])=>v!==null))}));
+      // Run all 3 data sources in parallel: bergfex CH, bergfex AT, skiresort.ch (FR/IT)
+      const[bergfexCHData,bergfexATData,skiresortData]=await Promise.all([
+        fetchBergfexCH(),
+        fetchBergfexAT(),
+        withSlugs.length?fetchLiveStatus(withSlugs):Promise.resolve({})
+      ]);
+      const merged={
+        ...Object.fromEntries(Object.entries(skiresortData).filter(([,v])=>v!==null)),
+        ...bergfexCHData,
+        ...bergfexATData
+      };
+      setLiveData(d=>({...d,...merged}));
       setLastRefresh(new Date());
     }catch(e){}
     setLiveLoading(false);
