@@ -25,6 +25,8 @@
     }
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
+    .mob-only{display:none}
+    .mob-hide{display:inline}
 
     /* ── HEADER ── */
     .hdr{display:flex;align-items:center;gap:16px;padding:10px 18px;background:linear-gradient(135deg,#0d1117,#1a2744);border-bottom:1px solid var(--border);flex-shrink:0;z-index:200}
@@ -198,49 +200,65 @@
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
     /* ── MOBILE BOTTOM NAV ── */
     .mob-handle{display:none}
-    @media(max-width:700px){.mob-handle{display:block!important}}
     .mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--bg-side);border-top:1px solid var(--border);z-index:500;align-items:stretch}
+    .mob-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;border-right:1px solid var(--border);color:var(--txt2);font-size:.58rem;font-weight:500;cursor:pointer;transition:color .2s;padding:0;-webkit-tap-highlight-color:transparent}
     .mob-nav-btn:last-child{border-right:none}
-    .mob-nav-btn .mn-icon{font-size:1.2rem}
+    .mob-nav-btn .mn-icon{font-size:1.3rem;line-height:1}
     .mob-nav-btn.active{color:var(--blue)}
 
     /* ── FILTER SHEET (mobile) ── */
-    .filter-sheet-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:499}
+    .filter-sheet-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:499}
     .filter-sheet-backdrop.open{display:block}
 
     /* ── RESPONSIVE ── */
     @media(max-width:700px){
-      .hdr{padding:8px 12px;gap:8px;flex-wrap:nowrap}
-      .hdr-logo h1{font-size:1rem}
-      .hdr-logo{gap:5px}
-      .loc-bar{flex:1;max-width:none;gap:5px}
+      /* Header: logo hidden, only location input + GPS */
+      html,body{font-size:15px}
+      .mob-only{display:inline}
+      .mob-hide{display:none}
+      .hdr{padding:8px 10px;gap:8px}
+      .hdr-logo{display:none}
+      .loc-bar{flex:1;max-width:none;margin-left:0;gap:6px}
+      .loc-input{font-size:1rem;padding:9px 10px 9px 34px}
+      .btn-pri{padding:9px 12px;font-size:.85rem}
       .snow-status{display:none}
-      .btn-pri{padding:7px 10px;font-size:.78rem}
-      .app{height:calc(100vh - 52px - 56px)}
+      /* Layout: full height minus header (52px) and bottom nav (56px) */
+      .app{height:calc(100vh - 52px - 56px);height:calc(100dvh - 52px - 56px)}
       .mob-nav{display:flex}
-      .filter-sheet-backdrop.open{display:block}
+      .mob-handle{display:block!important}
+      /* Sidebar as slide-up sheet */
       .sidebar{
-        display:flex;flex-direction:column;
         position:fixed;bottom:56px;left:0;right:0;
-        max-height:75vh;overflow-y:auto;
-        border-radius:18px 18px 0 0;
+        width:100%;max-height:78vh;
+        overflow-y:auto;-webkit-overflow-scrolling:touch;
+        background:var(--bg-side);
+        border-radius:20px 20px 0 0;
         border-top:1px solid var(--border);
         border-right:none;
-        width:100%;
         z-index:500;
         transform:translateY(100%);
-        transition:transform .3s ease;
+        transition:transform .3s cubic-bezier(.4,0,.2,1);
+        padding-bottom:16px;
       }
       .sidebar.mob-open{transform:translateY(0)}
-      .resort-grid{grid-template-columns:1fr;padding:10px}
-      #map{height:220px}
+      /* Cards: single column, larger touch targets */
+      .resort-grid{grid-template-columns:1fr;padding:8px;gap:10px}
+      .r-card{padding:14px}
+      /* Map */
+      #map{height:210px}
+      /* Detail panel full width */
       .detail{width:100%;right:-100%}
+      /* List bar condensed */
+      .list-bar{padding:5px 10px;flex-wrap:wrap;gap:4px}
+      .map-toggle-btn{font-size:.7rem;padding:3px 8px}
       .legend{display:none}
-      .list-bar{padding:6px 10px}
+      /* Links in cards: larger tap area */
+      .r-link-btn{padding:6px 10px;font-size:.75rem}
     }
     @media(min-width:701px){
       .mob-nav{display:none!important}
       .filter-sheet-backdrop{display:none!important}
+      .sidebar{transform:none!important}
     }
   </style>
 </head>
@@ -259,7 +277,7 @@
       <div class="ac-list" id="acList"></div>
     </div>
     <button class="btn btn-ico" id="gpsBtn" title="GPS-Standort">📡</button>
-    <button class="btn btn-pri" id="locSearchBtn">Suchen</button>
+    <button class="btn btn-pri" id="locSearchBtn"><span class="mob-hide">Suchen</span><span class="mob-only">🔍</span></button>
     <div class="snow-status loading" id="snowStatus"><span class="spin"></span> Schneedaten…</div>
   </div>
 </header>
