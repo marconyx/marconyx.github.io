@@ -343,17 +343,6 @@
         <input type="range" id="fSnow" min="0" max="300" value="0" step="10"/>
       </div>
     </div>
-
-    <div class="sb-sec">
-      <div class="sb-title">Sortierung</div>
-      <select class="sel" id="sortSel">
-        <option value="name">Name (A–Z)</option>
-        <option value="dist">Distanz</option>
-        <option value="snow">Bergschnee</option>
-        <option value="lifts">Offene Lifte</option>
-        <option value="altMax">Gipfelhöhe</option>
-      </select>
-    </div>
   </aside>
 
   <!-- ── CONTENT ── -->
@@ -361,7 +350,15 @@
     <div id="map"></div>
     <div class="list-bar">
       <span class="list-count" id="listCount">Lade Skigebiete…</span>
-      <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <select class="sel" id="sortSel" style="padding:4px 8px;font-size:.75rem;width:auto;border-radius:6px">
+          <option value="name">A–Z</option>
+          <option value="dist">Distanz</option>
+          <option value="snow">Bergschnee</option>
+          <option value="lifts">Lifte</option>
+          <option value="altMax">Gipfelhöhe</option>
+          <option value="weather">☀️ Schönwetter</option>
+        </select>
         <button class="map-toggle-btn" id="mapToggleBtn" title="Karte ein-/ausblenden">🗺️ Karte ausblenden</button>
         <div class="legend">
           <span><span class="dot" style="background:var(--blue)"></span> Standard</span>
@@ -1092,6 +1089,21 @@ function applyFilters(resorts){
   });
 }
 
+// WMO weather code → quality score (0=worst, 10=best)
+function wxScore(code){
+  if(code===0) return 10;                        // clear sky
+  if(code<=2) return 8;                          // mainly/partly cloudy
+  if(code===3) return 5;                         // overcast
+  if(code<=49) return 4;                         // fog/rime
+  if(code<=57) return 2;                         // drizzle
+  if(code<=67) return 1;                         // rain
+  if(code<=77) return 3;                         // snow fall / snow grains (ok for ski)
+  if(code<=82) return 1;                         // showers
+  if(code<=86) return 2;                         // snow showers
+  if(code<=99) return 0;                         // thunderstorm
+  return 5;
+}
+
 function sortResorts(resorts){
   const f=getFilters();
   return [...resorts].sort((a,b)=>{
@@ -1109,6 +1121,15 @@ function sortResorts(resorts){
       return lb-la;
     }
     if(f.sort==='altMax') return b.altMax-a.altMax;
+    if(f.sort==='weather'){
+      const scoreOf=r=>{
+        const days=weatherData[r.id];
+        if(!days||!days.length) return -1;
+        const avg=days.reduce((s,w)=>s+wxScore(w.code??99),0)/days.length;
+        return avg;
+      };
+      return scoreOf(b)-scoreOf(a);
+    }
     return a.name.localeCompare(b.name,'de');
   });
 }
@@ -1300,7 +1321,7 @@ async function loadCardWeather(resorts){
         weatherData[r.id]=d.daily.time.slice(0,3).map((t,i)=>{
           const [icon,label]=wmo(d.daily.weather_code[i]);
           return{
-            date:new Date(t),icon,label,
+            date:new Date(t),icon,label,code:d.daily.weather_code[i],
             tmax:Math.round(d.daily.temperature_2m_max[i]),
             tmin:Math.round(d.daily.temperature_2m_min[i]),
             snow:d.daily.snowfall_sum[i]||0,
