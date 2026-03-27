@@ -196,8 +196,41 @@
     /* Live indicator */
     .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-    /* responsive */
-    @media(max-width:800px){.sidebar{display:none}.detail{width:100%;right:-100%}}
+    /* ── MOBILE BOTTOM NAV ── */
+    .mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:56px;background:var(--bg-side);border-top:1px solid var(--border);z-index:500;align-items:stretch}
+    .mob-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--txt2);font-size:.6rem;cursor:pointer;transition:color .2s;padding:0;border-right:1px solid var(--border)}
+    .mob-nav-btn:last-child{border-right:none}
+    .mob-nav-btn .mn-icon{font-size:1.2rem}
+    .mob-nav-btn.active{color:var(--blue)}
+
+    /* ── FILTER SHEET (mobile) ── */
+    .filter-sheet{display:none;position:fixed;inset:0;z-index:600;flex-direction:column;justify-content:flex-end}
+    .filter-sheet.open{display:flex}
+    .filter-sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+    .filter-sheet-body{position:relative;background:var(--bg-side);border-top:1px solid var(--border);border-radius:18px 18px 0 0;max-height:80vh;overflow-y:auto;padding:14px 16px 72px}
+    .filter-sheet-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);margin:0 auto 14px}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:700px){
+      .hdr{padding:8px 12px;gap:8px;flex-wrap:nowrap}
+      .hdr-logo h1{font-size:1rem}
+      .hdr-logo{gap:5px}
+      .loc-bar{flex:1;max-width:none;gap:5px}
+      .snow-status{display:none}
+      .btn-pri{padding:7px 10px;font-size:.78rem}
+      .app{height:calc(100vh - 52px - 56px)}
+      .sidebar{display:none}
+      .mob-nav{display:flex}
+      .filter-sheet-body .sb-sec{margin-bottom:14px}
+      .resort-grid{grid-template-columns:1fr;padding:10px}
+      #map{height:220px}
+      .detail{width:100%;right:-100%}
+      .legend{display:none}
+      .list-bar{padding:6px 10px}
+    }
+    @media(min-width:701px){
+      .filter-sheet{display:none!important}
+    }
   </style>
 </head>
 <body>
@@ -307,6 +340,22 @@
       </div>
     </div>
     <div class="resort-grid" id="grid"></div>
+  </div>
+</div>
+
+<!-- ── MOBILE BOTTOM NAV ── -->
+<nav class="mob-nav" id="mobNav">
+  <button class="mob-nav-btn active" id="mnList" onclick="mobTab('list')"><span class="mn-icon">🗒️</span>Liste</button>
+  <button class="mob-nav-btn" id="mnMap" onclick="mobTab('map')"><span class="mn-icon">🗺️</span>Karte</button>
+  <button class="mob-nav-btn" id="mnFilter" onclick="openFilterSheet()"><span class="mn-icon">⚙️</span>Filter</button>
+</nav>
+
+<!-- ── FILTER SHEET (mobile) ── -->
+<div class="filter-sheet" id="filterSheet">
+  <div class="filter-sheet-backdrop" onclick="closeFilterSheet()"></div>
+  <div class="filter-sheet-body" id="filterSheetBody">
+    <div class="filter-sheet-handle"></div>
+    <!-- content injected by JS -->
   </div>
 </div>
 
@@ -1473,12 +1522,77 @@ document.getElementById('resetBtn').addEventListener('click',()=>{
 
 document.getElementById('dpClose').addEventListener('click',closeDetail);
 document.getElementById('overlay').addEventListener('click',closeDetail);
-document.addEventListener('keydown',e=>{if(e.key==='Escape') closeDetail()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDetail();closeFilterSheet();}});
 
 // Close autocomplete on outside click
 document.addEventListener('click',e=>{
   if(!e.target.closest('.loc-wrap')) document.getElementById('acList').style.display='none';
 });
+
+// ──────────────────────────────────────────────
+// MOBILE NAV
+// ──────────────────────────────────────────────
+function mobTab(tab){
+  const mapEl=document.getElementById('map');
+  const grid=document.getElementById('grid');
+  const listBar=document.querySelector('.list-bar');
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
+  if(tab==='map'){
+    document.getElementById('mnMap').classList.add('active');
+    mapEl.style.height='calc(100vh - 52px - 56px)';
+    mapEl.classList.remove('map-hidden');
+    grid.style.display='none';
+    listBar.style.display='none';
+    setTimeout(()=>map.invalidateSize(),50);
+  }else{
+    document.getElementById('mnList').classList.add('active');
+    mapEl.style.height='';
+    grid.style.display='';
+    listBar.style.display='';
+  }
+}
+
+function openFilterSheet(){
+  // Clone sidebar content into sheet
+  const sidebar=document.querySelector('.sidebar');
+  const sheet=document.getElementById('filterSheetBody');
+  const handle=sheet.querySelector('.filter-sheet-handle');
+  sheet.innerHTML='';
+  sheet.appendChild(handle);
+  const clone=sidebar.cloneNode(true);
+  // Re-bind inputs — wire cloned inputs to original
+  clone.querySelectorAll('input,select,button').forEach(el=>{
+    const id=el.id||el.dataset.c;
+    if(el.tagName==='INPUT'||el.tagName==='SELECT'){
+      const orig=document.getElementById(el.id);
+      if(orig){
+        el.value=orig.value;
+        if(el.type==='checkbox') el.checked=orig.checked;
+        el.addEventListener('input',()=>{orig.value=el.value;if(el.type==='checkbox')orig.checked=el.checked;orig.dispatchEvent(new Event('input'));orig.dispatchEvent(new Event('change'));});
+        el.addEventListener('change',()=>{orig.value=el.value;if(el.type==='checkbox')orig.checked=el.checked;orig.dispatchEvent(new Event('change'));});
+      }
+    }
+    if(el.classList.contains('cntry-btn')){
+      el.addEventListener('click',()=>{
+        const orig=document.querySelector(`.sidebar .cntry-btn[data-c="${el.dataset.c}"]`);
+        if(orig) orig.click();
+        clone.querySelectorAll('.cntry-btn').forEach(b=>b.classList.toggle('active',b.dataset.c===el.dataset.c));
+        closeFilterSheet();
+      });
+    }
+    if(el.id==='resetBtn'||el.classList.contains('link-btn')){
+      el.addEventListener('click',()=>{document.getElementById('resetBtn').click();closeFilterSheet();});
+    }
+  });
+  sheet.appendChild(clone);
+  document.getElementById('filterSheet').classList.add('open');
+  document.getElementById('mnFilter').classList.add('active');
+}
+
+function closeFilterSheet(){
+  document.getElementById('filterSheet').classList.remove('open');
+  document.getElementById('mnFilter').classList.remove('active');
+}
 
 // ──────────────────────────────────────────────
 // UTILS
