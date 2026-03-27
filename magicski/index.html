@@ -316,6 +316,7 @@
         <label class="chk-item"><input type="checkbox" id="fMp"/><span><span class="mp-badge">MP</span> Nur MagicPass</span></label>
         <label class="chk-item"><input type="checkbox" id="fFav"/><span>⭐ Nur Favoriten</span></label>
         <label class="chk-item"><input type="checkbox" id="fOpen"/><span>✅ Nur geöffnete</span></label>
+        <label class="chk-item"><input type="checkbox" id="fGoodWx"/><span>☀️ Schönwetter</span></label>
       </div>
     </div>
 
@@ -453,35 +454,35 @@
 // ──────────────────────────────────────────────
 const RESORTS = [
   // ── SWITZERLAND – MagicPass ──
-  {id:'verbier',        name:'Verbier / 4 Vallées',          country:'CH',region:'Wallis',      lat:46.096,lon:7.227,  mp:true,  altMin:820, altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.verbier.ch',        bergfex:'https://www.bergfex.ch/verbier/'},
-  {id:'nendaz',         name:'Nendaz / 4 Vallées',           country:'CH',region:'Wallis',      lat:46.177,lon:7.302,  mp:true,  altMin:1365,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.nendaz.ch',          bergfex:'https://www.bergfex.ch/nendaz/'},
-  {id:'thyon',          name:'Thyon / 4 Vallées',            country:'CH',region:'Wallis',      lat:46.162,lon:7.344,  mp:true,  altMin:1550,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.thyon.ch',           bergfex:'https://www.bergfex.ch/thyon/'},
-  {id:'veysonnaz',      name:'Veysonnaz / 4 Vallées',        country:'CH',region:'Wallis',      lat:46.193,lon:7.336,  mp:true,  altMin:1240,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.veysonnaz.ch',       bergfex:'https://www.bergfex.ch/veysonnaz/'},
-  {id:'crans-montana',  name:'Crans-Montana',                 country:'CH',region:'Wallis',      lat:46.312,lon:7.481,  mp:true,  altMin:1440,altMax:3000,totalLifts:24,totalSlopes:140,website:'https://www.crans-montana.ch',   bergfex:'https://www.bergfex.ch/crans-montana/'},
+  {id:'verbier',        name:'Verbier / 4 Vallées',          country:'CH',region:'Wallis',      lat:46.096,lon:7.227,  mp:false,  altMin:820, altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.verbier.ch',        bergfex:'https://www.bergfex.ch/verbier/'},
+  {id:'nendaz',         name:'Nendaz / 4 Vallées',           country:'CH',region:'Wallis',      lat:46.177,lon:7.302,  mp:false,  altMin:1365,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.nendaz.ch',          bergfex:'https://www.bergfex.ch/nendaz/'},
+  {id:'thyon',          name:'Thyon / 4 Vallées',            country:'CH',region:'Wallis',      lat:46.162,lon:7.344,  mp:false,  altMin:1550,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.thyon.ch',           bergfex:'https://www.bergfex.ch/thyon/'},
+  {id:'veysonnaz',      name:'Veysonnaz / 4 Vallées',        country:'CH',region:'Wallis',      lat:46.193,lon:7.336,  mp:false,  altMin:1240,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.veysonnaz.ch',       bergfex:'https://www.bergfex.ch/veysonnaz/'},
+  {id:'crans-montana',  name:'Crans-Montana',                 country:'CH',region:'Wallis',      lat:46.312,lon:7.481,  mp:false,  altMin:1440,altMax:3000,totalLifts:24,totalSlopes:140,website:'https://www.crans-montana.ch',   bergfex:'https://www.bergfex.ch/crans-montana/'},
   {id:'anzere',         name:'Anzère',                        country:'CH',region:'Wallis',      lat:46.298,lon:7.397,  mp:true,  altMin:1500,altMax:2420,totalLifts:12,totalSlopes:57, website:'https://www.anzere.ch',           mpUrl:'https://www.magicpass.ch/de/skigebiete/anzere-4',             bergfex:'https://www.bergfex.ch/anzere/'},
   {id:'ovronnaz',       name:'Ovronnaz',                      country:'CH',region:'Wallis',      lat:46.195,lon:7.130,  mp:true,  altMin:1340,altMax:2500,totalLifts:7, totalSlopes:40, website:'https://www.ovronnaz.ch',         bergfex:'https://www.bergfex.ch/ovronnaz/',       mpUrl:'https://www.magicpass.ch/de/skigebiete/ovronnaz-30'},
   {id:'grimentz-zinal', name:'Grimentz-Zinal',                country:'CH',region:'Wallis',      lat:46.175,lon:7.556,  mp:true,  altMin:1570,altMax:2900,totalLifts:21,totalSlopes:80, website:'https://www.valdanniviers.ch',    bergfex:'https://www.bergfex.ch/grimentz-zinal/',    mpUrl:'https://www.magicpass.ch/de/skigebiete/grimentz-zinal-18'},
   {id:'belalp',         name:'Belalp',                        country:'CH',region:'Wallis',      lat:46.400,lon:8.008,  mp:true,  altMin:1800,altMax:2900,totalLifts:10,totalSlopes:30, website:'https://www.belalp.ch',           bergfex:'https://www.bergfex.ch/belalp/',           mpUrl:'https://www.magicpass.ch/de/skigebiete/blatten-belalp-4445'},
-  {id:'aletsch-arena',  name:'Aletsch Arena (Riederalp/Bettmeralp)',country:'CH',region:'Wallis',lat:46.380,lon:8.050,  mp:true,  altMin:1905,altMax:2869,totalLifts:35,totalSlopes:100,website:'https://www.aletsch-arena.ch',   bergfex:'https://www.bergfex.ch/aletsch-arena/'},
-  {id:'bellwald',       name:'Bellwald',                      country:'CH',region:'Wallis',      lat:46.448,lon:8.165,  mp:true,  altMin:1560,altMax:2676,totalLifts:7, totalSlopes:30, website:'https://www.bellwald.ch',         bergfex:'https://www.bergfex.ch/bellwald/'},
-  {id:'chamepery',      name:'Champéry / Portes du Soleil',   country:'CH',region:'Wallis',      lat:46.179,lon:6.869,  mp:true,  altMin:1050,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.champery.ch',        bergfex:'https://www.bergfex.ch/chamery-morgins/'},
-  {id:'les-crosets',    name:'Les Crosets / Portes du Soleil',country:'CH',region:'Wallis',      lat:46.204,lon:6.877,  mp:true,  altMin:1660,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.lescrosets.ch',      bergfex:'https://www.bergfex.ch/les-crosets/'},
-  {id:'morgins',        name:'Morgins / Portes du Soleil',    country:'CH',region:'Wallis',      lat:46.231,lon:6.880,  mp:true,  altMin:1340,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.morgins.ch',          bergfex:'https://www.bergfex.ch/morgins/'},
-  {id:'torgon',         name:'Torgon / Portes du Soleil',     country:'CH',region:'Wallis',      lat:46.266,lon:6.907,  mp:true,  altMin:1100,altMax:1965,totalLifts:12,totalSlopes:28, website:'https://www.torgon.ch',           bergfex:'https://www.bergfex.ch/torgon/'},
+  {id:'aletsch-arena',  name:'Aletsch Arena (Riederalp/Bettmeralp)',country:'CH',region:'Wallis',lat:46.380,lon:8.050,  mp:false,  altMin:1905,altMax:2869,totalLifts:35,totalSlopes:100,website:'https://www.aletsch-arena.ch',   bergfex:'https://www.bergfex.ch/aletsch-arena/'},
+  {id:'bellwald',       name:'Bellwald',                      country:'CH',region:'Wallis',      lat:46.448,lon:8.165,  mp:false,  altMin:1560,altMax:2676,totalLifts:7, totalSlopes:30, website:'https://www.bellwald.ch',         bergfex:'https://www.bergfex.ch/bellwald/'},
+  {id:'chamepery',      name:'Champéry / Portes du Soleil',   country:'CH',region:'Wallis',      lat:46.179,lon:6.869,  mp:false,  altMin:1050,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.champery.ch',        bergfex:'https://www.bergfex.ch/chamery-morgins/'},
+  {id:'les-crosets',    name:'Les Crosets / Portes du Soleil',country:'CH',region:'Wallis',      lat:46.204,lon:6.877,  mp:false,  altMin:1660,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.lescrosets.ch',      bergfex:'https://www.bergfex.ch/les-crosets/'},
+  {id:'morgins',        name:'Morgins / Portes du Soleil',    country:'CH',region:'Wallis',      lat:46.231,lon:6.880,  mp:false,  altMin:1340,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.morgins.ch',          bergfex:'https://www.bergfex.ch/morgins/'},
+  {id:'torgon',         name:'Torgon / Portes du Soleil',     country:'CH',region:'Wallis',      lat:46.266,lon:6.907,  mp:false,  altMin:1100,altMax:1965,totalLifts:12,totalSlopes:28, website:'https://www.torgon.ch',           bergfex:'https://www.bergfex.ch/torgon/'},
   {id:'villars-gryon',  name:'Villars-Gryon',                 country:'CH',region:'Waadt',       lat:46.303,lon:7.053,  mp:true,  altMin:1253,altMax:2120,totalLifts:28,totalSlopes:100,website:'https://www.villars.ch',          bergfex:'https://www.bergfex.ch/villars/',           mpUrl:'https://www.magicpass.ch/de/skigebiete/villars-gryon-37'},
   {id:'les-diablerets', name:'Les Diablerets / Glacier 3000', country:'CH',region:'Waadt',       lat:46.358,lon:7.150,  mp:true,  altMin:1150,altMax:3000,totalLifts:13,totalSlopes:60, website:'https://www.glacier3000.ch',      bergfex:'https://www.bergfex.ch/les-diablerets/',   mpUrl:'https://www.magicpass.ch/de/skigebiete/les-diablerets-22'},
   {id:'leysin',         name:'Leysin / Les Mosses',           country:'CH',region:'Waadt',       lat:46.337,lon:7.001,  mp:true,  altMin:975, altMax:2205,totalLifts:28,totalSlopes:60, website:'https://www.leysin.ch',           bergfex:'https://www.bergfex.ch/leysin/',            mpUrl:'https://www.magicpass.ch/de/skigebiete/leysin-26'},
-  {id:'adelboden-lenk', name:'Adelboden-Lenk',                country:'CH',region:'Bern',        lat:46.490,lon:7.558,  mp:true,  altMin:1353,altMax:2360,totalLifts:56,totalSlopes:210,website:'https://www.adelboden.ch',        bergfex:'https://www.bergfex.ch/adelboden/'},
+  {id:'adelboden-lenk', name:'Adelboden-Lenk',                country:'CH',region:'Bern',        lat:46.490,lon:7.558,  mp:false,  altMin:1353,altMax:2360,totalLifts:56,totalSlopes:210,website:'https://www.adelboden.ch',        bergfex:'https://www.bergfex.ch/adelboden/'},
   {id:'gstaad',         name:'Gstaad Mountain Rides',         country:'CH',region:'Bern',        lat:46.477,lon:7.289,  mp:true,  altMin:955, altMax:3000,totalLifts:44,totalSlopes:220,website:'https://www.gstaad.ch',           mpUrl:'https://www.magicpass.ch/de/skigebiete/bergbahnen-gstaad-4447', bergfex:'https://www.bergfex.ch/gstaad/'},
-  {id:'elsigenalp',     name:'Elsigenalp–Metschalp Frutigen', country:'CH',region:'Bern',        lat:46.530,lon:7.650,  mp:true,  altMin:1350,altMax:2200,totalLifts:10,totalSlopes:30, website:'https://www.elsigenalp.ch',       bergfex:'https://www.bergfex.ch/elsigenalp-metschalp-frutigen/'},
+  {id:'elsigenalp',     name:'Elsigenalp–Metschalp Frutigen', country:'CH',region:'Bern',        lat:46.530,lon:7.650,  mp:false,  altMin:1350,altMax:2200,totalLifts:10,totalSlopes:30, website:'https://www.elsigenalp.ch',       bergfex:'https://www.bergfex.ch/elsigenalp-metschalp-frutigen/'},
   {id:'meiringen',      name:'Meiringen-Hasliberg',           country:'CH',region:'Bern',        lat:46.729,lon:8.179,  mp:true,  altMin:595, altMax:2433,totalLifts:16,totalSlopes:60, website:'https://www.meiringen-hasliberg.ch',bergfex:'https://www.bergfex.ch/meiringen-hasliberg/', mpUrl:'https://www.magicpass.ch/de/skigebiete/meiringen-hasliberg-4451'},
-  {id:'engelberg',      name:'Engelberg-Titlis',              country:'CH',region:'Zentralschweiz',lat:46.822,lon:8.408,mp:true,  altMin:1000,altMax:3020,totalLifts:25,totalSlopes:82, website:'https://www.engelberg.ch',        bergfex:'https://www.bergfex.ch/engelberg-titlis/'},
+  {id:'engelberg',      name:'Engelberg-Titlis',              country:'CH',region:'Zentralschweiz',lat:46.822,lon:8.408,mp:false,  altMin:1000,altMax:3020,totalLifts:25,totalSlopes:82, website:'https://www.engelberg.ch',        bergfex:'https://www.bergfex.ch/engelberg-titlis/'},
   {id:'melchsee',       name:'Melchsee-Frutt',                country:'CH',region:'Zentralschweiz',lat:46.817,lon:8.247,mp:true,  altMin:1920,altMax:2250,totalLifts:16,totalSlopes:35, website:'https://www.melchseefrutt.ch',    bergfex:'https://www.bergfex.ch/melchsee-frutt/',   mpUrl:'https://www.magicpass.ch/de/skigebiete/melchsee-frutt-4452'},
-  {id:'hoch-ybrig',     name:'Hoch-Ybrig',                   country:'CH',region:'Zentralschweiz',lat:47.020,lon:8.826,mp:true,  altMin:1050,altMax:1850,totalLifts:13,totalSlopes:40, website:'https://www.hoch-ybrig.ch',      bergfex:'https://www.bergfex.ch/hoch-ybrig/'},
-  {id:'stoos',          name:'Stoos',                         country:'CH',region:'Zentralschweiz',lat:46.982,lon:8.673,mp:true,  altMin:700, altMax:1900,totalLifts:8, totalSlopes:35, website:'https://www.stoos.ch',            bergfex:'https://www.bergfex.ch/stoos/'},
-  {id:'flumserberg',    name:'Flumserberg',                   country:'CH',region:'Ostschweiz',   lat:47.115,lon:9.282,  mp:true,  altMin:1400,altMax:2222,totalLifts:17,totalSlopes:65, website:'https://www.flumserberg.ch',      bergfex:'https://www.bergfex.ch/flumserberg/'},
-  {id:'wildhaus',       name:'Toggenburg / Wildhaus',         country:'CH',region:'Ostschweiz',   lat:47.203,lon:9.350,  mp:true,  altMin:900, altMax:2260,totalLifts:14,totalSlopes:60, website:'https://www.wildhaus.ch',         bergfex:'https://www.bergfex.ch/wildhaus/'},
-  {id:'pizol',          name:'Pizol – Bad Ragaz',             country:'CH',region:'Ostschweiz',   lat:47.023,lon:9.390,  mp:true,  altMin:1090,altMax:2844,totalLifts:12,totalSlopes:40, website:'https://www.pizol.com',           bergfex:'https://www.bergfex.ch/pizol/'},
+  {id:'hoch-ybrig',     name:'Hoch-Ybrig',                   country:'CH',region:'Zentralschweiz',lat:47.020,lon:8.826,mp:false,  altMin:1050,altMax:1850,totalLifts:13,totalSlopes:40, website:'https://www.hoch-ybrig.ch',      bergfex:'https://www.bergfex.ch/hoch-ybrig/'},
+  {id:'stoos',          name:'Stoos',                         country:'CH',region:'Zentralschweiz',lat:46.982,lon:8.673,mp:false,  altMin:700, altMax:1900,totalLifts:8, totalSlopes:35, website:'https://www.stoos.ch',            bergfex:'https://www.bergfex.ch/stoos/'},
+  {id:'flumserberg',    name:'Flumserberg',                   country:'CH',region:'Ostschweiz',   lat:47.115,lon:9.282,  mp:false,  altMin:1400,altMax:2222,totalLifts:17,totalSlopes:65, website:'https://www.flumserberg.ch',      bergfex:'https://www.bergfex.ch/flumserberg/'},
+  {id:'wildhaus',       name:'Toggenburg / Wildhaus',         country:'CH',region:'Ostschweiz',   lat:47.203,lon:9.350,  mp:false,  altMin:900, altMax:2260,totalLifts:14,totalSlopes:60, website:'https://www.wildhaus.ch',         bergfex:'https://www.bergfex.ch/wildhaus/'},
+  {id:'pizol',          name:'Pizol – Bad Ragaz',             country:'CH',region:'Ostschweiz',   lat:47.023,lon:9.390,  mp:false,  altMin:1090,altMax:2844,totalLifts:12,totalSlopes:40, website:'https://www.pizol.com',           bergfex:'https://www.bergfex.ch/pizol/'},
   // ── SWITZERLAND – Non-MagicPass ──
   {id:'zermatt',        name:'Zermatt / Matterhorn',          country:'CH',region:'Wallis',      lat:46.017,lon:7.747,  mp:false, altMin:1620,altMax:3883,totalLifts:54,totalSlopes:360,website:'https://www.matterhornparadise.ch',bergfex:'https://www.bergfex.ch/zermatt/'},
   {id:'saas-fee',       name:'Saas-Fee',                      country:'CH',region:'Wallis',      lat:46.108,lon:7.928,  mp:true,  altMin:1800,altMax:3600,totalLifts:23,totalSlopes:100,website:'https://www.saas-fee.ch',         bergfex:'https://www.bergfex.ch/saas-fee/',         mpUrl:'https://www.magicpass.ch/de/skigebiete/saas-fee--saas-almagell-600'},
@@ -840,6 +841,41 @@ const WMO = {
 };
 function wmo(c){return WMO[c]||['🌡️','Unbekannt']}
 
+// ── MeteoSwiss icon codes → Emoji & Label ────────────────────────────
+const MS_ICON={
+  1:['☀️','Sonnig'],       2:['🌤️','Heiter'],        3:['⛅','Wechselhaft'],
+  4:['☁️','Bewölkt'],      5:['🌫️','Nebelig'],        6:['🌦️','Leichter Regen'],
+  7:['🌧️','Regen'],        8:['⛈️','Gewitter'],       9:['🌩️','Starkes Gewitter'],
+  10:['❄️','Leichter Schnee'],11:['🌨️','Starker Schnee'],12:['🌨️','Schneeregen'],
+  13:['🌧️','Gefrierender Regen'],14:['🌤️','Wechselhaft'],
+};
+function msIcon(code){const c=code>25?code-25:code;return MS_ICON[c]||['🌡️','Unbekannt'];}
+function msScore(code){
+  const c=code>25?code-25:code;
+  if(c===1)return 10;if(c===2)return 8;if(c===3)return 6;if(c===4)return 4;
+  if(c===5)return 3;if(c===6)return 2;if(c===7)return 1;
+  if(c===8||c===9)return 0;if(c===10)return 4;if(c===11)return 2;
+  if(c===12||c===13)return 1;if(c===14)return 5;return 5;
+}
+// Swiss PLZ lookup for MeteoSwiss API (4-digit PLZ + "00" = 6-char code)
+const CH_PLZ={
+  'verbier':'193600','nendaz':'199700','thyon':'198800','veysonnaz':'199300',
+  'crans-montana':'396300','anzere':'197200','ovronnaz':'191100','grimentz-zinal':'396100',
+  'belalp':'391400','aletsch-arena':'398700','bellwald':'398100','chamepery':'187400',
+  'les-crosets':'187300','morgins':'187500','torgon':'189200','villars-gryon':'188400',
+  'les-diablerets':'186500','leysin':'185400','adelboden-lenk':'371500','gstaad':'378000',
+  'elsigenalp':'371400','meiringen':'386000','engelberg':'639000','melchsee':'606400',
+  'hoch-ybrig':'643600','stoos':'643300','flumserberg':'889800','wildhaus':'965800',
+  'pizol':'731000','zermatt':'392000','saas-fee':'390600','grindelwald':'381800',
+  'muerren':'382500','andermatt':'649000','flims-laax':'701700','arosa-lenz':'705000',
+  'davos':'727000','st-moritz':'750000','saas-grund':'391000',
+  'les-rasses':'145000','bruson':'193400','ebenalp':'905700','rothwald':'390700',
+  'moosalp':'393200','charmey':'163700','cret-du-puy':'163600','moleson':'166300',
+  'nax-mt-noble':'196100','st-luc':'396100','mayens-conthey':'196400',
+  'beatenberg':'380300','tramelan':'272000','bugnenets':'241600',
+  'pres-d-orvin':'251700','balmberg':'452400',
+};
+
 // ──────────────────────────────────────────────
 // APP STATE
 // ──────────────────────────────────────────────
@@ -1059,6 +1095,7 @@ function getFilters(){
     mp: document.getElementById('fMp').checked,
     fav:document.getElementById('fFav').checked,
     openOnly:document.getElementById('fOpen').checked,
+    goodWx:document.getElementById('fGoodWx').checked,
     maxDist:parseInt(document.getElementById('fDist').value),
     maxTime:parseInt(document.getElementById('fTime').value),
     minLifts:parseInt(document.getElementById('fLifts').value),
@@ -1077,6 +1114,11 @@ function applyFilters(resorts){
     const sd=snowData[r.id]||{};
     // only filter by lift status when data is known (null = unknown → keep resort)
     if(f.openOnly&&sd.openLifts===0) return false;
+    if(f.goodWx){
+      const days=weatherData[r.id];
+      const avg=days&&days.length?days.reduce((s,w)=>s+(w.score??wxScore(w.code??99)),0)/days.length:-1;
+      if(avg<5) return false;
+    }
     if(f.minLifts>0&&sd.openLifts!==null&&sd.openLifts<f.minLifts) return false;
     if(f.minSnow>0&&!(sd.snowP>=f.minSnow)) return false;
     if(userLat!==null){
@@ -1125,8 +1167,7 @@ function sortResorts(resorts){
       const scoreOf=r=>{
         const days=weatherData[r.id];
         if(!days||!days.length) return -1;
-        const avg=days.reduce((s,w)=>s+wxScore(w.code??99),0)/days.length;
-        return avg;
+        return days.reduce((s,w)=>s+(w.score!=null?w.score:wxScore(w.code??99)),0)/days.length;
       };
       return scoreOf(b)-scoreOf(a);
     }
@@ -1307,7 +1348,10 @@ function closeDetail(){
 // ──────────────────────────────────────────────
 // ── Batch card weather loader ────────────────────────────────────────
 async function loadCardWeather(resorts){
-  const BATCH=10;
+  // Open-Meteo for ALL resorts – direct, no proxy, fast → Schönwetter-Sortierung
+  // funktioniert sofort sobald Daten da sind.
+  // MeteoSwiss wird nur im Detailpanel (loadWeather) für CH-Resorts verwendet.
+  const BATCH=12;
   const missing=resorts.filter(r=>!weatherData[r.id]);
   for(let i=0;i<missing.length;i+=BATCH){
     const batch=missing.slice(i,i+BATCH);
@@ -1318,25 +1362,69 @@ async function loadCardWeather(resorts){
         const res=await fetch(url,{signal:AbortSignal.timeout(8000)});
         if(!res.ok) return;
         const d=await res.json();
-        weatherData[r.id]=d.daily.time.slice(0,3).map((t,i)=>{
-          const [icon,label]=wmo(d.daily.weather_code[i]);
+        weatherData[r.id]=d.daily.time.slice(0,3).map((t,j)=>{
+          const[icon,label]=wmo(d.daily.weather_code[j]);
           return{
-            date:new Date(t),icon,label,code:d.daily.weather_code[i],
-            tmax:Math.round(d.daily.temperature_2m_max[i]),
-            tmin:Math.round(d.daily.temperature_2m_min[i]),
-            snow:d.daily.snowfall_sum[i]||0,
+            date:new Date(t),icon,label,code:d.daily.weather_code[j],
+            tmax:Math.round(d.daily.temperature_2m_max[j]),
+            tmin:Math.round(d.daily.temperature_2m_min[j]),
+            snow:d.daily.snowfall_sum[j]||0,
+            score:wxScore(d.daily.weather_code[j]),
           };
         });
       }catch(e){}
     }));
     renderGrid();
-    if(i+BATCH<missing.length) await sleep(100);
+    if(i+BATCH<missing.length) await sleep(80);
   }
   renderGrid();
 }
 
 async function loadWeather(lat,lon,altMax,resortId){
   const el=document.getElementById('dpWeather');
+  const r=RESORTS.find(x=>x.id===resortId);
+  const plz=r&&r.country==='CH'?CH_PLZ[resortId]:null;
+  if(plz){
+    // ── MeteoSwiss (CH resorts) ───────────────────────────────────────
+    try{
+      const msUrl='https://app-prod-ws.meteoswiss-app.ch/v1/forecast?plz='+plz;
+      const res=await fetch(PROXIES[1]+encodeURIComponent(msUrl),
+        {signal:AbortSignal.timeout(12000)});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data=await res.json();
+      if(!data.regionForecast) throw new Error('no data');
+      const SNOW_ICONS=new Set([10,11,12,17,18,35,36,37,42,43]);
+      // Update weatherData cache
+      weatherData[resortId]=data.regionForecast.slice(0,3).map(f=>{
+        const[icon,label]=msIcon(f.iconDay);
+        return{date:new Date(f.dayDate),icon,label,code:f.iconDay,
+          tmax:f.temperatureMax,tmin:f.temperatureMin,snow:0,score:msScore(f.iconDay)};
+      });
+      el.innerHTML='<div class="wx-grid">'+data.regionForecast.slice(0,3).map(f=>{
+        const[icon,label]=msIcon(f.iconDay);
+        const date=new Date(f.dayDate);
+        const dayN=date.toLocaleDateString('de-CH',{weekday:'short',day:'numeric',month:'short'});
+        const isSnow=SNOW_ICONS.has(f.iconDay)||SNOW_ICONS.has(f.iconDay-25);
+        return `<div class="wx-day">
+          <div class="wx-date">${dayN}</div>
+          <div class="wx-icon">${icon}</div>
+          <div class="wx-desc">${label}</div>
+          <div class="wx-temp"><span class="wx-t-max">${f.temperatureMax>0?'+':''}${f.temperatureMax}°</span> / <span class="wx-t-min">${f.temperatureMin}°</span></div>
+          ${f.precipitation>0.1?`<div class="wx-snow">${isSnow?'❄️':'💧'} ${f.precipitation.toFixed(1)} mm</div>`:''}
+          <div style="font-size:.65rem;color:var(--txt2);margin-top:2px">🇨🇭 MeteoSwiss</div>
+        </div>`;
+      }).join('')+'</div>';
+    }catch(e){
+      // Fallback to open-meteo if MeteoSwiss fails
+      await loadWeatherOpenMeteo(lat,lon,altMax,resortId,el);
+    }
+  }else{
+    // ── Open-Meteo (non-CH resorts) ──────────────────────────────────
+    await loadWeatherOpenMeteo(lat,lon,altMax,resortId,el);
+  }
+}
+
+async function loadWeatherOpenMeteo(lat,lon,altMax,resortId,el){
   try{
     const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
       `&current=snow_depth,snowfall`+
@@ -1350,14 +1438,14 @@ async function loadWeather(lat,lon,altMax,resortId){
 
     // Enrich snow panel from Open-Meteo if Bergfex gave us nothing
     if(resortId && current){
-      const depthCm = current.snow_depth!=null ? Math.round(current.snow_depth*100) : null;
-      const newSnow1h = current.snowfall!=null ? Math.round(current.snowfall*10)/10 : null;
+      const depthCm=current.snow_depth!=null?Math.round(current.snow_depth*100):null;
+      const newSnow1h=current.snowfall!=null?Math.round(current.snowfall*10)/10:null;
       const sd=snowData[resortId]||{};
       let enriched=false;
-      if(!sd.snowP && depthCm!=null){ sd.snowP=depthCm; enriched=true; }
-      if(!sd.newSnow && newSnow1h>0){ sd.newSnow=Math.round(newSnow1h); enriched=true; }
+      if(!sd.snowP && depthCm!=null){sd.snowP=depthCm;enriched=true;}
+      if(!sd.newSnow && newSnow1h>0){sd.newSnow=Math.round(newSnow1h);enriched=true;}
       if(enriched){
-        snowData[resortId]={...sd, ts:'Open-Meteo', src:'open-meteo'};
+        snowData[resortId]={...sd,ts:'Open-Meteo',src:'open-meteo'};
         document.getElementById('dpSnowP').textContent=(snowData[resortId].snowP??'–')+' cm';
         document.getElementById('dpSnowTs').textContent='(Open-Meteo)';
         renderGrid();
@@ -1522,7 +1610,7 @@ document.querySelectorAll('.cntry-btn').forEach(btn=>{
   });
 });
 
-['fMp','fFav','fOpen','sortSel'].forEach(id=>{
+['fMp','fFav','fOpen','fGoodWx','sortSel'].forEach(id=>{
   document.getElementById(id).addEventListener('change',renderGrid);
 });
 
@@ -1552,6 +1640,7 @@ document.getElementById('resetBtn').addEventListener('click',()=>{
   document.getElementById('fMp').checked=false;
   document.getElementById('fFav').checked=false;
   document.getElementById('fOpen').checked=false;
+  document.getElementById('fGoodWx').checked=false;
   document.getElementById('fDist').value=150;
   document.getElementById('fTime').value=480;
   document.getElementById('fLifts').value=0;
