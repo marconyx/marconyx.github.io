@@ -1,1 +1,1541 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🏔️ Ski Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    :root {
+      --bg:       #0b0f1a;
+      --bg-card:  #111827;
+      --bg-side:  #0d1218;
+      --border:   #1e2d3d;
+      --blue:     #3b82f6;
+      --cyan:     #06b6d4;
+      --purple:   #8b5cf6;
+      --green:    #10b981;
+      --amber:    #f59e0b;
+      --red:      #ef4444;
+      --txt:      #f1f5f9;
+      --txt2:     #94a3b8;
+      --mp:       #a855f7;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:14px}
 
+    /* ── HEADER ── */
+    .hdr{display:flex;align-items:center;gap:16px;padding:10px 18px;background:linear-gradient(135deg,#0d1117,#1a2744);border-bottom:1px solid var(--border);flex-shrink:0;z-index:200}
+    .hdr-logo{display:flex;align-items:center;gap:8px;white-space:nowrap}
+    .hdr-logo h1{font-size:1.15rem;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .loc-bar{display:flex;align-items:center;gap:7px;flex:1;max-width:520px;margin-left:auto}
+    .loc-wrap{position:relative;flex:1}
+    .loc-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:7px 10px 7px 32px;color:var(--txt);font-size:.85rem;outline:none;transition:border-color .2s}
+    .loc-input:focus{border-color:var(--blue)}
+    .loc-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt2);font-size:.9rem;pointer-events:none}
+    .btn{padding:7px 13px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:500;transition:all .2s;white-space:nowrap}
+    .btn-pri{background:var(--blue);color:#fff}
+    .btn-pri:hover{background:#2563eb}
+    .btn-ico{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--txt);padding:7px 9px}
+    .btn-ico:hover{background:rgba(255,255,255,.12)}
+    .ac-list{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;z-index:1000;overflow:hidden;display:none}
+    .ac-item{padding:9px 13px;cursor:pointer;font-size:.82rem;transition:background .15s}
+    .ac-item:hover{background:rgba(255,255,255,.07)}
+    .snow-status{font-size:.75rem;padding:4px 10px;border-radius:20px;border:1px solid var(--border);display:flex;align-items:center;gap:5px;white-space:nowrap}
+    .snow-status.live{border-color:var(--green);color:var(--green)}
+    .snow-status.loading{color:var(--txt2)}
+    .snow-status.error{color:var(--amber)}
+
+    /* ── LAYOUT ── */
+    .app{display:flex;flex:1;overflow:hidden;height:calc(100vh - 52px)}
+
+    /* ── SIDEBAR ── */
+    .sidebar{width:262px;background:var(--bg-side);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;padding:14px}
+    .sb-reset{text-align:right;margin-bottom:8px}
+    .link-btn{background:none;border:none;color:var(--blue);font-size:.75rem;cursor:pointer;text-decoration:underline}
+    .sb-sec{margin-bottom:18px}
+    .sb-title{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--txt2);margin-bottom:10px}
+    .cntry-row{display:flex;flex-wrap:wrap;gap:5px}
+    .cntry-btn{padding:3px 9px;border:1px solid var(--border);border-radius:20px;background:transparent;color:var(--txt2);font-size:.75rem;cursor:pointer;transition:all .2s}
+    .cntry-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .chk-row{display:flex;flex-direction:column;gap:7px}
+    .chk-item{display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .2s}
+    .chk-item:hover{background:rgba(255,255,255,.05)}
+    .chk-item input{accent-color:var(--blue);width:15px;height:15px}
+    .mp-badge{background:var(--mp);color:#fff;font-size:.62rem;font-weight:700;padding:1px 5px;border-radius:3px}
+    .sl-wrap{padding:2px 0}
+    .sl-label{display:flex;justify-content:space-between;font-size:.8rem;color:var(--txt2);margin-bottom:5px}
+    .sl-val{color:var(--txt);font-weight:600}
+    input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}
+    .sel{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:6px;padding:6px 9px;color:var(--txt);font-size:.82rem;outline:none}
+
+    /* ── CONTENT ── */
+    .content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+    #map{height:280px;flex-shrink:0;transition:height .25s ease}
+    #map.map-hidden{height:0;overflow:hidden}
+    .map-toggle-btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--txt2);font-size:.75rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+    .map-toggle-btn:hover{background:rgba(255,255,255,.07);border-color:var(--blue);color:var(--txt)}
+    .list-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg-card);border-top:1px solid var(--border);flex-shrink:0}
+    .list-count{font-size:.8rem;color:var(--txt2)}
+    .legend{display:flex;gap:12px;font-size:.75rem;align-items:center}
+    .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+    .resort-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px;padding:13px 16px;background:var(--bg);overflow-y:auto;flex:1;min-height:0}
+
+    /* ── RESORT CARD (reference design) ── */
+    .r-card{background:rgba(13,27,42,0.92);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:18px;cursor:default;display:flex;flex-direction:column;gap:11px;transition:transform .15s,box-shadow .15s;min-width:0}
+    .r-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.5)}
+    .r-card.open{border-left:3px solid #22c55e}
+    .r-card.closed{border-left:3px solid #ef4444}
+    .r-card-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+    .r-name{font-size:13px;font-weight:700;color:#f1f5f9;line-height:1.3;font-family:'Syne',sans-serif}
+    .r-region{margin-top:3px;display:flex;align-items:center;gap:5px}
+    .r-region-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+    .r-region-txt{font-size:10px;color:#64748b;font-family:monospace}
+    .r-badges{display:flex;gap:5px;align-items:center;flex-shrink:0}
+    .fav-btn{background:none;border:none;cursor:pointer;font-size:15px;padding:0;transition:opacity .2s}
+    .badge-mp{padding:2px 6px;border-radius:20px;font-size:9px;font-family:monospace;font-weight:700;background:rgba(99,102,241,0.18);color:#a5b4fc}
+    .badge-status{padding:2px 7px;border-radius:20px;font-size:9px;font-family:monospace;font-weight:700}
+    .badge-status.open{background:rgba(34,197,94,0.15);color:#22c55e}
+    .badge-status.closed{background:rgba(239,68,68,0.15);color:#ef4444}
+    .r-alt-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+    .r-alt-cell{background:rgba(255,255,255,0.03);border-radius:7px;padding:5px 7px}
+    .r-alt-val{font-size:11px;font-weight:600;color:#e2e8f0;font-family:monospace}
+    .r-alt-lbl{font-size:9px;color:#475569}
+    .r-progress{display:flex;flex-direction:column;gap:7px}
+    .r-prog-hdr{display:flex;justify-content:space-between;margin-bottom:3px}
+    .r-prog-lbl{font-size:10px;color:#475569}
+    .r-prog-val{font-size:12px;font-family:monospace}
+    .r-prog-bar{height:5px;background:rgba(255,255,255,0.06);border-radius:3px}
+    .r-prog-fill{height:100%;border-radius:3px}
+    .r-snow-box{background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.12);border-radius:8px;padding:6px 9px}
+    .r-snow-title{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:0.1em;font-family:monospace;margin-bottom:4px}
+    .r-snow-vals{display:flex;gap:10px;flex-wrap:wrap}
+    .r-snow-num{font-size:11px;font-family:monospace}
+    .r-wx{}
+    .r-wx-title{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:0.1em;font-family:monospace;margin-bottom:5px}
+    .r-wx-days{display:flex;gap:5px}
+    .r-wx-day{flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:6px 4px;text-align:center}
+    .r-wx-day-name{font-size:9px;color:#64748b;margin-bottom:2px;font-family:monospace}
+    .r-wx-icon{font-size:16px}
+    .r-wx-temp{font-size:11px;font-family:'DM Mono',monospace;font-weight:600;color:#e2e8f0}
+    .r-wx-temp-lo{font-size:9px;color:#64748b}
+    .r-wx-snow{font-size:9px;color:#60a5fa}
+    .r-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:5px;margin-top:auto}
+    .r-dist{font-size:10px;color:#38bdf8;font-family:'DM Mono',monospace}
+    .r-links{display:flex;gap:4px}
+    .r-link-btn{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:4px 9px;border-radius:7px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);color:#64748b;text-decoration:none;transition:all .15s;font-family:'DM Mono',monospace;white-space:nowrap}
+    .r-link-btn:hover{border-color:rgba(56,189,248,0.4);color:#94a3b8}
+    .r-link-btn.mp{background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.3);color:#a5b4fc}
+
+    /* ── DETAIL PANEL ── */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;opacity:0;pointer-events:none;transition:opacity .3s}
+    .overlay.open{opacity:1;pointer-events:all}
+    .detail{position:fixed;top:0;right:-500px;width:480px;height:100vh;background:var(--bg-card);border-left:1px solid var(--border);z-index:1000;transition:right .3s ease;overflow-y:auto;display:flex;flex-direction:column}
+    .detail.open{right:0}
+    .dp-hdr{padding:18px;background:linear-gradient(135deg,#1a2744,#0d1117);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+    .dp-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.1);border:none;color:var(--txt);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .2s}
+    .dp-close:hover{background:rgba(255,255,255,.2)}
+    .dp-name{font-size:1.3rem;font-weight:700;margin-bottom:3px;padding-right:40px}
+    .dp-meta{font-size:.8rem;color:var(--txt2);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .dp-tags{margin-top:10px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+    .tag{font-size:.7rem;font-weight:600;padding:3px 9px;border-radius:20px;border:1px solid var(--border)}
+    .tag-mp{background:rgba(168,85,247,.15);border-color:var(--mp);color:var(--mp)}
+    .tag-alt{background:rgba(255,255,255,.05);color:var(--txt2)}
+    .fav-dp-btn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--amber);padding:3px 11px;border-radius:20px;font-size:.7rem;cursor:pointer;font-weight:600}
+    .fav-dp-btn.active{background:rgba(245,158,11,.2)}
+    .dp-body{padding:18px;flex:1}
+    .dp-sec{margin-bottom:22px}
+    .dp-sec-title{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--txt2);margin-bottom:11px;display:flex;align-items:center;gap:6px}
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .info-box{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:11px}
+    .ib-lbl{font-size:.67rem;color:var(--txt2);margin-bottom:3px}
+    .ib-val{font-size:.95rem;font-weight:700}
+    .ib-val.green{color:var(--green)}
+    .ib-val.amber{color:var(--amber)}
+    .ib-val.red{color:var(--red)}
+    .travel-box{display:flex;gap:11px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:12px;align-items:center}
+    .travel-icon{font-size:1.4rem}
+    .travel-dist{font-size:.95rem;font-weight:700}
+    .travel-time{font-size:.8rem;color:var(--txt2)}
+    /* Weather */
+    .wx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .wx-day{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;padding:11px;text-align:center}
+    .wx-date{font-size:.7rem;color:var(--txt2);margin-bottom:5px}
+    .wx-icon{font-size:1.8rem;margin-bottom:4px}
+    .wx-desc{font-size:.65rem;color:var(--txt2);margin-bottom:5px}
+    .wx-temp{font-size:.82rem;font-weight:600}
+    .wx-t-max{color:#fb923c}
+    .wx-t-min{color:#60a5fa}
+    .wx-snow{font-size:.7rem;color:#a5f3fc;margin-top:3px}
+    .wx-loading{display:flex;align-items:center;gap:9px;color:var(--txt2);font-size:.82rem;padding:16px 0}
+    /* Action buttons */
+    .act-row{display:flex;gap:9px;flex-wrap:wrap}
+    .act-btn{display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--txt);text-decoration:none;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .2s}
+    .act-btn:hover{background:rgba(255,255,255,.1);border-color:var(--blue)}
+    .act-btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+    .act-btn.pri:hover{background:#2563eb}
+    .act-btn.mp-link{background:var(--mp);border-color:var(--mp);color:#fff}
+    .act-btn.mp-link:hover{opacity:.88}
+    /* Spinner */
+    .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    /* Scrollbars */
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.2)}
+    /* Leaflet marker overrides  */
+    .lf-resort{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.9);cursor:pointer;transition:transform .15s}
+    .lf-resort:hover{transform:scale(1.5)}
+    .lf-resort.std{background:var(--blue)}
+    .lf-resort.mp{background:var(--mp)}
+    .lf-user{width:14px;height:14px;border-radius:50%;background:var(--cyan);border:3px solid #fff;box-shadow:0 0 0 3px rgba(6,182,212,.4)}
+    .no-loc-hint{font-size:.72rem;color:var(--txt2);font-style:italic;padding:3px 0}
+    /* Live indicator */
+    .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    /* responsive */
+    @media(max-width:800px){.sidebar{display:none}.detail{width:100%;right:-100%}}
+  </style>
+</head>
+<body>
+
+<!-- ═══════ HEADER ═══════ -->
+<header class="hdr">
+  <div class="hdr-logo">
+    <span style="font-size:1.4rem">🏔️</span>
+    <h1>Ski Dashboard</h1>
+  </div>
+  <div class="loc-bar">
+    <div class="loc-wrap">
+      <span class="loc-icon">📍</span>
+      <input class="loc-input" id="locInput" type="text" placeholder="Standort (z.B. Zürich)" autocomplete="off" />
+      <div class="ac-list" id="acList"></div>
+    </div>
+    <button class="btn btn-ico" id="gpsBtn" title="GPS-Standort">📡</button>
+    <button class="btn btn-pri" id="locSearchBtn">Suchen</button>
+    <div class="snow-status loading" id="snowStatus"><span class="spin"></span> Schneedaten…</div>
+  </div>
+</header>
+
+<!-- ═══════ MAIN ═══════ -->
+<div class="app">
+
+  <!-- ── SIDEBAR / FILTERS ── -->
+  <aside class="sidebar">
+    <div class="sb-reset"><button class="link-btn" id="resetBtn">Filter zurücksetzen</button></div>
+
+    <div class="sb-sec">
+      <div class="sb-title">Skigebiet suchen</div>
+      <div class="loc-wrap">
+        <span class="loc-icon">🔍</span>
+        <input type="search" class="loc-input" id="fSearch" placeholder="Name oder Region…" autocomplete="off"/>
+      </div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sb-title">Land</div>
+      <div class="cntry-row">
+        <button class="cntry-btn active" data-c="all">Alle</button>
+        <button class="cntry-btn" data-c="CH">🇨🇭 CH</button>
+        <button class="cntry-btn" data-c="AT">🇦🇹 AT</button>
+        <button class="cntry-btn" data-c="FR">🇫🇷 FR</button>
+        <button class="cntry-btn" data-c="IT">🇮🇹 IT</button>
+      </div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sb-title">Pass &amp; Merkmale</div>
+      <div class="chk-row">
+        <label class="chk-item"><input type="checkbox" id="fMp"/><span><span class="mp-badge">MP</span> Nur MagicPass</span></label>
+        <label class="chk-item"><input type="checkbox" id="fFav"/><span>⭐ Nur Favoriten</span></label>
+        <label class="chk-item"><input type="checkbox" id="fOpen"/><span>✅ Nur geöffnete</span></label>
+      </div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sb-title">Distanz &amp; Reisezeit</div>
+      <div class="sl-wrap">
+        <div class="sl-label"><span>Max. Distanz</span><span class="sl-val" id="distVal">150 km</span></div>
+        <input type="range" id="fDist" min="0" max="800" value="150" step="10"/>
+      </div>
+      <div class="sl-wrap" style="margin-top:10px">
+        <div class="sl-label"><span>Max. Fahrzeit</span><span class="sl-val" id="timeVal">120 min</span></div>
+        <input type="range" id="fTime" min="0" max="480" value="120" step="15"/>
+      </div>
+      <div class="no-loc-hint" id="locHint">ⓘ Standort setzen für Distanzfilter</div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sb-title">Lifte &amp; Pisten</div>
+      <div class="sl-wrap">
+        <div class="sl-label"><span>Min. offene Lifte</span><span class="sl-val" id="liftsVal">0</span></div>
+        <input type="range" id="fLifts" min="0" max="80" value="0" step="1"/>
+      </div>
+      <div class="sl-wrap" style="margin-top:10px">
+        <div class="sl-label"><span>Min. Bergschnee</span><span class="sl-val" id="snowVal">0 cm</span></div>
+        <input type="range" id="fSnow" min="0" max="300" value="0" step="10"/>
+      </div>
+    </div>
+
+    <div class="sb-sec">
+      <div class="sb-title">Sortierung</div>
+      <select class="sel" id="sortSel">
+        <option value="name">Name (A–Z)</option>
+        <option value="dist">Distanz</option>
+        <option value="snow">Bergschnee</option>
+        <option value="lifts">Offene Lifte</option>
+        <option value="altMax">Gipfelhöhe</option>
+      </select>
+    </div>
+  </aside>
+
+  <!-- ── CONTENT ── -->
+  <div class="content">
+    <div id="map"></div>
+    <div class="list-bar">
+      <span class="list-count" id="listCount">Lade Skigebiete…</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="map-toggle-btn" id="mapToggleBtn" title="Karte ein-/ausblenden">🗺️ Karte ausblenden</button>
+        <div class="legend">
+          <span><span class="dot" style="background:var(--blue)"></span> Standard</span>
+          <span><span class="dot" style="background:var(--mp)"></span> MagicPass</span>
+          <span><span class="dot" style="background:var(--amber)"></span> Favorit</span>
+        </div>
+      </div>
+    </div>
+    <div class="resort-grid" id="grid"></div>
+  </div>
+</div>
+
+<!-- ── DETAIL OVERLAY + PANEL ── -->
+<div class="overlay" id="overlay"></div>
+<div class="detail" id="detail">
+  <div class="dp-hdr">
+    <button class="dp-close" id="dpClose">✕</button>
+    <div class="dp-name" id="dpName">–</div>
+    <div class="dp-meta">
+      <span id="dpCountry"></span>
+      <span id="dpRegion"></span>
+    </div>
+    <div class="dp-tags">
+      <span class="tag tag-alt" id="dpAlt">–</span>
+      <span class="tag tag-mp" id="dpMpTag" style="display:none"><span class="mp-badge" style="font-size:.7rem">MP</span> MagicPass</span>
+      <button class="fav-dp-btn" id="dpFavBtn">⭐ Favorit</button>
+    </div>
+  </div>
+  <div class="dp-body">
+
+    <!-- Travel info -->
+    <div class="dp-sec" id="dpTravelSec" style="display:none">
+      <div class="dp-sec-title">📍 Vom Standort</div>
+      <div class="travel-box">
+        <div class="travel-icon">🚗</div>
+        <div>
+          <div class="travel-dist" id="dpDist">–</div>
+          <div class="travel-time" id="dpTime">Fahrzeit wird berechnet…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snow report -->
+    <div class="dp-sec">
+      <div class="dp-sec-title">❄️ Schneebericht <span id="dpSnowTs" style="font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px"></span></div>
+      <div class="info-grid" id="dpSnowGrid">
+        <div class="info-box"><div class="ib-lbl">Schnee Tal</div><div class="ib-val" id="dpSnowV">–</div></div>
+        <div class="info-box"><div class="ib-lbl">Schnee Berg</div><div class="ib-val" id="dpSnowP">–</div></div>
+        <div class="info-box"><div class="ib-lbl">Neuschnee</div><div class="ib-val" id="dpNewSnow">–</div></div>
+        <div class="info-box"><div class="ib-lbl">Lifte offen</div><div class="ib-val" id="dpLifts">–</div></div>
+        <div class="info-box"><div class="ib-lbl">Höhe Tal → Berg</div><div class="ib-val" id="dpElevation">–</div></div>
+        <div class="info-box"><div class="ib-lbl">Pistenkilometer</div><div class="ib-val" id="dpSlopes">–</div></div>
+      </div>
+    </div>
+
+    <!-- Weather -->
+    <div class="dp-sec">
+      <div class="dp-sec-title">🌤️ 3-Tage Wetterprognose</div>
+      <div id="dpWeather"><div class="wx-loading"><span class="spin"></span> Wetterdaten werden geladen…</div></div>
+    </div>
+
+    <!-- Links -->
+    <div class="dp-sec">
+      <div class="dp-sec-title">🔗 Links</div>
+      <div class="act-row">
+        <a class="act-btn pri" id="dpWebsite" href="#" target="_blank" rel="noopener noreferrer">🌐 Offizielle Website</a>
+        <a class="act-btn" id="dpBergfex" href="#" target="_blank" rel="noopener noreferrer">🎿 Bergfex Schneebericht</a>
+        <a class="act-btn mp-link" id="dpMpLink" href="#" target="_blank" rel="noopener noreferrer" style="display:none">🎫 MagicPass Status</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--                  JAVASCRIPT                -->
+<!-- ═══════════════════════════════════════════ -->
+<script>
+// ──────────────────────────────────────────────
+// RESORT DATASET
+// magicpass: based on MagicPass 2024/25 season
+// coords: lat/lon – WGS84
+// ──────────────────────────────────────────────
+const RESORTS = [
+  // ── SWITZERLAND – MagicPass ──
+  {id:'verbier',        name:'Verbier / 4 Vallées',          country:'CH',region:'Wallis',      lat:46.096,lon:7.227,  mp:true,  altMin:820, altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.verbier.ch',        bergfex:'https://www.bergfex.ch/verbier/'},
+  {id:'nendaz',         name:'Nendaz / 4 Vallées',           country:'CH',region:'Wallis',      lat:46.177,lon:7.302,  mp:true,  altMin:1365,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.nendaz.ch',          bergfex:'https://www.bergfex.ch/nendaz/'},
+  {id:'thyon',          name:'Thyon / 4 Vallées',            country:'CH',region:'Wallis',      lat:46.162,lon:7.344,  mp:true,  altMin:1550,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.thyon.ch',           bergfex:'https://www.bergfex.ch/thyon/'},
+  {id:'veysonnaz',      name:'Veysonnaz / 4 Vallées',        country:'CH',region:'Wallis',      lat:46.193,lon:7.336,  mp:true,  altMin:1240,altMax:3330,totalLifts:90,totalSlopes:412,website:'https://www.veysonnaz.ch',       bergfex:'https://www.bergfex.ch/veysonnaz/'},
+  {id:'crans-montana',  name:'Crans-Montana',                 country:'CH',region:'Wallis',      lat:46.312,lon:7.481,  mp:true,  altMin:1440,altMax:3000,totalLifts:24,totalSlopes:140,website:'https://www.crans-montana.ch',   bergfex:'https://www.bergfex.ch/crans-montana/'},
+  {id:'anzere',         name:'Anzère',                        country:'CH',region:'Wallis',      lat:46.298,lon:7.397,  mp:true,  altMin:1500,altMax:2420,totalLifts:12,totalSlopes:57, website:'https://www.anzere.ch',           mpUrl:'https://www.magicpass.ch/de/skigebiete/anzere-4',             bergfex:'https://www.bergfex.ch/anzere/'},
+  {id:'ovronnaz',       name:'Ovronnaz',                      country:'CH',region:'Wallis',      lat:46.195,lon:7.130,  mp:true,  altMin:1340,altMax:2500,totalLifts:7, totalSlopes:40, website:'https://www.ovronnaz.ch',         bergfex:'https://www.bergfex.ch/ovronnaz/',       mpUrl:'https://www.magicpass.ch/de/skigebiete/ovronnaz-30'},
+  {id:'grimentz-zinal', name:'Grimentz-Zinal',                country:'CH',region:'Wallis',      lat:46.175,lon:7.556,  mp:true,  altMin:1570,altMax:2900,totalLifts:21,totalSlopes:80, website:'https://www.valdanniviers.ch',    bergfex:'https://www.bergfex.ch/grimentz-zinal/',    mpUrl:'https://www.magicpass.ch/de/skigebiete/grimentz-zinal-18'},
+  {id:'belalp',         name:'Belalp',                        country:'CH',region:'Wallis',      lat:46.400,lon:8.008,  mp:true,  altMin:1800,altMax:2900,totalLifts:10,totalSlopes:30, website:'https://www.belalp.ch',           bergfex:'https://www.bergfex.ch/belalp/',           mpUrl:'https://www.magicpass.ch/de/skigebiete/blatten-belalp-4445'},
+  {id:'aletsch-arena',  name:'Aletsch Arena (Riederalp/Bettmeralp)',country:'CH',region:'Wallis',lat:46.380,lon:8.050,  mp:true,  altMin:1905,altMax:2869,totalLifts:35,totalSlopes:100,website:'https://www.aletsch-arena.ch',   bergfex:'https://www.bergfex.ch/aletsch-arena/'},
+  {id:'bellwald',       name:'Bellwald',                      country:'CH',region:'Wallis',      lat:46.448,lon:8.165,  mp:true,  altMin:1560,altMax:2676,totalLifts:7, totalSlopes:30, website:'https://www.bellwald.ch',         bergfex:'https://www.bergfex.ch/bellwald/'},
+  {id:'chamepery',      name:'Champéry / Portes du Soleil',   country:'CH',region:'Wallis',      lat:46.179,lon:6.869,  mp:true,  altMin:1050,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.champery.ch',        bergfex:'https://www.bergfex.ch/chamery-morgins/'},
+  {id:'les-crosets',    name:'Les Crosets / Portes du Soleil',country:'CH',region:'Wallis',      lat:46.204,lon:6.877,  mp:true,  altMin:1660,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.lescrosets.ch',      bergfex:'https://www.bergfex.ch/les-crosets/'},
+  {id:'morgins',        name:'Morgins / Portes du Soleil',    country:'CH',region:'Wallis',      lat:46.231,lon:6.880,  mp:true,  altMin:1340,altMax:2277,totalLifts:213,totalSlopes:600,website:'https://www.morgins.ch',          bergfex:'https://www.bergfex.ch/morgins/'},
+  {id:'torgon',         name:'Torgon / Portes du Soleil',     country:'CH',region:'Wallis',      lat:46.266,lon:6.907,  mp:true,  altMin:1100,altMax:1965,totalLifts:12,totalSlopes:28, website:'https://www.torgon.ch',           bergfex:'https://www.bergfex.ch/torgon/'},
+  {id:'villars-gryon',  name:'Villars-Gryon',                 country:'CH',region:'Waadt',       lat:46.303,lon:7.053,  mp:true,  altMin:1253,altMax:2120,totalLifts:28,totalSlopes:100,website:'https://www.villars.ch',          bergfex:'https://www.bergfex.ch/villars/',           mpUrl:'https://www.magicpass.ch/de/skigebiete/villars-gryon-37'},
+  {id:'les-diablerets', name:'Les Diablerets / Glacier 3000', country:'CH',region:'Waadt',       lat:46.358,lon:7.150,  mp:true,  altMin:1150,altMax:3000,totalLifts:13,totalSlopes:60, website:'https://www.glacier3000.ch',      bergfex:'https://www.bergfex.ch/les-diablerets/',   mpUrl:'https://www.magicpass.ch/de/skigebiete/les-diablerets-22'},
+  {id:'leysin',         name:'Leysin / Les Mosses',           country:'CH',region:'Waadt',       lat:46.337,lon:7.001,  mp:true,  altMin:975, altMax:2205,totalLifts:28,totalSlopes:60, website:'https://www.leysin.ch',           bergfex:'https://www.bergfex.ch/leysin/',            mpUrl:'https://www.magicpass.ch/de/skigebiete/leysin-26'},
+  {id:'adelboden-lenk', name:'Adelboden-Lenk',                country:'CH',region:'Bern',        lat:46.490,lon:7.558,  mp:true,  altMin:1353,altMax:2360,totalLifts:56,totalSlopes:210,website:'https://www.adelboden.ch',        bergfex:'https://www.bergfex.ch/adelboden/'},
+  {id:'gstaad',         name:'Gstaad Mountain Rides',         country:'CH',region:'Bern',        lat:46.477,lon:7.289,  mp:true,  altMin:955, altMax:3000,totalLifts:44,totalSlopes:220,website:'https://www.gstaad.ch',           mpUrl:'https://www.magicpass.ch/de/skigebiete/bergbahnen-gstaad-4447', bergfex:'https://www.bergfex.ch/gstaad/'},
+  {id:'elsigenalp',     name:'Elsigenalp–Metschalp Frutigen', country:'CH',region:'Bern',        lat:46.530,lon:7.650,  mp:true,  altMin:1350,altMax:2200,totalLifts:10,totalSlopes:30, website:'https://www.elsigenalp.ch',       bergfex:'https://www.bergfex.ch/elsigenalp-metschalp-frutigen/'},
+  {id:'meiringen',      name:'Meiringen-Hasliberg',           country:'CH',region:'Bern',        lat:46.729,lon:8.179,  mp:true,  altMin:595, altMax:2433,totalLifts:16,totalSlopes:60, website:'https://www.meiringen-hasliberg.ch',bergfex:'https://www.bergfex.ch/meiringen-hasliberg/', mpUrl:'https://www.magicpass.ch/de/skigebiete/meiringen-hasliberg-4451'},
+  {id:'engelberg',      name:'Engelberg-Titlis',              country:'CH',region:'Zentralschweiz',lat:46.822,lon:8.408,mp:true,  altMin:1000,altMax:3020,totalLifts:25,totalSlopes:82, website:'https://www.engelberg.ch',        bergfex:'https://www.bergfex.ch/engelberg-titlis/'},
+  {id:'melchsee',       name:'Melchsee-Frutt',                country:'CH',region:'Zentralschweiz',lat:46.817,lon:8.247,mp:true,  altMin:1920,altMax:2250,totalLifts:16,totalSlopes:35, website:'https://www.melchseefrutt.ch',    bergfex:'https://www.bergfex.ch/melchsee-frutt/',   mpUrl:'https://www.magicpass.ch/de/skigebiete/melchsee-frutt-4452'},
+  {id:'hoch-ybrig',     name:'Hoch-Ybrig',                   country:'CH',region:'Zentralschweiz',lat:47.020,lon:8.826,mp:true,  altMin:1050,altMax:1850,totalLifts:13,totalSlopes:40, website:'https://www.hoch-ybrig.ch',      bergfex:'https://www.bergfex.ch/hoch-ybrig/'},
+  {id:'stoos',          name:'Stoos',                         country:'CH',region:'Zentralschweiz',lat:46.982,lon:8.673,mp:true,  altMin:700, altMax:1900,totalLifts:8, totalSlopes:35, website:'https://www.stoos.ch',            bergfex:'https://www.bergfex.ch/stoos/'},
+  {id:'flumserberg',    name:'Flumserberg',                   country:'CH',region:'Ostschweiz',   lat:47.115,lon:9.282,  mp:true,  altMin:1400,altMax:2222,totalLifts:17,totalSlopes:65, website:'https://www.flumserberg.ch',      bergfex:'https://www.bergfex.ch/flumserberg/'},
+  {id:'wildhaus',       name:'Toggenburg / Wildhaus',         country:'CH',region:'Ostschweiz',   lat:47.203,lon:9.350,  mp:true,  altMin:900, altMax:2260,totalLifts:14,totalSlopes:60, website:'https://www.wildhaus.ch',         bergfex:'https://www.bergfex.ch/wildhaus/'},
+  {id:'pizol',          name:'Pizol – Bad Ragaz',             country:'CH',region:'Ostschweiz',   lat:47.023,lon:9.390,  mp:true,  altMin:1090,altMax:2844,totalLifts:12,totalSlopes:40, website:'https://www.pizol.com',           bergfex:'https://www.bergfex.ch/pizol/'},
+  // ── SWITZERLAND – Non-MagicPass ──
+  {id:'zermatt',        name:'Zermatt / Matterhorn',          country:'CH',region:'Wallis',      lat:46.017,lon:7.747,  mp:false, altMin:1620,altMax:3883,totalLifts:54,totalSlopes:360,website:'https://www.matterhornparadise.ch',bergfex:'https://www.bergfex.ch/zermatt/'},
+  {id:'saas-fee',       name:'Saas-Fee',                      country:'CH',region:'Wallis',      lat:46.108,lon:7.928,  mp:true,  altMin:1800,altMax:3600,totalLifts:23,totalSlopes:100,website:'https://www.saas-fee.ch',         bergfex:'https://www.bergfex.ch/saas-fee/',         mpUrl:'https://www.magicpass.ch/de/skigebiete/saas-fee--saas-almagell-600'},
+  {id:'grindelwald',    name:'Jungfrau Skiregion Grindelwald–Wengen',country:'CH',region:'Bern', lat:46.624,lon:8.041,  mp:false, altMin:943, altMax:2971,totalLifts:62,totalSlopes:213,website:'https://www.jungfrau.ch',         bergfex:'https://www.bergfex.ch/grindelwald/'},
+  {id:'muerren',        name:'Mürren–Schilthorn',             country:'CH',region:'Bern',        lat:46.558,lon:7.893,  mp:false, altMin:796, altMax:2971,totalLifts:62,totalSlopes:213,website:'https://www.schilthorn.ch',       bergfex:'https://www.bergfex.ch/muerren/'},
+  {id:'andermatt',      name:'Andermatt–Sedrun–Disentis',     country:'CH',region:'Uri',         lat:46.635,lon:8.592,  mp:false, altMin:1444,altMax:3000,totalLifts:41,totalSlopes:180,website:'https://www.andermatt.ch',        bergfex:'https://www.bergfex.ch/andermatt/'},
+  {id:'flims-laax',     name:'Flims Laax Falera',             country:'CH',region:'Graubünden',  lat:46.835,lon:9.200,  mp:false, altMin:1100,altMax:3018,totalLifts:31,totalSlopes:235,website:'https://www.laax.com',            bergfex:'https://www.bergfex.ch/laax/'},
+  {id:'arosa-lenz',     name:'Arosa Lenzerheide',             country:'CH',region:'Graubünden',  lat:46.780,lon:9.678,  mp:false, altMin:1230,altMax:2865,totalLifts:43,totalSlopes:225,website:'https://www.arosalenzerheide.swiss',bergfex:'https://www.bergfex.ch/arosa/'},
+  {id:'davos',          name:'Davos Klosters',                country:'CH',region:'Graubünden',  lat:46.801,lon:9.844,  mp:false, altMin:810, altMax:2844,totalLifts:54,totalSlopes:300,website:'https://www.davos.ch',            bergfex:'https://www.bergfex.ch/davos/'},
+  {id:'st-moritz',      name:'St. Moritz / Corviglia',        country:'CH',region:'Graubünden',  lat:46.493,lon:9.838,  mp:false, altMin:1822,altMax:3303,totalLifts:57,totalSlopes:350,website:'https://www.stmoritz.com',        bergfex:'https://www.bergfex.ch/st-moritz/'},
+  {id:'saas-grund',     name:'Saas Grund – Hohsaas',          country:'CH',region:'Wallis',      lat:46.130,lon:7.930,  mp:false, altMin:1559,altMax:3100,totalLifts:9, totalSlopes:22, website:'https://www.saas-grund.ch',       bergfex:'https://www.bergfex.ch/saas-grund/'},
+  // ── AUSTRIA ──
+  {id:'st-anton',       name:'St. Anton / Arlberg',           country:'AT',region:'Tirol',       lat:47.128,lon:10.268, mp:false, altMin:1304,altMax:2811,totalLifts:85,totalSlopes:305,website:'https://www.stantonamarlberg.com',bergfex:'https://www.bergfex.at/st-anton/'},
+  {id:'lech-zuers',     name:'Lech Zürs am Arlberg',          country:'AT',region:'Vorarlberg',  lat:47.208,lon:10.145, mp:false, altMin:1447,altMax:2450,totalLifts:85,totalSlopes:305,website:'https://www.lechzuers.com',       bergfex:'https://www.bergfex.at/lech/'},
+  {id:'ischgl',         name:'Ischgl / Silvretta Arena',      country:'AT',region:'Tirol',       lat:47.013,lon:10.285, mp:false, altMin:1377,altMax:2872,totalLifts:46,totalSlopes:238,website:'https://www.ischgl.com',          bergfex:'https://www.bergfex.at/ischgl/'},
+  {id:'kitzbuehel',     name:'Kitzbühel / Kirchberg',         country:'AT',region:'Tirol',       lat:47.446,lon:12.391, mp:false, altMin:800, altMax:2000,totalLifts:56,totalSlopes:213,website:'https://www.kitzbuehel.com',      bergfex:'https://www.bergfex.at/kitzbuehel/'},
+  {id:'saalbach',       name:'Saalbach Hinterglemm Leogang',  country:'AT',region:'Salzburg',    lat:47.393,lon:12.637, mp:false, altMin:1003,altMax:2096,totalLifts:70,totalSlopes:270,website:'https://www.saalbach.com',        bergfex:'https://www.bergfex.at/saalbach/'},
+  {id:'kaprun',         name:'Kitzsteinhorn / Kaprun',        country:'AT',region:'Salzburg',    lat:47.317,lon:12.763, mp:false, altMin:911, altMax:3203,totalLifts:24,totalSlopes:47, website:'https://www.kitzsteinhorn.at',    bergfex:'https://www.bergfex.at/kitzsteinhorn/'},
+  {id:'soelden',        name:'Sölden',                        country:'AT',region:'Tirol',       lat:46.969,lon:11.003, mp:false, altMin:1377,altMax:3340,totalLifts:31,totalSlopes:145,website:'https://www.soelden.com',         bergfex:'https://www.bergfex.at/soelden/'},
+  {id:'obergurgl',      name:'Obergurgl-Hochgurgl',           country:'AT',region:'Tirol',       lat:46.875,lon:11.023, mp:false, altMin:1793,altMax:3080,totalLifts:25,totalSlopes:110,website:'https://www.obergurgl.com',       bergfex:'https://www.bergfex.at/obergurgl/'},
+  {id:'stubai',         name:'Stubaier Gletscher',            country:'AT',region:'Tirol',       lat:47.115,lon:11.206, mp:false, altMin:1750,altMax:3210,totalLifts:26,totalSlopes:110,website:'https://www.stubaier-gletscher.com',bergfex:'https://www.bergfex.at/stubai/'},
+  {id:'mayrhofen',      name:'Mayrhofen / Zillertal',         country:'AT',region:'Tirol',       lat:47.167,lon:11.867, mp:false, altMin:630, altMax:2500,totalLifts:27,totalSlopes:158,website:'https://www.mayrhofen.at',        bergfex:'https://www.bergfex.at/mayrhofen/'},
+  {id:'hintertux',      name:'Hintertuxer Gletscher',         country:'AT',region:'Tirol',       lat:47.063,lon:11.670, mp:false, altMin:1500,altMax:3250,totalLifts:20,totalSlopes:86, website:'https://www.hintertuxergletscher.at',bergfex:'https://www.bergfex.at/hintertux/'},
+  {id:'obertauern',     name:'Obertauern',                    country:'AT',region:'Salzburg',    lat:47.264,lon:13.562, mp:false, altMin:1630,altMax:2350,totalLifts:26,totalSlopes:100,website:'https://www.obertauern.com',      bergfex:'https://www.bergfex.at/obertauern/'},
+  {id:'schladming',     name:'Schladming / Ski amade',        country:'AT',region:'Steiermark',  lat:47.393,lon:13.690, mp:false, altMin:745, altMax:2015,totalLifts:45,totalSlopes:230,website:'https://www.schladming-dachstein.at',bergfex:'https://www.bergfex.at/schladming/'},
+  {id:'bad-gastein',    name:'Bad Gastein / Skigastein',      country:'AT',region:'Salzburg',    lat:47.117,lon:13.134, mp:false, altMin:838, altMax:2686,totalLifts:18,totalSlopes:200,website:'https://www.gastein.com',         bergfex:'https://www.bergfex.at/bad-gastein/'},
+  {id:'serfaus',        name:'Serfaus-Fiss-Ladis',            country:'AT',region:'Tirol',       lat:47.040,lon:10.610, mp:false, altMin:1200,altMax:2820,totalLifts:38,totalSlopes:200,website:'https://www.serfaus-fiss-ladis.at',bergfex:'https://www.bergfex.at/serfaus/'},
+  {id:'silvretta-mnt',  name:'Silvretta Montafon',            country:'AT',region:'Vorarlberg',  lat:47.090,lon:10.000, mp:false, altMin:680, altMax:2430,totalLifts:35,totalSlopes:140,website:'https://www.silvretta-montafon.at',bergfex:'https://www.bergfex.at/silvretta-montafon/'},
+  {id:'skiwelt',        name:'SkiWelt Wilder Kaiser – Brixental',country:'AT',region:'Tirol',   lat:47.450,lon:12.200, mp:false, altMin:620, altMax:1957,totalLifts:83,totalSlopes:284,website:'https://www.skiwelt.at',          bergfex:'https://www.bergfex.at/skiwelt-ellmau/'},
+  // ── FRANCE ──
+  {id:'chamonix',       name:'Chamonix Mont-Blanc',           country:'FR',region:'Haute-Savoie',lat:45.924,lon:6.870,  mp:false, altMin:1035,altMax:3842,totalLifts:78,totalSlopes:170,website:'https://www.chamonix.com',        bergfex:'https://www.bergfex.at/chamonix/'},
+  {id:'val-disere',     name:"Val d'Isère",                   country:'FR',region:'Savoie',      lat:45.448,lon:6.980,  mp:false, altMin:1785,altMax:3456,totalLifts:37,totalSlopes:200,website:'https://www.valdisere.com',       bergfex:'https://www.bergfex.at/val-disere/'},
+  {id:'tignes',         name:'Tignes',                        country:'FR',region:'Savoie',      lat:45.468,lon:6.904,  mp:false, altMin:1550,altMax:3456,totalLifts:44,totalSlopes:300,website:'https://www.tignes.net',          bergfex:'https://www.bergfex.at/tignes/'},
+  {id:'les-arcs',       name:'Les Arcs / Paradiski',          country:'FR',region:'Savoie',      lat:45.571,lon:6.822,  mp:false, altMin:1200,altMax:3226,totalLifts:52,totalSlopes:425,website:'https://www.lesarcs.com',         bergfex:'https://www.bergfex.at/les-arcs/'},
+  {id:'la-plagne',      name:'La Plagne / Paradiski',         country:'FR',region:'Savoie',      lat:45.510,lon:6.690,  mp:false, altMin:1250,altMax:3250,totalLifts:77,totalSlopes:425,website:'https://www.la-plagne.com',       bergfex:'https://www.bergfex.at/la-plagne/'},
+  {id:'meribel',        name:'Méribel / Les 3 Vallées',       country:'FR',region:'Savoie',      lat:45.400,lon:6.560,  mp:false, altMin:1100,altMax:3230,totalLifts:42,totalSlopes:600,website:'https://www.meribel.net',         bergfex:'https://www.bergfex.at/meribel/'},
+  {id:'courchevel',     name:'Courchevel / Les 3 Vallées',    country:'FR',region:'Savoie',      lat:45.418,lon:6.634,  mp:false, altMin:1300,altMax:3230,totalLifts:54,totalSlopes:600,website:'https://www.courchevel.com',      bergfex:'https://www.bergfex.at/courchevel/'},
+  {id:'val-thorens',    name:'Val Thorens / Les 3 Vallées',   country:'FR',region:'Savoie',      lat:45.298,lon:6.580,  mp:false, altMin:1800,altMax:3230,totalLifts:23,totalSlopes:600,website:'https://www.valthorens.com',      bergfex:'https://www.bergfex.at/val-thorens/'},
+  {id:'alpe-dhuez',     name:"Alpe d'Huez",                   country:'FR',region:'Isère',       lat:45.090,lon:6.070,  mp:false, altMin:1450,altMax:3330,totalLifts:68,totalSlopes:255,website:'https://www.alpedhuez.com',       bergfex:'https://www.bergfex.at/alpe-dhuez/'},
+  {id:'les-2-alpes',    name:'Les 2 Alpes',                   country:'FR',region:'Isère',       lat:45.007,lon:6.120,  mp:false, altMin:1650,altMax:3600,totalLifts:39,totalSlopes:225,website:'https://www.les2alpes.com',       bergfex:'https://www.bergfex.at/les-2-alpes/'},
+  {id:'morzine',        name:'Morzine / Portes du Soleil',    country:'FR',region:'Haute-Savoie',lat:46.178,lon:6.708,  mp:false, altMin:1000,altMax:2466,totalLifts:213,totalSlopes:600,website:'https://www.morzine.com',       bergfex:'https://www.bergfex.at/morzine/'},
+  {id:'avoriaz',        name:'Avoriaz / Portes du Soleil',    country:'FR',region:'Haute-Savoie',lat:46.196,lon:6.771,  mp:false, altMin:1800,altMax:2466,totalLifts:213,totalSlopes:600,website:'https://www.avoriaz.com',        bergfex:'https://www.bergfex.at/avoriaz/'},
+  {id:'serre-chev',     name:'Serre Chevalier Vallée',        country:'FR',region:'Hautes-Alpes', lat:44.923,lon:6.564, mp:false, altMin:1200,altMax:2800,totalLifts:59,totalSlopes:250,website:'https://www.serrechevalier.com',  bergfex:'https://www.bergfex.at/serre-chevalier/'},
+  {id:'montgenèvre',    name:'Montgenèvre / Via Lattea',      country:'FR',region:'Hautes-Alpes', lat:44.927,lon:6.728, mp:false, altMin:1860,altMax:2701,totalLifts:69,totalSlopes:400,website:'https://www.montgenevre.com',    bergfex:'https://www.bergfex.at/montgenevre/'},
+  // ── ITALY ──
+  {id:'cortina',        name:"Cortina d'Ampezzo",             country:'IT',region:'Venetien',    lat:46.540,lon:12.138, mp:false, altMin:1224,altMax:2930,totalLifts:37,totalSlopes:115,website:'https://www.cortina.dolomiti.com', bergfex:'https://www.bergfex.it/cortina/'},
+  {id:'madonna',        name:'Madonna di Campiglio',          country:'IT',region:'Trentino',    lat:46.234,lon:10.826, mp:false, altMin:1522,altMax:2504,totalLifts:24,totalSlopes:150,website:'https://www.ski.it',              bergfex:'https://www.bergfex.it/madonna-di-campiglio/'},
+  {id:'livigno',        name:'Livigno',                       country:'IT',region:'Lombardei',   lat:46.537,lon:10.136, mp:false, altMin:1816,altMax:2798,totalLifts:31,totalSlopes:115,website:'https://www.livigno.eu',          bergfex:'https://www.bergfex.it/livigno/'},
+  {id:'val-gardena',    name:'Selva Val Gardena / Dolomiti',  country:'IT',region:'Südtirol',    lat:46.554,lon:11.762, mp:false, altMin:1563,altMax:2860,totalLifts:175,totalSlopes:500,website:'https://www.valgardena.it',      bergfex:'https://www.bergfex.it/groednertal/'},
+  {id:'alta-badia',     name:'Alta Badia',                    country:'IT',region:'Südtirol',    lat:46.601,lon:11.924, mp:false, altMin:1270,altMax:2785,totalLifts:51,totalSlopes:130,website:'https://www.altabadia.org',       bergfex:'https://www.bergfex.it/alta-badia/'},
+  {id:'cervinia',       name:'Cervinia / Zermatt',            country:'IT',region:'Aostatal',    lat:45.929,lon:7.628,  mp:false, altMin:2000,altMax:3883,totalLifts:56,totalSlopes:350,website:'https://www.monterosa-ski.com',   bergfex:'https://www.bergfex.it/cervinia/'},
+  {id:'courmayeur',     name:'Courmayeur',                    country:'IT',region:'Aostatal',    lat:45.794,lon:6.970,  mp:false, altMin:1224,altMax:2755,totalLifts:24,totalSlopes:100,website:'https://www.courmayeur.net',      bergfex:'https://www.bergfex.it/courmayeur/'},
+  {id:'sestriere',      name:'Sestriere / Via Lattea',        country:'IT',region:'Piemont',     lat:44.958,lon:6.879,  mp:false, altMin:1350,altMax:2701,totalLifts:69,totalSlopes:400,website:'https://www.mondovialattea.com',  bergfex:'https://www.bergfex.it/sestriere/'},
+  {id:'bormio',         name:'Bormio',                        country:'IT',region:'Lombardei',   lat:46.467,lon:10.369, mp:false, altMin:1225,altMax:3012,totalLifts:22,totalSlopes:50, website:'https://www.bormio.eu',           bergfex:'https://www.bergfex.it/bormio/'},
+  // ── SWITZERLAND – additional ──
+  {id:'leukerbad',      name:'Leukerbad',                     country:'CH',region:'Wallis',      lat:46.374,lon:7.629,  mp:true,  altMin:1401,altMax:2700,totalLifts:21,totalSlopes:60, website:'https://www.leukerbad.ch',        bergfex:'https://www.bergfex.ch/leukerbad/',        mpUrl:'https://www.magicpass.ch/de/skigebiete/leukerbad-torrent-gemmi-602'},
+  {id:'lauchernalp',    name:'Lauchernalp – Lötschental',    country:'CH',region:'Wallis',      lat:46.417,lon:7.757,  mp:true,  altMin:1780,altMax:2690,totalLifts:6, totalSlopes:20, website:'https://www.loetschentalbahnen.ch',bergfex:'https://www.bergfex.ch/lauchernalp/',     mpUrl:'https://www.magicpass.ch/de/skigebiete/lauchernalp-2771'},
+  {id:'la-tzoumaz',     name:'La Tzoumaz – Mayens de Riddes',country:'CH',region:'Wallis',      lat:46.107,lon:7.330,  mp:true,  altMin:1340,altMax:2434,totalLifts:9, totalSlopes:30, website:'https://www.latzoumaz.ch',        bergfex:'https://www.bergfex.ch/la-tzoumaz/'},
+  {id:'rosswald',       name:'Rosswald',                      country:'CH',region:'Wallis',      lat:46.315,lon:8.117,  mp:true,  altMin:1769,altMax:2400,totalLifts:6, totalSlopes:20, website:'https://www.rosswald.ch',         bergfex:'https://www.bergfex.ch/rosswald/',         mpUrl:'https://www.magicpass.ch/de/skigebiete/rosswald-1803'},
+  {id:'graechen',       name:'Grächen',                      country:'CH',region:'Wallis',      lat:46.195,lon:7.833,  mp:false, altMin:1620,altMax:2870,totalLifts:11,totalSlopes:38, website:'https://www.graechen.ch',         bergfex:'https://www.bergfex.ch/graechen/'},
+  {id:'vercorin',       name:'Vercorin',                      country:'CH',region:'Wallis',      lat:46.254,lon:7.566,  mp:true,  altMin:1340,altMax:2350,totalLifts:9, totalSlopes:28, website:'https://www.vercorin.ch',         bergfex:'https://www.bergfex.ch/vercorin/',         mpUrl:'https://www.magicpass.ch/de/skigebiete/vercorin-35'},
+  {id:'arolla',         name:'Arolla',                        country:'CH',region:'Wallis',      lat:46.023,lon:7.486,  mp:true,  altMin:2000,altMax:3025,totalLifts:6, totalSlopes:22, website:'https://www.arolla.ch',           bergfex:'https://www.bergfex.ch/arolla/',            mpUrl:'https://www.magicpass.ch/de/skigebiete/espace-dent-blanche-arolla-118'},
+  {id:'les-marecottes', name:'Les Marécottes',                country:'CH',region:'Wallis',      lat:46.116,lon:6.960,  mp:true,  altMin:920, altMax:2200,totalLifts:6, totalSlopes:20, website:'https://www.lesmairecottes.ch',   bergfex:'https://www.bergfex.ch/les-marecottes/',  mpUrl:'https://www.magicpass.ch/de/skigebiete/les-marecottes-23'},
+  {id:'champex-lac',    name:'Champex-Lac',                   country:'CH',region:'Wallis',      lat:46.030,lon:7.102,  mp:true,  altMin:1466,altMax:2194,totalLifts:4, totalSlopes:14, website:'https://www.champex.ch',          bergfex:'https://www.bergfex.ch/champex/'},
+  {id:'val-ferret',     name:'Val Ferret – La Fouly',         country:'CH',region:'Wallis',      lat:45.929,lon:7.112,  mp:true,  altMin:1600,altMax:2200,totalLifts:4, totalSlopes:12, website:'https://www.val-ferret.ch',       bergfex:'https://www.bergfex.ch/val-ferret/'},
+  {id:'liddes',         name:'Liddes – Vichères',             country:'CH',region:'Wallis',      lat:45.997,lon:7.178,  mp:true,  altMin:1346,altMax:2300,totalLifts:5, totalSlopes:15, website:'https://www.liddes.ch',           bergfex:'https://www.bergfex.ch/liddes/'},
+  {id:'rochers-naye',   name:'Rochers de Naye – Haut de Caux',country:'CH',region:'Waadt',      lat:46.433,lon:6.977,  mp:true,  altMin:820, altMax:2042,totalLifts:7, totalSlopes:18, website:'https://www.vevey-montreux.ch',   bergfex:'https://www.bergfex.ch/rochers-de-naye/', mpUrl:'https://www.magicpass.ch/de/skigebiete/les-rochers--de--naye-90'},
+  {id:'braunwald',      name:'Braunwald',                     country:'CH',region:'Ostschweiz',  lat:46.948,lon:8.997,  mp:true,  altMin:1256,altMax:1900,totalLifts:8, totalSlopes:35, website:'https://www.braunwald.ch',        bergfex:'https://www.bergfex.ch/braunwald/'},
+  {id:'elm',            name:'Elm',                           country:'CH',region:'Ostschweiz',  lat:46.914,lon:9.175,  mp:true,  altMin:963, altMax:2050,totalLifts:6, totalSlopes:25, website:'https://www.elm.ch',              bergfex:'https://www.bergfex.ch/elm/'},
+  {id:'klewenalp',      name:'Klewenalp – Stockhütte',       country:'CH',region:'Zentralschweiz',lat:46.918,lon:8.618,mp:false,altMin:720, altMax:1600,totalLifts:5, totalSlopes:18, website:'https://www.klewenalp.ch',        bergfex:'https://www.bergfex.ch/klewenalp/'},
+  {id:'sorenberg',      name:'Sörenberg',                    country:'CH',region:'Zentralschweiz',lat:46.804,lon:7.977,mp:true,  altMin:1159,altMax:2350,totalLifts:8, totalSlopes:30, website:'https://www.soerenberg.ch',       bergfex:'https://www.bergfex.ch/sorenberg/',        mpUrl:'https://www.magicpass.ch/de/skigebiete/sorenberg-4455'},
+  {id:'la-berra',       name:'La Berra – La Roche',           country:'CH',region:'Freiburg',    lat:46.659,lon:7.108,  mp:true,  altMin:900, altMax:1720,totalLifts:8, totalSlopes:25, website:'https://www.laberra.ch',          bergfex:'https://www.bergfex.ch/la-berra/',          mpUrl:'https://www.magicpass.ch/de/skigebiete/la-berra-20'},
+  {id:'schwarzsee',     name:'Schwarzsee / Kaiseregg',        country:'CH',region:'Freiburg',    lat:46.630,lon:7.270,  mp:true,  altMin:1046,altMax:1740,totalLifts:7, totalSlopes:22, website:'https://www.schwarzsee.ch',       bergfex:'https://www.bergfex.ch/schwarzsee/',      mpUrl:'https://www.magicpass.ch/de/skigebiete/schwarzsee-32'},
+  {id:'mont-gibloux',   name:'Mont Gibloux',                  country:'CH',region:'Freiburg',    lat:46.680,lon:7.007,  mp:true,  altMin:780, altMax:1400,totalLifts:2, totalSlopes:8,  website:'https://www.montgibloux.ch',      bergfex:'https://www.bergfex.ch/mont-gibloux/'},
+  {id:'chaserrugg',     name:'Toggenburg – Chäserrugg',      country:'CH',region:'Ostschweiz',  lat:47.178,lon:9.384,  mp:true,  altMin:916, altMax:2262,totalLifts:14,totalSlopes:50, website:'https://www.chaserrugg.ch',       bergfex:'https://www.bergfex.ch/alt-st-johann/'},
+  {id:'amden',          name:'Amden',                         country:'CH',region:'Ostschweiz',  lat:47.150,lon:9.140,  mp:false, altMin:900, altMax:1750,totalLifts:4, totalSlopes:15, website:'https://www.amden.ch',            bergfex:'https://www.bergfex.ch/amden/'},
+  {id:'scuol-naluns',   name:'Scuol – Motta Naluns',          country:'CH',region:'Graubünden',  lat:46.798,lon:10.295, mp:false, altMin:1250,altMax:2783,totalLifts:12,totalSlopes:80, website:'https://www.bergbahnen-scuol.ch', bergfex:'https://www.bergfex.ch/scuol/'},
+  {id:'obersaxen',      name:'Obersaxen Mundaun',             country:'CH',region:'Graubünden',  lat:46.726,lon:9.042,  mp:false, altMin:1200,altMax:2218,totalLifts:15,totalSlopes:55, website:'https://www.mundaun.ch',          bergfex:'https://www.bergfex.ch/obersaxen/'},
+  {id:'savognin',       name:'Savognin / Bivio',              country:'CH',region:'Graubünden',  lat:46.564,lon:9.499,  mp:false, altMin:1200,altMax:2713,totalLifts:12,totalSlopes:55, website:'https://www.savognin.ch',         bergfex:'https://www.bergfex.ch/savognin/'},
+  {id:'spluegen',       name:'Splügen / Rheinwald',           country:'CH',region:'Graubünden',  lat:46.550,lon:9.320,  mp:false, altMin:1457,altMax:2300,totalLifts:7, totalSlopes:30, website:'https://www.spluegen.ch',         bergfex:'https://www.bergfex.ch/spluegen/'},
+  {id:'vals',           name:'Vals',                          country:'CH',region:'Graubünden',  lat:46.618,lon:9.183,  mp:false, altMin:1252,altMax:2500,totalLifts:6, totalSlopes:25, website:'https://www.vals.ch',             bergfex:'https://www.bergfex.ch/vals/'},
+  {id:'muottas-muragl', name:'Muottas Muragl',                country:'CH',region:'Graubünden',  lat:46.508,lon:9.865,  mp:false, altMin:1822,altMax:3009,totalLifts:4, totalSlopes:15, website:'https://www.muottasmuragl.ch',    bergfex:'https://www.bergfex.ch/muottas-muragl/'},
+  {id:'diavolezza',     name:'Diavolezza – Lagalb',           country:'CH',region:'Graubünden',  lat:46.410,lon:9.965,  mp:false, altMin:1722,altMax:3087,totalLifts:4, totalSlopes:18, website:'https://www.diavolezza.ch',       bergfex:'https://www.bergfex.ch/diavolezza/'},
+  {id:'corvatsch',      name:'Corvatsch – Furtschellas',      country:'CH',region:'Graubünden',  lat:46.467,lon:9.769,  mp:false, altMin:1800,altMax:3303,totalLifts:14,totalSlopes:60, website:'https://www.corvatsch.ch',        bergfex:'https://www.bergfex.ch/corvatsch/'},
+  {id:'languard',       name:'Languard / Pontresina',         country:'CH',region:'Graubünden',  lat:46.480,lon:9.900,  mp:false, altMin:1805,altMax:2979,totalLifts:8, totalSlopes:30, website:'https://www.pontresina.ch',       bergfex:'https://www.bergfex.ch/pontresina/'},
+  {id:'klosters-madrisa',name:'Klosters – Madrisa',          country:'CH',region:'Graubünden',  lat:46.879,lon:9.880,  mp:false, altMin:1124,altMax:2626,totalLifts:6, totalSlopes:30, website:'https://www.davos.ch',            bergfex:'https://www.bergfex.ch/klosters-madrisa/'},
+  {id:'zuoz',           name:'Zuoz',                          country:'CH',region:'Graubünden',  lat:46.605,lon:9.981,  mp:false, altMin:1716,altMax:2450,totalLifts:4, totalSlopes:14, website:'https://www.engadin.ch',          bergfex:'https://www.bergfex.ch/zuoz/'},
+  {id:'saas-almagell',  name:'Saas Almagell',                 country:'CH',region:'Wallis',      lat:46.103,lon:7.960,  mp:true,  altMin:1672,altMax:3200,totalLifts:5, totalSlopes:28, website:'https://www.saas-almagell.ch',    bergfex:'https://www.bergfex.ch/saas-almagell/',   mpUrl:'https://www.magicpass.ch/de/skigebiete/saas-fee--saas-almagell-600'},
+  {id:'airolo-pesc',    name:'Airolo – Pesciüm',             country:'CH',region:'Tessin',      lat:46.532,lon:8.608,  mp:false, altMin:1141,altMax:2310,totalLifts:9, totalSlopes:35, website:'https://www.airolo.ch',           bergfex:'https://www.bergfex.ch/airolo-pesciuem/'},
+  {id:'bosco-gurin',    name:'Bosco Gurin',                   country:'CH',region:'Tessin',      lat:46.316,lon:8.487,  mp:false, altMin:1503,altMax:2400,totalLifts:5, totalSlopes:25, website:'https://www.boscogurin.ch',       bergfex:'https://www.bergfex.ch/bosco-gurin/'},
+  {id:'obergoms',       name:'Obergoms / Goms',               country:'CH',region:'Wallis',      lat:46.481,lon:8.264,  mp:false, altMin:1344,altMax:2000,totalLifts:5, totalSlopes:15, website:'https://www.obergoms.ch',         bergfex:'https://www.bergfex.ch/obergoms/'},
+  {id:'minschuns',      name:'Minschuns – Val Müstair',       country:'CH',region:'Graubünden',  lat:46.617,lon:10.417, mp:false, altMin:1260,altMax:2100,totalLifts:3, totalSlopes:12, website:'https://www.valmuestair.ch',      bergfex:'https://www.bergfex.ch/minschuns/'},
+  {id:'brigels',        name:'Brigels – Waltensburg – Andiast',country:'CH',region:'Graubünden', lat:46.764,lon:9.035,  mp:false, altMin:860, altMax:2421,totalLifts:9, totalSlopes:35, website:'https://www.bergbahnen-brigels.ch',bergfex:'https://www.bergfex.ch/brigels/'},
+  {id:'disentis',       name:'Disentis',                      country:'CH',region:'Graubünden',  lat:46.707,lon:8.855,  mp:false, altMin:1130,altMax:3000,totalLifts:11,totalSlopes:60, website:'https://www.disentis.ch',         bergfex:'https://www.bergfex.ch/disentis/'},
+  // ── AUSTRIA – additional ──
+  {id:'damuels',        name:'Damüls – Mellau – Faschina',   country:'AT',region:'Vorarlberg',  lat:47.276,lon:9.889,  mp:false, altMin:1430,altMax:2050,totalLifts:29,totalSlopes:109,website:'https://www.damuels.at',          bergfex:'https://www.bergfex.at/damuels/'},
+  {id:'brandnertal',    name:'Brandnertal',                   country:'AT',region:'Vorarlberg',  lat:47.122,lon:9.765,  mp:false, altMin:1000,altMax:2100,totalLifts:13,totalSlopes:55, website:'https://www.brandnertal.at',      bergfex:'https://www.bergfex.at/brand/'},
+  {id:'warth-schrocken',name:'Warth – Schröcken / Arlberg', country:'AT',region:'Vorarlberg',  lat:47.267,lon:10.180, mp:false, altMin:1494,altMax:2811,totalLifts:85,totalSlopes:305,website:'https://www.warth-schroecken.at', bergfex:'https://www.bergfex.at/warth/'},
+  {id:'sonnenkopf',     name:'Sonnenkopf / Klostertal',      country:'AT',region:'Vorarlberg',  lat:47.183,lon:9.895,  mp:false, altMin:830, altMax:2304,totalLifts:9, totalSlopes:45, website:'https://www.sonnenkopf.at',       bergfex:'https://www.bergfex.at/sonnenkopf/'},
+  {id:'kleinwalsertal', name:'Kleinwalsertal / Kanzelwand – Fellhorn',country:'AT',region:'Vorarlberg',lat:47.336,lon:10.221,mp:false,altMin:740,altMax:1961,totalLifts:13,totalSlopes:50,website:'https://www.kleinwalsertal.com',bergfex:'https://www.bergfex.at/kleinwalsertal/'},
+  {id:'golm',           name:'Golm / Montafon',               country:'AT',region:'Vorarlberg',  lat:47.072,lon:9.949,  mp:false, altMin:680, altMax:2130,totalLifts:9, totalSlopes:40, website:'https://www.golm.at',             bergfex:'https://www.bergfex.at/golm/'},
+  {id:'gargellen',      name:'Gargellen / Montafon',          country:'AT',region:'Vorarlberg',  lat:47.002,lon:9.914,  mp:false, altMin:1423,altMax:2300,totalLifts:8, totalSlopes:35, website:'https://www.gargellen.at',        bergfex:'https://www.bergfex.at/gargellen/'},
+  {id:'diedamskopf',    name:'Diedamskopf / Schoppernau',    country:'AT',region:'Vorarlberg',  lat:47.350,lon:10.009, mp:false, altMin:920, altMax:2090,totalLifts:9, totalSlopes:40, website:'https://www.schoppernau.at',      bergfex:'https://www.bergfex.at/diedamskopf/'},
+  {id:'berwang',        name:'Berwang / Zugspitz Arena',      country:'AT',region:'Tirol',       lat:47.411,lon:10.592, mp:false, altMin:1336,altMax:2200,totalLifts:12,totalSlopes:55, website:'https://www.berwang.at',          bergfex:'https://www.bergfex.at/berwang/'},
+  {id:'lermoos',        name:'Lermoos / Zugspitz Arena',      country:'AT',region:'Tirol',       lat:47.403,lon:10.882, mp:false, altMin:1004,altMax:2100,totalLifts:9, totalSlopes:40, website:'https://www.lermoos.at',          bergfex:'https://www.bergfex.at/lermoos/'},
+  {id:'kuehtai',        name:'Kühtai',                       country:'AT',region:'Tirol',       lat:47.212,lon:11.018, mp:false, altMin:2020,altMax:2520,totalLifts:12,totalSlopes:56, website:'https://www.kuehtai.info',        bergfex:'https://www.bergfex.at/kuehtai/'},
+  {id:'axamer-lizum',   name:'Axamer Lizum',                  country:'AT',region:'Tirol',       lat:47.173,lon:11.195, mp:false, altMin:907, altMax:2340,totalLifts:9, totalSlopes:40, website:'https://www.axamer-lizum.at',     bergfex:'https://www.bergfex.at/axamer-lizum/'},
+  {id:'schlick-2000',   name:'Schlick 2000 – Fulpmes',        country:'AT',region:'Tirol',       lat:47.159,lon:11.344, mp:false, altMin:910, altMax:2136,totalLifts:11,totalSlopes:30, website:'https://www.schlick2000.at',      bergfex:'https://www.bergfex.at/schlick-2000-stubaital/'},
+  {id:'hochzeiger',     name:'Hochzeiger / Jerzens',          country:'AT',region:'Tirol',       lat:47.113,lon:10.701, mp:false, altMin:870, altMax:2450,totalLifts:9, totalSlopes:42, website:'https://www.hochzeiger.com',      bergfex:'https://www.bergfex.at/hochzeiger/'},
+  {id:'hochfuegen',     name:'Hochfügen / Zillertal',         country:'AT',region:'Tirol',       lat:47.280,lon:11.800, mp:false, altMin:860, altMax:2500,totalLifts:13,totalSlopes:57, website:'https://www.hochfuegen.com',      bergfex:'https://www.bergfex.at/hochfuegen/'},
+  {id:'hochzillertal',  name:'Hochzillertal / Kaltenbach',    country:'AT',region:'Tirol',       lat:47.339,lon:11.795, mp:false, altMin:600, altMax:2500,totalLifts:25,totalSlopes:90, website:'https://www.hochzillertal.at',    bergfex:'https://www.bergfex.at/hochzillertal/'},
+  {id:'alpbach',        name:'Alpbach / Ski Juwel Alpbachtal',country:'AT',region:'Tirol',       lat:47.394,lon:11.934, mp:false, altMin:800, altMax:2025,totalLifts:45,totalSlopes:108,website:'https://www.skijuwel.com',        bergfex:'https://www.bergfex.at/alpbach/'},
+  {id:'nordkette',      name:'Innsbruck – Nordkette',         country:'AT',region:'Tirol',       lat:47.281,lon:11.385, mp:false, altMin:570, altMax:2334,totalLifts:6, totalSlopes:22, website:'https://www.nordkette.com',       bergfex:'https://www.bergfex.at/nordkette/'},
+  {id:'glungezer',      name:'Glungezer',                     country:'AT',region:'Tirol',       lat:47.226,lon:11.613, mp:false, altMin:908, altMax:2610,totalLifts:6, totalSlopes:20, website:'https://www.glungezer.at',        bergfex:'https://www.bergfex.at/glungezer/'},
+  {id:'hochoetz',       name:'Oetz – Hochoetz',               country:'AT',region:'Tirol',       lat:47.196,lon:10.889, mp:false, altMin:820, altMax:3012,totalLifts:15,totalSlopes:66, website:'https://www.hochoetz.at',         bergfex:'https://www.bergfex.at/hochoetz/'},
+  {id:'silvapark-galtur',name:'Silvapark Galtür / Paznaun',   country:'AT',region:'Tirol',       lat:46.972,lon:10.184, mp:false, altMin:1584,altMax:2320,totalLifts:10,totalSlopes:40, website:'https://www.silvapark.com',       bergfex:'https://www.bergfex.at/galtur/'},
+  {id:'kappl',          name:'Kappl / Paznaun',               country:'AT',region:'Tirol',       lat:47.044,lon:10.381, mp:false, altMin:1257,altMax:2643,totalLifts:10,totalSlopes:42, website:'https://www.kappl.com',           bergfex:'https://www.bergfex.at/kappl/'},
+  {id:'pitztaler-glf',  name:'Pitztaler Gletscher',           country:'AT',region:'Tirol',       lat:46.905,lon:10.834, mp:false, altMin:1676,altMax:3440,totalLifts:13,totalSlopes:68, website:'https://www.pitztaler-gletscher.at',bergfex:'https://www.bergfex.at/pitztal/'},
+  {id:'kaunertal',      name:'Kaunertaler Gletscher',         country:'AT',region:'Tirol',       lat:46.894,lon:10.700, mp:false, altMin:1800,altMax:3160,totalLifts:8, totalSlopes:36, website:'https://www.kaunertaler-gletscher.at',bergfex:'https://www.bergfex.at/kaunertal/'},
+  {id:'nauders',        name:'Nauders',                       country:'AT',region:'Tirol',       lat:46.892,lon:10.500, mp:false, altMin:1396,altMax:2750,totalLifts:15,totalSlopes:74, website:'https://www.nauders.com',         bergfex:'https://www.bergfex.at/nauders/'},
+  {id:'steinplatte',    name:'Steinplatte / Waidring',        country:'AT',region:'Tirol',       lat:47.565,lon:12.572, mp:false, altMin:780, altMax:1870,totalLifts:14,totalSlopes:46, website:'https://www.steinplatte.at',      bergfex:'https://www.bergfex.at/steinplatte/'},
+  {id:'lofer',          name:'Lofer – Almenwelt Lofer',       country:'AT',region:'Salzburg',    lat:47.587,lon:12.691, mp:false, altMin:630, altMax:1745,totalLifts:10,totalSlopes:44, website:'https://www.almenwelt.at',        bergfex:'https://www.bergfex.at/lofer/'},
+  {id:'hochkoenig',     name:'Hochkönig – Maria Alm',        country:'AT',region:'Salzburg',    lat:47.410,lon:12.908, mp:false, altMin:774, altMax:2941,totalLifts:34,totalSlopes:120,website:'https://www.hochkoenig.at',       bergfex:'https://www.bergfex.at/hochkoenig/'},
+  {id:'dachstein-west', name:'Dachstein West / Gosau',        country:'AT',region:'O.Österreich',lat:47.576,lon:13.595, mp:false, altMin:450, altMax:1700,totalLifts:22,totalSlopes:92, website:'https://www.dachstein-salzkammergut.at',bergfex:'https://www.bergfex.at/annaberg-lungitz-gosau/'},
+  {id:'hinterstoder',   name:'Hinterstoder / Höss',           country:'AT',region:'O.Österreich',lat:47.701,lon:14.165, mp:false, altMin:590, altMax:1860,totalLifts:13,totalSlopes:50, website:'https://www.hinterstoder.at',     bergfex:'https://www.bergfex.at/hinterstoder/'},
+  {id:'tauplitz',       name:'Tauplitz / Bad Mitterndorf',    country:'AT',region:'Steiermark',  lat:47.558,lon:14.002, mp:false, altMin:799, altMax:1850,totalLifts:17,totalSlopes:50, website:'https://www.tauplitzalm.at',      bergfex:'https://www.bergfex.at/tauplitz/'},
+  {id:'nassfeld',       name:'Nassfeld',                      country:'AT',region:'Kärnten',     lat:46.611,lon:13.282, mp:false, altMin:600, altMax:2195,totalLifts:29,totalSlopes:110,website:'https://www.nassfeld.at',         bergfex:'https://www.bergfex.at/nassfeld/'},
+  {id:'bad-kleinkirchhm',name:'Bad Kleinkirchheim',           country:'AT',region:'Kärnten',     lat:46.827,lon:13.785, mp:false, altMin:1100,altMax:2055,totalLifts:24,totalSlopes:103,website:'https://www.badkleinkirchheim.at',bergfex:'https://www.bergfex.at/bad-kleinkirchheim/'},
+  {id:'kreischberg',    name:'Kreischberg / Murau',           country:'AT',region:'Steiermark',  lat:47.138,lon:14.274, mp:false, altMin:868, altMax:1990,totalLifts:12,totalSlopes:47, website:'https://www.murau-kreischberg.at', bergfex:'https://www.bergfex.at/kreischberg/'},
+  {id:'turracher',      name:'Turracher Höhe',                country:'AT',region:'Steiermark',  lat:46.918,lon:13.972, mp:false, altMin:1763,altMax:2200,totalLifts:15,totalSlopes:35, website:'https://www.turracher-hoehe.at',  bergfex:'https://www.bergfex.at/turracher-hoehe/'},
+  {id:'katschberg',     name:'Katschberg',                    country:'AT',region:'Kärnten',     lat:47.054,lon:13.621, mp:false, altMin:1641,altMax:2260,totalLifts:17,totalSlopes:56, website:'https://www.katschberg.at',       bergfex:'https://www.bergfex.at/katschberg/'},
+  {id:'grossarl',       name:'Großarl / Ski amade',           country:'AT',region:'Salzburg',    lat:47.259,lon:13.204, mp:false, altMin:859, altMax:2000,totalLifts:10,totalSlopes:38, website:'https://www.grossarltal.com',     bergfex:'https://www.bergfex.at/grossarl/'},
+  {id:'fieberbrunn',    name:'Fieberbrunn / Saalbach Hinterglemm',country:'AT',region:'Tirol',  lat:47.473,lon:12.511, mp:false, altMin:820, altMax:2020,totalLifts:70,totalSlopes:270,website:'https://www.fieberbrunn.com',     bergfex:'https://www.bergfex.at/fieberbrunn/'},
+  {id:'wildkogel',      name:'Wildkogel-Arena Neukirchen',    country:'AT',region:'Salzburg',    lat:47.274,lon:12.340, mp:false, altMin:856, altMax:2330,totalLifts:20,totalSlopes:82, website:'https://www.wildkogel-arena.at',  bergfex:'https://www.bergfex.at/neukirchen/'},
+  {id:'heiligenblut',   name:'Heiligenblut / Grossglockner',  country:'AT',region:'Kärnten',     lat:47.042,lon:12.843, mp:false, altMin:1280,altMax:2900,totalLifts:11,totalSlopes:55, website:'https://www.heiligenblut.at',     bergfex:'https://www.bergfex.at/heiligenblut/'},
+  {id:'lienz',          name:'Lienzer Bergbahnen',            country:'AT',region:'Tirol',       lat:46.830,lon:12.769, mp:false, altMin:673, altMax:2278,totalLifts:13,totalSlopes:44, website:'https://www.lienzer-bergbahnen.at',bergfex:'https://www.bergfex.at/lienz/'},
+  {id:'hochkar',        name:'Hochkar',                       country:'AT',region:'N.Österreich',lat:47.889,lon:14.971, mp:false, altMin:1350,altMax:1808,totalLifts:8, totalSlopes:22, website:'https://www.hochkar.at',          bergfex:'https://www.bergfex.at/hochkar/'},
+  {id:'ramsau-dachstein',name:'Ramsau / Dachstein',           country:'AT',region:'Steiermark',  lat:47.437,lon:13.636, mp:false, altMin:1135,altMax:2700,totalLifts:14,totalSlopes:50, website:'https://www.dachstein-salzkammergut.at',bergfex:'https://www.bergfex.at/ramsau/'},
+  {id:'planneralm',     name:'Planneralm',                    country:'AT',region:'Steiermark',  lat:47.393,lon:14.215, mp:false, altMin:1600,altMax:1918,totalLifts:6, totalSlopes:22, website:'https://www.planneralm.com',      bergfex:'https://www.bergfex.at/planneralm/'},
+  // ── FRANCE – additional ──
+  {id:'la-clusaz',      name:'La Clusaz / Lake Annecy',       country:'FR',region:'Haute-Savoie',lat:45.902,lon:6.426,  mp:false, altMin:1100,altMax:2600,totalLifts:27,totalSlopes:125,website:'https://www.laclusaz.com',        bergfex:'https://www.bergfex.at/la-clusaz/'},
+  {id:'le-grand-bornand',name:'Le Grand Bornand',              country:'FR',region:'Haute-Savoie',lat:45.943,lon:6.490,  mp:false, altMin:1000,altMax:2502,totalLifts:25,totalSlopes:90, website:'https://www.legrandbornand.com',  bergfex:'https://www.bergfex.at/le-grand-bornand/'},
+  {id:'flaine',         name:'Flaine / Le Grand Massif',      country:'FR',region:'Haute-Savoie',lat:46.008,lon:6.688,  mp:false, altMin:694, altMax:2500,totalLifts:23,totalSlopes:265,website:'https://www.flaine.com',          bergfex:'https://www.bergfex.at/flaine/'},
+  {id:'les-contamines', name:'Les Contamines – Montjoie',     country:'FR',region:'Haute-Savoie',lat:45.820,lon:6.725,  mp:false, altMin:1164,altMax:2487,totalLifts:25,totalSlopes:120,website:'https://www.lescontamines.com',   bergfex:'https://www.bergfex.at/les-contamines/'},
+  {id:'st-gervais',     name:'Les Houches / Saint-Gervais',   country:'FR',region:'Haute-Savoie',lat:45.890,lon:6.799,  mp:false, altMin:1000,altMax:1900,totalLifts:14,totalSlopes:70, website:'https://www.saintnr-gervais.com', bergfex:'https://www.bergfex.at/saint-gervais/'},
+  {id:'les-saisies',    name:'Les Saisies / Espace Diamant',  country:'FR',region:'Savoie',      lat:45.763,lon:6.485,  mp:false, altMin:1650,altMax:2070,totalLifts:30,totalSlopes:192,website:'https://www.lessaisies.com',      bergfex:'https://www.bergfex.at/les-saisies/'},
+  {id:'areches',        name:'Arêches-Beaufort',              country:'FR',region:'Savoie',      lat:45.692,lon:6.608,  mp:false, altMin:1080,altMax:2300,totalLifts:14,totalSlopes:70, website:'https://www.areches-beaufort.com', bergfex:'https://www.bergfex.at/areches-beaufort/'},
+  {id:'les-menuires',   name:'Les Menuires / Les 3 Vallées',  country:'FR',region:'Savoie',      lat:45.323,lon:6.538,  mp:false, altMin:1850,altMax:2850,totalLifts:30,totalSlopes:600,website:'https://www.lesmenuires.com',     bergfex:'https://www.bergfex.at/les-menuires/'},
+  {id:'st-martin-bell', name:'Saint Martin de Belleville',    country:'FR',region:'Savoie',      lat:45.372,lon:6.507,  mp:false, altMin:1340,altMax:3230,totalLifts:42,totalSlopes:600,website:'https://www.st-martin-belleville.com',bergfex:'https://www.bergfex.at/saint-martin-de-belleville/'},
+  {id:'valmorel',       name:'Valmorel / Le Grand Domaine',   country:'FR',region:'Savoie',      lat:45.488,lon:6.422,  mp:false, altMin:1400,altMax:2550,totalLifts:31,totalSlopes:165,website:'https://www.valmorel.com',        bergfex:'https://www.bergfex.at/valmorel/'},
+  {id:'la-rosiere',     name:'La Rosière – Espace San Bernardo',country:'FR',region:'Savoie',   lat:45.713,lon:6.833,  mp:false, altMin:1850,altMax:2809,totalLifts:20,totalSlopes:150,website:'https://www.larosiere.net',       bergfex:'https://www.bergfex.at/la-rosiere/'},
+  {id:'sainte-foy',     name:'Sainte Foy Tarentaise',         country:'FR',region:'Savoie',      lat:45.547,lon:6.894,  mp:false, altMin:1550,altMax:2620,totalLifts:6, totalSlopes:60, website:'https://www.saintefoy.com',       bergfex:'https://www.bergfex.at/sainte-foy/'},
+  {id:'la-toussuire',   name:'La Toussuire / Les Sybelles',   country:'FR',region:'Savoie',      lat:45.263,lon:6.331,  mp:false, altMin:1700,altMax:2620,totalLifts:17,totalSlopes:310,website:'https://www.sybelles.ski',        bergfex:'https://www.bergfex.at/la-toussuire/'},
+  {id:'valloire',       name:'Valloire / Galibier Thabor',    country:'FR',region:'Savoie',      lat:45.168,lon:6.432,  mp:false, altMin:1430,altMax:2770,totalLifts:30,totalSlopes:150,website:'https://www.valloire.net',        bergfex:'https://www.bergfex.at/valloire/'},
+  {id:'val-cenis',      name:'Val Cenis / Haute Maurienne',   country:'FR',region:'Savoie',      lat:45.262,lon:6.756,  mp:false, altMin:1400,altMax:2800,totalLifts:29,totalSlopes:125,website:'https://www.valcenis.ski',        bergfex:'https://www.bergfex.at/val-cenis/'},
+  {id:'valfrejus',      name:'Valfréjus',                     country:'FR',region:'Savoie',      lat:45.213,lon:6.672,  mp:false, altMin:1550,altMax:2740,totalLifts:9, totalSlopes:45, website:'https://www.valfrejus.com',       bergfex:'https://www.bergfex.at/valfrejus/'},
+  {id:'bonneval',       name:'Bonneval sur Arc',               country:'FR',region:'Savoie',      lat:45.360,lon:7.055,  mp:false, altMin:1800,altMax:3000,totalLifts:10,totalSlopes:35, website:'https://www.bonneval-sur-arc.com',bergfex:'https://www.bergfex.at/bonneval-sur-arc/'},
+  {id:'la-norma',       name:'La Norma',                      country:'FR',region:'Savoie',      lat:45.220,lon:6.702,  mp:false, altMin:1350,altMax:2750,totalLifts:13,totalSlopes:55, website:'https://www.la-norma.com',        bergfex:'https://www.bergfex.at/la-norma/'},
+  {id:'chamrousse',     name:'Chamrousse',                    country:'FR',region:'Isère',       lat:45.120,lon:5.887,  mp:false, altMin:1390,altMax:2250,totalLifts:16,totalSlopes:90, website:'https://www.chamrousse.com',      bergfex:'https://www.bergfex.at/chamrousse/'},
+  {id:'les-7-laux',     name:'Les 7 Laux',                    country:'FR',region:'Isère',       lat:45.282,lon:6.020,  mp:false, altMin:1350,altMax:2450,totalLifts:22,totalSlopes:80, website:'https://www.les7laux.com',        bergfex:'https://www.bergfex.at/les-7-laux/'},
+  {id:'orcieres',       name:'Orcières Merlette',             country:'FR',region:'Hautes-Alpes',lat:44.701,lon:6.331,  mp:false, altMin:1850,altMax:2725,totalLifts:26,totalSlopes:100,website:'https://www.orcieres.com',        bergfex:'https://www.bergfex.at/orcieres/'},
+  {id:'puy-st-vincent', name:'Puy Saint Vincent',             country:'FR',region:'Hautes-Alpes',lat:44.874,lon:6.504,  mp:false, altMin:1400,altMax:2700,totalLifts:10,totalSlopes:75, website:'https://www.puysaintvincent.com', bergfex:'https://www.bergfex.at/puy-saint-vincent/'},
+  {id:'les-orres',      name:'Les Orres',                     country:'FR',region:'Hautes-Alpes',lat:44.479,lon:6.528,  mp:false, altMin:1650,altMax:2720,totalLifts:17,totalSlopes:100,website:'https://www.lesorres.com',        bergfex:'https://www.bergfex.at/les-orres/'},
+  {id:'risoul-vars',    name:'Risoul – Vars / Forêt Blanche', country:'FR',region:'Hautes-Alpes',lat:44.621,lon:6.650,  mp:false, altMin:1650,altMax:2750,totalLifts:32,totalSlopes:185,website:'https://www.foretblanche.com',    bergfex:'https://www.bergfex.at/risoul/'},
+  {id:'peyragudes',     name:'Peyragudes / Pyrénées',         country:'FR',region:'Pyrenees',    lat:42.793,lon:0.486,  mp:false, altMin:1400,altMax:2400,totalLifts:19,totalSlopes:60, website:'https://www.peyragudes.com',      bergfex:'https://www.bergfex.at/peyragudes/'},
+  {id:'saint-lary',     name:'Saint Lary Soulan',             country:'FR',region:'Pyrenees',    lat:42.827,lon:0.325,  mp:false, altMin:830, altMax:2515,totalLifts:24,totalSlopes:100,website:'https://www.saintlary.com',       bergfex:'https://www.bergfex.at/saint-lary-soulan/'},
+  {id:'grand-tourmalet',name:'Grand Tourmalet – Barèges – La Mongie',country:'FR',region:'Pyrenees',lat:42.887,lon:0.065,mp:false,altMin:1200,altMax:2500,totalLifts:27,totalSlopes:100,website:'https://www.skirando.com',       bergfex:'https://www.bergfex.at/bareges/'},
+  {id:'font-romeu',     name:'Font-Romeu / Pyrénées 2000',    country:'FR',region:'Pyrenees',    lat:42.511,lon:2.039,  mp:false, altMin:1600,altMax:2213,totalLifts:24,totalSlopes:38, website:'https://www.font-romeu.fr',       bergfex:'https://www.bergfex.at/font-romeu/'},
+  {id:'praz-de-lys',    name:'Praz de Lys Sommand',           country:'FR',region:'Haute-Savoie',lat:46.092,lon:6.651,  mp:false, altMin:1500,altMax:1900,totalLifts:23,totalSlopes:60, website:'https://www.prazdelys-sommand.com',bergfex:'https://www.bergfex.at/praz-de-lys/'},
+  {id:'chatel',         name:'Châtel / Portes du Soleil',     country:'FR',region:'Haute-Savoie',lat:46.268,lon:6.844,  mp:false, altMin:1200,altMax:2200,totalLifts:213,totalSlopes:600,website:'https://www.chatel.com',         bergfex:'https://www.bergfex.at/chatel/'},
+  {id:'auron',          name:'Auron',                         country:'FR',region:'PACA',        lat:44.186,lon:6.942,  mp:false, altMin:1600,altMax:2450,totalLifts:19,totalSlopes:55, website:'https://www.auron.com',           bergfex:'https://www.bergfex.at/auron/'},
+  {id:'isola-2000',     name:'Isola 2000',                    country:'FR',region:'PACA',        lat:44.188,lon:7.179,  mp:false, altMin:2000,altMax:2610,totalLifts:18,totalSlopes:50, website:'https://www.isola2000.com',       bergfex:'https://www.bergfex.at/isola-2000/'},
+  // ── ITALY – additional ──
+  {id:'kronplatz',      name:'Plan de Corones – Kronplatz',   country:'IT',region:'Südtirol',    lat:46.795,lon:11.941, mp:false, altMin:1000,altMax:2275,totalLifts:31,totalSlopes:119,website:'https://www.kronplatz.com',       bergfex:'https://www.bergfex.it/kronplatz/'},
+  {id:'alpe-di-siusi',  name:'Alpe di Siusi / Seiser Alm',   country:'IT',region:'Südtirol',    lat:46.542,lon:11.603, mp:false, altMin:1680,altMax:2350,totalLifts:15,totalSlopes:60, website:'https://www.seiseralm.it',        bergfex:'https://www.bergfex.it/seiser-alm/'},
+  {id:'arabba',         name:'Arabba / Marmolada',            country:'IT',region:'Venetien',    lat:46.498,lon:11.870, mp:false, altMin:1600,altMax:3265,totalLifts:30,totalSlopes:72, website:'https://www.arabba.it',           bergfex:'https://www.bergfex.it/arabba/'},
+  {id:'san-martino',    name:'San Martino di Castrozza',      country:'IT',region:'Trentino',    lat:46.255,lon:11.798, mp:false, altMin:1450,altMax:2358,totalLifts:22,totalSlopes:60, website:'https://www.sanmartino.com',      bergfex:'https://www.bergfex.it/san-martino-di-castrozza/'},
+  {id:'merano2000',     name:'Merano 2000',                   country:'IT',region:'Südtirol',    lat:46.652,lon:11.199, mp:false, altMin:900, altMax:2316,totalLifts:14,totalSlopes:40, website:'https://www.meran2000.com',       bergfex:'https://www.bergfex.it/merano-2000/'},
+  {id:'tonale',         name:'Ponte di Legno – Tonale',       country:'IT',region:'Lombardei',   lat:46.256,lon:10.508, mp:false, altMin:1120,altMax:3016,totalLifts:30,totalSlopes:100,website:'https://www.pontedilegno.it',     bergfex:'https://www.bergfex.it/passo-del-tonale/'},
+  {id:'folgarida',      name:'Folgarida – Marilleva / Val di Sole',country:'IT',region:'Trentino',lat:46.318,lon:10.793,mp:false,altMin:1350,altMax:2640,totalLifts:17,totalSlopes:100,website:'https://www.skicarosel.it',       bergfex:'https://www.bergfex.it/folgarida/'},
+  {id:'val-di-fassa',   name:'Val di Fassa – Carezza',        country:'IT',region:'Trentino',    lat:46.414,lon:11.657, mp:false, altMin:1100,altMax:2630,totalLifts:38,totalSlopes:130,website:'https://www.fassa.com',           bergfex:'https://www.bergfex.it/val-di-fassa/'},
+  {id:'pejo',           name:'Pejo / Val di Sole',            country:'IT',region:'Trentino',    lat:46.352,lon:10.679, mp:false, altMin:1400,altMax:3015,totalLifts:12,totalSlopes:40, website:'https://www.funiviedipejo.com',   bergfex:'https://www.bergfex.it/pejo/'},
+  {id:'monte-rosa-ski', name:'Monte Rosa Ski – Gressoney – Champoluc',country:'IT',region:'Aostatal',lat:45.810,lon:7.790,mp:false,altMin:1100,altMax:3275,totalLifts:34,totalSlopes:180,website:'https://www.monteRosaski.com',  bergfex:'https://www.bergfex.it/monterosa-ski/'},
+  {id:'la-thuile',      name:'La Thuile',                     country:'IT',region:'Aostatal',    lat:45.712,lon:6.956,  mp:false, altMin:1441,altMax:2642,totalLifts:16,totalSlopes:150,website:'https://www.lathuile.com',        bergfex:'https://www.bergfex.it/la-thuile/'},
+  {id:'bardonecchia',   name:'Bardonecchia',                  country:'IT',region:'Piemont',     lat:45.077,lon:6.703,  mp:false, altMin:1312,altMax:2750,totalLifts:14,totalSlopes:100,website:'https://www.bardonecchia.it',     bergfex:'https://www.bergfex.it/bardonecchia/'},
+  {id:'limone',         name:'Limone Piemonte',               country:'IT',region:'Piemont',     lat:44.198,lon:7.574,  mp:false, altMin:1000,altMax:2085,totalLifts:15,totalSlopes:80, website:'https://www.limonepiemonte.it',   bergfex:'https://www.bergfex.it/limone-piemonte/'},
+  {id:'pinzolo',        name:'Pinzolo / Campo Carlo Magno',   country:'IT',region:'Trentino',    lat:46.155,lon:10.766, mp:false, altMin:770, altMax:2100,totalLifts:16,totalSlopes:50, website:'https://www.campocarlomagnoski.it',bergfex:'https://www.bergfex.it/pinzolo/'},
+  {id:'tre-cime',       name:'Tre Cime / Sexten / Sesto',     country:'IT',region:'Südtirol',    lat:46.636,lon:12.408, mp:false, altMin:1310,altMax:2200,totalLifts:12,totalSlopes:50, website:'https://www.trecimeskiworld.com', bergfex:'https://www.bergfex.it/sextner-dolomiten/'},
+
+  // ── SWITZERLAND – additional (from Bergfex CH list) ──
+  {id:'lenk',           name:'Lenk',                          country:'CH',region:'Bern',        lat:46.447,lon:7.445,  mp:true,  altMin:1068,altMax:2095,totalLifts:20,totalSlopes:68, website:'https://www.lenk.ch',             bergfex:'https://www.bergfex.ch/lenk/'},
+  {id:'aela-maloja',    name:'Aela / Maloja',                 country:'CH',region:'Graubünden',  lat:46.373,lon:9.697,  mp:false, altMin:1815,altMax:2400,totalLifts:4, totalSlopes:18, website:'https://www.engadin.ch',           bergfex:'https://www.bergfex.ch/maloja/'},
+  {id:'axalp',          name:'Axalp / Brienz',                country:'CH',region:'Bern',        lat:46.729,lon:8.138,  mp:true,  altMin:1535,altMax:1918,totalLifts:6, totalSlopes:15, website:'https://www.brienz.ch',           mpUrl:'https://www.magicpass.ch/de/skigebiete/axalp-1800',            bergfex:'https://www.bergfex.ch/axalp-brienz/'},
+  {id:'berguen',        name:'Bergün – Filisur / Darlux',     country:'CH',region:'Graubünden',  lat:46.622,lon:9.742,  mp:false, altMin:1375,altMax:2100,totalLifts:6, totalSlopes:22, website:'https://www.berguen.ch',          bergfex:'https://www.bergfex.ch/berguen/'},
+  {id:'bivio',          name:'Bivio',                         country:'CH',region:'Graubünden',  lat:46.476,lon:9.647,  mp:false, altMin:1769,altMax:2600,totalLifts:5, totalSlopes:25, website:'https://www.bivio.ch',            bergfex:'https://www.bergfex.ch/bivio/'},
+  {id:'chur-brambr',    name:'Chur – Brambrüesch',            country:'CH',region:'Graubünden',  lat:46.835,lon:9.532,  mp:false, altMin:590, altMax:1903,totalLifts:4, totalSlopes:15, website:'https://www.chur.ch',             bergfex:'https://www.bergfex.ch/chur-brambr/'},
+  {id:'san-bernardino-ch',name:'San Bernardino',              country:'CH',region:'Graubünden',  lat:46.483,lon:9.177,  mp:false, altMin:1600,altMax:2100,totalLifts:5, totalSlopes:18, website:'https://www.sanbernardino.ch',    bergfex:'https://www.bergfex.ch/san-bernardino/'},
+  {id:'jeizinen',       name:'Jeizinen – Feselalpe / Gampel', country:'CH',region:'Wallis',      lat:46.361,lon:7.735,  mp:false, altMin:900, altMax:2050,totalLifts:3, totalSlopes:10, website:'https://www.jeizinen.ch',         bergfex:'https://www.bergfex.ch/jeizinen/'},
+  {id:'visperterminen', name:'Visperterminen',                country:'CH',region:'Wallis',      lat:46.244,lon:7.887,  mp:false, altMin:1370,altMax:2500,totalLifts:8, totalSlopes:25, website:'https://www.visperterminen.ch',   bergfex:'https://www.bergfex.ch/visperterminen/'},
+  {id:'eischoll',       name:'Sportbahnen Eischoll',          country:'CH',region:'Wallis',      lat:46.283,lon:7.777,  mp:true,  altMin:1216,altMax:2300,totalLifts:4, totalSlopes:15, website:'https://www.eischoll.ch',         bergfex:'https://www.bergfex.ch/eischoll/',         mpUrl:'https://www.magicpass.ch/de/skigebiete/eischoll-2766'},
+  {id:'les-paccots',    name:'Les Paccots – Châtel-Saint-Denis',country:'CH',region:'Freiburg',  lat:46.573,lon:6.905,  mp:true,  altMin:1060,altMax:1600,totalLifts:7, totalSlopes:25, website:'https://www.les-paccots.ch',      bergfex:'https://www.bergfex.ch/les-paccots/',     mpUrl:'https://www.magicpass.ch/de/skigebiete/les-paccots-25'},
+  {id:'les-pleiades',   name:'Les Pléiades',                  country:'CH',region:'Waadt',       lat:46.519,lon:7.003,  mp:true,  altMin:965, altMax:1360,totalLifts:5, totalSlopes:12, website:'https://www.les-pleiades.ch',     bergfex:'https://www.bergfex.ch/les-pleiades/',    mpUrl:'https://www.magicpass.ch/de/skigebiete/les-pleiades-89'},
+  {id:'leysin-mosses',  name:'Leysin / Les Mosses / La Lécherette',country:'CH',region:'Waadt', lat:46.337,lon:7.001,  mp:true,  altMin:975, altMax:2205,totalLifts:28,totalSlopes:60, website:'https://www.leysin.ch',           bergfex:'https://www.bergfex.ch/leysin/',            mpUrl:'https://www.magicpass.ch/de/skigebiete/les-mosses-la-lecherette-24'},
+  {id:'oberiberg',      name:'Oberiberg',                     country:'CH',region:'Zentralschweiz',lat:47.054,lon:8.792,mp:false,altMin:940, altMax:1470,totalLifts:5, totalSlopes:15, website:'https://www.oberiberg.ch',        bergfex:'https://www.bergfex.ch/oberiberg/'},
+  {id:'st-cergue',      name:'St. Cergue',                    country:'CH',region:'Waadt',       lat:46.435,lon:6.090,  mp:false, altMin:1040,altMax:1450,totalLifts:6, totalSlopes:22, website:'https://www.stcergue.ch',         bergfex:'https://www.bergfex.ch/st-cergue/'},
+  {id:'habitboden',     name:'Habkern',                       country:'CH',region:'Bern',        lat:46.694,lon:7.791,  mp:false, altMin:1100,altMax:1800,totalLifts:4, totalSlopes:12, website:'https://www.habkern.ch',          bergfex:'https://www.bergfex.ch/habkern/'},
+  {id:'gantrisch',      name:'Gantrisch – Gurnigel',          country:'CH',region:'Bern',        lat:46.753,lon:7.480,  mp:false, altMin:1090,altMax:1620,totalLifts:4, totalSlopes:12, website:'https://www.gantrisch.ch',        bergfex:'https://www.bergfex.ch/gantrisch-gurnigel/'},
+  {id:'saanenmoeser',   name:'Saanenmöser / Gstaad',         country:'CH',region:'Bern',        lat:46.494,lon:7.312,  mp:true,  altMin:1100,altMax:1700,totalLifts:6, totalSlopes:20, website:'https://www.gstaad.ch',           bergfex:'https://www.bergfex.ch/saanenmoser/'},
+  {id:'engelberg-brunni',name:'Brunni-Bahnen Engelberg',      country:'CH',region:'Zentralschweiz',lat:46.854,lon:8.412,mp:false,altMin:1000,altMax:1860,totalLifts:7, totalSlopes:30, website:'https://www.brunnibahnen.ch',     bergfex:'https://www.bergfex.ch/brunni-bahnen-engelberg/'},
+  {id:'tschiertschen',  name:'Tschiertschen',                 country:'CH',region:'Graubünden',  lat:46.774,lon:9.567,  mp:false, altMin:1350,altMax:2000,totalLifts:5, totalSlopes:18, website:'https://www.tschiertschen.ch',    bergfex:'https://www.bergfex.ch/tschiertschen/'},
+  {id:'gruesch-danusa', name:'Grüsch Danusa',                 country:'CH',region:'Graubünden',  lat:46.969,lon:9.642,  mp:false, altMin:900, altMax:1925,totalLifts:6, totalSlopes:20, website:'https://www.grueschdanusa.ch',    bergfex:'https://www.bergfex.ch/gruesch/'},
+  {id:'feldis',         name:'Feldis / Veulden',              country:'CH',region:'Graubünden',  lat:46.769,lon:9.427,  mp:false, altMin:1484,altMax:1740,totalLifts:3, totalSlopes:10, website:'https://www.feldis.ch',           bergfex:'https://www.bergfex.ch/feldis/'},
+  {id:'avers',          name:'Avers',                         country:'CH',region:'Graubünden',  lat:46.496,lon:9.500,  mp:false, altMin:1700,altMax:2400,totalLifts:3, totalSlopes:10, website:'https://www.avers.ch',            bergfex:'https://www.bergfex.ch/avers/'},
+  {id:'seebodenalp',    name:'Seebodenalp – Küssnacht am Rigi',country:'CH',region:'Zentralschweiz',lat:47.083,lon:8.444,mp:false,altMin:485, altMax:1040,totalLifts:2, totalSlopes:6,  website:'https://www.seebodenalp.ch',      bergfex:'https://www.bergfex.ch/seebodenalp/'},
+  {id:'goms-nordic',    name:'Obergoms / Goms Nordic',        country:'CH',region:'Wallis',      lat:46.481,lon:8.264,  mp:false, altMin:1344,altMax:2000,totalLifts:5, totalSlopes:15, website:'https://www.obergoms.ch',         bergfex:'https://www.bergfex.ch/obergoms/'},
+  {id:'aeschi',         name:'Aeschi',                        country:'CH',region:'Bern',        lat:46.648,lon:7.736,  mp:true,  altMin:900, altMax:1850,totalLifts:4, totalSlopes:12, website:'https://www.aeschi.ch',           bergfex:'https://www.bergfex.ch/aeschi/',            mpUrl:'https://www.magicpass.ch/de/skigebiete/aeschiallmend-1805'},
+  {id:'realp',          name:'Realp',                         country:'CH',region:'Uri',         lat:46.599,lon:8.510,  mp:false, altMin:1538,altMax:2350,totalLifts:4, totalSlopes:15, website:'https://www.realp.ch',            bergfex:'https://www.bergfex.ch/realp/'},
+  {id:'marbach',        name:'Marbach – Marbachegg',          country:'CH',region:'Luzern',      lat:46.786,lon:8.029,  mp:false, altMin:780, altMax:1720,totalLifts:7, totalSlopes:22, website:'https://www.marbachegg.ch',       bergfex:'https://www.bergfex.ch/marbach/'},
+  {id:'evolene',        name:'Evolène',                       country:'CH',region:'Wallis',      lat:46.023,lon:7.516,  mp:true,  altMin:1380,altMax:2700,totalLifts:7, totalSlopes:25, website:'https://www.evolene-region.ch',   bergfex:'https://www.bergfex.ch/evolene/',           mpUrl:'https://www.magicpass.ch/de/skigebiete/espace-dent-blanche-evolene-88'},
+  {id:'kiental',        name:'Kiental',                       country:'CH',region:'Bern',        lat:46.560,lon:7.697,  mp:false, altMin:960, altMax:2200,totalLifts:3, totalSlopes:10, website:'https://www.kiental.ch',          bergfex:'https://www.bergfex.ch/kiental/'},
+  {id:'la-punt',        name:'La Punt – Müsella',             country:'CH',region:'Graubünden',  lat:46.569,lon:9.932,  mp:false, altMin:1687,altMax:2350,totalLifts:4, totalSlopes:14, website:'https://www.lapunt.ch',           bergfex:'https://www.bergfex.ch/la-punt/'},
+  {id:'jaunpass',       name:'Jaun',                          country:'CH',region:'Freiburg',    lat:46.644,lon:7.249,  mp:true,  altMin:1510,altMax:1850,totalLifts:5, totalSlopes:15, website:'https://www.jaunpass.ch',         bergfex:'https://www.bergfex.ch/jaunpass/',         mpUrl:'https://www.magicpass.ch/de/skigebiete/jaunpass-1802'},
+  {id:'champery-new',   name:'Abondance / Portes du Soleil',  country:'CH',region:'Wallis',      lat:46.280,lon:6.793,  mp:false, altMin:1000,altMax:2200,totalLifts:213,totalSlopes:600,website:'https://www.portesdusoleil.com',  bergfex:'https://www.bergfex.ch/abondance-portes-du-soleil/'},
+  {id:'jura-leman',     name:'Jura sur Léman',                country:'CH',region:'Waadt',       lat:46.418,lon:6.418,  mp:false, altMin:700, altMax:1000,totalLifts:4, totalSlopes:12, website:'https://www.leysin.ch',           bergfex:'https://www.bergfex.ch/jura-sur-leman/'},
+
+  // ── AUSTRIA – additional (from Bergfex AT list) ──
+  {id:'achensee',       name:'Achensee – Maurach / Rofan',    country:'AT',region:'Tirol',       lat:47.441,lon:11.709, mp:false, altMin:930, altMax:1850,totalLifts:28,totalSlopes:80, website:'https://www.achensee.com',        bergfex:'https://www.bergfex.at/achensee/'},
+  {id:'dachstein-gls',  name:'Dachstein Gletscher / Ramsau',  country:'AT',region:'Steiermark',  lat:47.480,lon:13.692, mp:false, altMin:1700,altMax:2700,totalLifts:7, totalSlopes:20, website:'https://www.derdachstein.at',     bergfex:'https://www.bergfex.at/dachstein-gletscher/'},
+  {id:'stuhleck',       name:'Stuhleck / Semmering',          country:'AT',region:'Steiermark',  lat:47.618,lon:15.617, mp:false, altMin:730, altMax:1782,totalLifts:11,totalSlopes:40, website:'https://www.stuhleck.com',        bergfex:'https://www.bergfex.at/stuhleck/'},
+  {id:'gemeindealpe',   name:'Gemeindealpe Mitterbach',       country:'AT',region:'N.Österreich',lat:47.850,lon:15.264, mp:false, altMin:564, altMax:1626,totalLifts:8, totalSlopes:26, website:'https://www.gemeindealpe.at',     bergfex:'https://www.bergfex.at/gemeindealpe/'},
+  {id:'krimml',         name:'Krimml-Hochkrimml / Zillertal Arena',country:'AT',region:'Salzburg',lat:47.217,lon:12.167,mp:false,altMin:1076,altMax:2500,totalLifts:52,totalSlopes:200,website:'https://www.zillertalarena.com',  bergfex:'https://www.bergfex.at/krimml/'},
+  {id:'loser',          name:'Loser / Altaussee',             country:'AT',region:'Steiermark',  lat:47.647,lon:13.765, mp:false, altMin:706, altMax:1835,totalLifts:10,totalSlopes:50, website:'https://www.loser.at',            bergfex:'https://www.bergfex.at/loser-altaussee/'},
+  {id:'ankogel',        name:'Ankogel / Mallnitz',            country:'AT',region:'Kärnten',     lat:46.980,lon:13.180, mp:false, altMin:1190,altMax:2637,totalLifts:7, totalSlopes:30, website:'https://www.ankogel.at',          bergfex:'https://www.bergfex.at/ankogel/'},
+  {id:'spieljoch',      name:'Spieljoch / Fügen / Zillertal',country:'AT',region:'Tirol',       lat:47.350,lon:11.850, mp:false, altMin:550, altMax:2095,totalLifts:10,totalSlopes:40, website:'https://www.spieljoch.com',       bergfex:'https://www.bergfex.at/spieljoch/'},
+  {id:'bergeralm',      name:'Bergeralm / Steinach am Brenner',country:'AT',region:'Tirol',     lat:47.082,lon:11.460, mp:false, altMin:1060,altMax:2250,totalLifts:7, totalSlopes:40, website:'https://www.bergeralm.at',        bergfex:'https://www.bergfex.at/bergeralm/'},
+  {id:'gerlitzen',      name:'Gerlitzen Alpe',                country:'AT',region:'Kärnten',     lat:46.690,lon:13.937, mp:false, altMin:500, altMax:1909,totalLifts:21,totalSlopes:55, website:'https://www.gerlitzen.com',       bergfex:'https://www.bergfex.at/gerlitzen/'},
+  {id:'bschlabs',       name:'Hochjoch – Montafon',           country:'AT',region:'Vorarlberg',  lat:47.020,lon:10.012, mp:false, altMin:690, altMax:2380,totalLifts:15,totalSlopes:70, website:'https://www.silvretta-nova.at',   bergfex:'https://www.bergfex.at/hochjoch/'},
+  {id:'sillian',        name:'Sillian / Hochpustertal',       country:'AT',region:'Tirol',       lat:46.748,lon:12.417, mp:false, altMin:1100,altMax:2525,totalLifts:7, totalSlopes:30, website:'https://www.sillian.at',          bergfex:'https://www.bergfex.at/sillian/'},
+  {id:'hochfuegen-at',  name:'Hochfügen / Zillertal',         country:'AT',region:'Tirol',       lat:47.280,lon:11.800, mp:false, altMin:860, altMax:2500,totalLifts:13,totalSlopes:57, website:'https://www.hochfuegen.com',      bergfex:'https://www.bergfex.at/hochfuegen/'},
+  {id:'praelibation',   name:'Präbichl',                      country:'AT',region:'Steiermark',  lat:47.536,lon:14.855, mp:false, altMin:868, altMax:1618,totalLifts:10,totalSlopes:30, website:'https://www.praebichl.at',        bergfex:'https://www.bergfex.at/praebichl/'},
+  {id:'riesneralm',     name:'Riesneralm',                    country:'AT',region:'Steiermark',  lat:47.437,lon:13.855, mp:false, altMin:737, altMax:1750,totalLifts:8, totalSlopes:28, website:'https://www.riesneralm.com',      bergfex:'https://www.bergfex.at/riesneralm/'},
+  {id:'hinterstoder-at',name:'Hinterstoder / Wurzeralm',      country:'AT',region:'O.Österreich',lat:47.701,lon:14.165, mp:false, altMin:590, altMax:1860,totalLifts:13,totalSlopes:50, website:'https://www.hinterstoder.at',     bergfex:'https://www.bergfex.at/hinterstoder/'},
+  {id:'schmitten',      name:'Schmitten / Zell am See',       country:'AT',region:'Salzburg',    lat:47.315,lon:12.795, mp:false, altMin:757, altMax:1956,totalLifts:27,totalSlopes:77, website:'https://www.zellamsee.at',        bergfex:'https://www.bergfex.at/schmitten/'},
+  {id:'dorfgastein',    name:'Dorfgastein / Ski amade',       country:'AT',region:'Salzburg',    lat:47.257,lon:13.112, mp:false, altMin:838, altMax:2033,totalLifts:7, totalSlopes:35, website:'https://www.gastein.com',         bergfex:'https://www.bergfex.at/dorfgastein/'},
+  {id:'werfenweng',     name:'Werfenweng',                    country:'AT',region:'Salzburg',    lat:47.469,lon:13.225, mp:false, altMin:926, altMax:1955,totalLifts:9, totalSlopes:30, website:'https://www.werfenweng.eu',       bergfex:'https://www.bergfex.at/werfenweng/'},
+  {id:'weissensee',     name:'Weissensee',                    country:'AT',region:'Kärnten',     lat:46.706,lon:13.301, mp:false, altMin:930, altMax:2040,totalLifts:5, totalSlopes:18, website:'https://www.weissensee.at',       bergfex:'https://www.bergfex.at/weissensee/'},
+  {id:'koralpe',        name:'Koralpe',                       country:'AT',region:'Steiermark',  lat:46.753,lon:15.177, mp:false, altMin:1000,altMax:2160,totalLifts:12,totalSlopes:35, website:'https://www.koralpe.com',         bergfex:'https://www.bergfex.at/koralpe/'},
+  {id:'falkert',        name:'Falkert HEIDI ALM',             country:'AT',region:'Kärnten',     lat:46.918,lon:13.721, mp:false, altMin:1600,altMax:2218,totalLifts:7, totalSlopes:22, website:'https://www.falkert.at',          bergfex:'https://www.bergfex.at/falkert/'},
+  {id:'hochficht',      name:'Hochficht / Böhmerwald',        country:'AT',region:'O.Österreich',lat:48.621,lon:13.876, mp:false, altMin:733, altMax:1100,totalLifts:7, totalSlopes:25, website:'https://www.hochficht.at',        bergfex:'https://www.bergfex.at/hochficht/'},
+  {id:'fanningberg',    name:'Fanningberg / Mariapfarr',      country:'AT',region:'Salzburg',    lat:47.197,lon:13.758, mp:false, altMin:1050,altMax:1908,totalLifts:5, totalSlopes:22, website:'https://www.fanningberg.at',      bergfex:'https://www.bergfex.at/fanningberg/'},
+  {id:'moelltaler',     name:'Mölltaler Gletscher',           country:'AT',region:'Kärnten',     lat:47.021,lon:12.958, mp:false, altMin:1565,altMax:3122,totalLifts:7, totalSlopes:30, website:'https://www.moelltaler.at',       bergfex:'https://www.bergfex.at/moelltaler-gletscher/'},
+  {id:'weissee',        name:'Weissee Gletscherwelt',         country:'AT',region:'Salzburg',    lat:47.149,lon:12.643, mp:false, altMin:2300,altMax:3085,totalLifts:7, totalSlopes:28, website:'https://www.weisseegletscherwelt.at',bergfex:'https://www.bergfex.at/weissee/'},
+
+  // ── FRANCE – additional ──
+  {id:'les-angles',     name:'Les Angles',                    country:'FR',region:'Pyrenees',    lat:42.550,lon:2.020,  mp:false, altMin:1600,altMax:2400,totalLifts:23,totalSlopes:55, website:'https://www.lesangles.com',       bergfex:'https://www.bergfex.at/les-angles/'},
+  {id:'ax-3-domaines',  name:'Ax 3 Domaines',                 country:'FR',region:'Pyrenees',    lat:42.720,lon:1.832,  mp:false, altMin:1400,altMax:2400,totalLifts:21,totalSlopes:80, website:'https://www.ax3domaines.com',     bergfex:'https://www.bergfex.at/ax-les-thermes/'},
+  {id:'cauterets',      name:'Cauterets',                     country:'FR',region:'Pyrenees',    lat:42.889,lon:0.101,  mp:false, altMin:1440,altMax:2450,totalLifts:15,totalSlopes:50, website:'https://www.cauterets.com',       bergfex:'https://www.bergfex.at/cauterets/'},
+  {id:'crest-voland',   name:'Crest-Voland / Cohennoz',       country:'FR',region:'Savoie',      lat:45.797,lon:6.407,  mp:false, altMin:1230,altMax:1935,totalLifts:11,totalSlopes:55, website:'https://www.crest-voland.com',    bergfex:'https://www.bergfex.at/crest-voland/'},
+  {id:'notre-dame',     name:'Notre Dame de Bellecombe',       country:'FR',region:'Savoie',      lat:45.771,lon:6.514,  mp:false, altMin:1150,altMax:2070,totalLifts:16,totalSlopes:60, website:'https://www.notredamedebellecombe.com',bergfex:'https://www.bergfex.at/notre-dame-de-bellecombe/'},
+  {id:'le-deVoluy',     name:'Le Dévoluy – Superdévoluy',     country:'FR',region:'Hautes-Alpes',lat:44.681,lon:5.876,  mp:false, altMin:1500,altMax:2500,totalLifts:21,totalSlopes:95, website:'https://www.superdevoluy.fr',     bergfex:'https://www.bergfex.at/le-devoluy/'},
+  {id:'valberg',        name:'Valberg – Beuil',               country:'FR',region:'PACA',        lat:44.083,lon:6.939,  mp:false, altMin:1430,altMax:2100,totalLifts:13,totalSlopes:55, website:'https://www.valberg.com',         bergfex:'https://www.bergfex.at/valberg/'},
+  {id:'la-colmiane',    name:'La Colmiane',                   country:'FR',region:'PACA',        lat:44.018,lon:7.239,  mp:false, altMin:1400,altMax:1800,totalLifts:7, totalSlopes:25, website:'https://www.lacolmiane.com',      bergfex:'https://www.bergfex.at/la-colmiane/'},
+  {id:'montclar',       name:'Montclar les 2 vallées',        country:'FR',region:'PACA',        lat:44.329,lon:6.292,  mp:false, altMin:1350,altMax:2500,totalLifts:10,totalSlopes:50, website:'https://www.montclar.net',        bergfex:'https://www.bergfex.at/montclar/'},
+  {id:'les-karellis',   name:'Les Karellis',                  country:'FR',region:'Savoie',      lat:45.280,lon:6.382,  mp:false, altMin:1600,altMax:2520,totalLifts:17,totalSlopes:60, website:'https://www.leskarellis.com',     bergfex:'https://www.bergfex.at/les-karellis/'},
+  {id:'aussois',        name:'Aussois',                       country:'FR',region:'Savoie',      lat:45.262,lon:6.740,  mp:false, altMin:1500,altMax:2750,totalLifts:7, totalSlopes:25, website:'https://www.aussois.com',         bergfex:'https://www.bergfex.at/aussois/'},
+  {id:'bessans',        name:'Bessans',                       country:'FR',region:'Savoie',      lat:45.360,lon:7.005,  mp:false, altMin:1750,altMax:2800,totalLifts:3, totalSlopes:15, website:'https://www.bessans.fr',          bergfex:'https://www.bergfex.at/bessans/'},
+  {id:'valfrejus-fr',   name:'Valfréjus',                     country:'FR',region:'Savoie',      lat:45.213,lon:6.672,  mp:false, altMin:1550,altMax:2740,totalLifts:9, totalSlopes:45, website:'https://www.valfrejus.com',       bergfex:'https://www.bergfex.at/valfrejus/'},
+  {id:'le-corbier',     name:'Le Corbier / Les Sybelles',     country:'FR',region:'Savoie',      lat:45.230,lon:6.255,  mp:false, altMin:1550,altMax:2620,totalLifts:17,totalSlopes:310,website:'https://www.sybelles.ski',        bergfex:'https://www.bergfex.at/le-corbier/'},
+  {id:'valmeinier',     name:'Valmeinier / Galibier Thabor',  country:'FR',region:'Savoie',      lat:45.147,lon:6.508,  mp:false, altMin:1500,altMax:2770,totalLifts:30,totalSlopes:150,website:'https://www.valmeinier.com',      bergfex:'https://www.bergfex.at/valmeinier/'},
+  {id:'brides',         name:'Brides-les-Bains / Les 3 Vallées',country:'FR',region:'Savoie',   lat:45.453,lon:6.574,  mp:false, altMin:600, altMax:3230,totalLifts:42,totalSlopes:600,website:'https://www.brides-les-bains.com',bergfex:'https://www.bergfex.at/brides-les-bains/'},
+  {id:'les-sybelles',   name:'Saint Sorlin d\'Arves / Les Sybelles',country:'FR',region:'Savoie',lat:45.210,lon:6.310, mp:false, altMin:1550,altMax:2620,totalLifts:17,totalSlopes:310,website:'https://www.sybelles.ski',        bergfex:'https://www.bergfex.at/saint-sorlin-darves/'},
+  {id:'peisey',         name:'Peisey Vallandry / Paradiski',  country:'FR',region:'Savoie',      lat:45.566,lon:6.769,  mp:false, altMin:1600,altMax:3226,totalLifts:52,totalSlopes:425,website:'https://www.peisey-vallandry.com',bergfex:'https://www.bergfex.at/peisey-vallandry/'},
+
+  // ── ITALY – additional ──
+  {id:'canazei',        name:'Canazei / Val di Fassa',        country:'IT',region:'Trentino',    lat:46.476,lon:11.776, mp:false, altMin:1460,altMax:2630,totalLifts:38,totalSlopes:130,website:'https://www.fassa.com',           bergfex:'https://www.bergfex.it/canazei/'},
+  {id:'sellaronda',     name:'Sella Ronda / Dolomites',       country:'IT',region:'Südtirol',    lat:46.499,lon:11.836, mp:false, altMin:1236,altMax:2950,totalLifts:175,totalSlopes:500,website:'https://www.sellaronda.info',     bergfex:'https://www.bergfex.it/sella-ronda/'},
+  {id:'ortisei',        name:'Ortisei / Val Gardena',         country:'IT',region:'Südtirol',    lat:46.575,lon:11.672, mp:false, altMin:1236,altMax:2518,totalLifts:175,totalSlopes:500,website:'https://www.valgardena.it',       bergfex:'https://www.bergfex.it/ortisei/'},
+  {id:'brunico',        name:'Plan de Corones / Brunico',     country:'IT',region:'Südtirol',    lat:46.796,lon:11.936, mp:false, altMin:835, altMax:2275,totalLifts:31,totalSlopes:119,website:'https://www.kronplatz.com',       bergfex:'https://www.bergfex.it/brunico/'},
+  {id:'forni',          name:'Forni di Sopra / Dolomiti',     country:'IT',region:'Friaul',      lat:46.410,lon:12.578, mp:false, altMin:907, altMax:2060,totalLifts:11,totalSlopes:35, website:'https://www.forni.info',          bergfex:'https://www.bergfex.it/forni-di-sopra/'},
+  {id:'tarvisio',       name:'Tarvisio / Sella Nevea',        country:'IT',region:'Friaul',      lat:46.505,lon:13.578, mp:false, altMin:754, altMax:1810,totalLifts:11,totalSlopes:45, website:'https://www.tarvisio.info',       bergfex:'https://www.bergfex.it/tarvisio/'},
+  {id:'folgaria',       name:'Folgaria – Lavarone',           country:'IT',region:'Trentino',    lat:45.916,lon:11.168, mp:false, altMin:1180,altMax:1900,totalLifts:25,totalSlopes:100,website:'https://www.alpecimbra.it',       bergfex:'https://www.bergfex.it/folgaria/'},
+  {id:'andalo',         name:'Andalo / Paganella',            country:'IT',region:'Trentino',    lat:46.168,lon:11.004, mp:false, altMin:1042,altMax:2125,totalLifts:12,totalSlopes:44, website:'https://www.skipaganella.it',     bergfex:'https://www.bergfex.it/andalo/'},
+  {id:'bolzano-renon',  name:'Renon / Ritten',                country:'IT',region:'Südtirol',    lat:46.556,lon:11.461, mp:false, altMin:900, altMax:1730,totalLifts:8, totalSlopes:28, website:'https://www.ritten.com',          bergfex:'https://www.bergfex.it/rittner-skigebiet/'},
+  {id:'passo-tonale',   name:'Passo del Tonale',              country:'IT',region:'Lombardei',   lat:46.252,lon:10.576, mp:false, altMin:1884,altMax:3016,totalLifts:24,totalSlopes:100,website:'https://www.skilifttonale.it',    bergfex:'https://www.bergfex.it/tonale/'},
+  {id:'pila',           name:'Pila / Valle d\'Aosta',         country:'IT',region:'Aostatal',    lat:45.746,lon:7.231,  mp:false, altMin:1800,altMax:2700,totalLifts:15,totalSlopes:70, website:'https://www.pila.it',             bergfex:'https://www.bergfex.it/pila/'},
+  {id:'champoluc',      name:'Champoluc / Monte Rosa Ski',    country:'IT',region:'Aostatal',    lat:45.831,lon:7.724,  mp:false, altMin:1568,altMax:3275,totalLifts:34,totalSlopes:180,website:'https://www.monteRosaski.com',    bergfex:'https://www.bergfex.it/champoluc/'},
+
+  // ── France – additional ─────────────────────────────────────────────
+  {id:'megeve',         name:'Megève / Évasion Mont-Blanc',   country:'FR',region:'Savoie',       lat:45.856,lon:6.617,  mp:false, altMin:1050,altMax:2350,totalLifts:37, totalSlopes:325,website:'https://www.megeve.com',           bergfex:'https://www.bergfex.at/megeve/'},
+  {id:'les-gets',       name:'Les Gets / Portes du Soleil',   country:'FR',region:'Haute-Savoie', lat:46.157,lon:6.670,  mp:true,  altMin:1172,altMax:1850,totalLifts:50, totalSlopes:120,website:'https://www.lesgets.com',          bergfex:'https://www.bergfex.at/les-gets/'},
+  {id:'les-houches',    name:'Les Houches / Chamonix',        country:'FR',region:'Haute-Savoie', lat:45.897,lon:6.799,  mp:false, altMin:1008,altMax:1900,totalLifts:17, totalSlopes:53, website:'https://www.leshouches.com',          bergfex:'https://www.bergfex.at/les-houches/'},
+  {id:'samoens',        name:'Samoëns / Le Grand Massif',     country:'FR',region:'Haute-Savoie', lat:46.079,lon:6.723,  mp:false, altMin:700, altMax:2480,totalLifts:23, totalSlopes:72, website:'https://www.samoens.com',             bergfex:'https://www.bergfex.at/samoens/'},
+  {id:'les-carroz',     name:'Les Carroz / Le Grand Massif',  country:'FR',region:'Haute-Savoie', lat:46.030,lon:6.659,  mp:false, altMin:1140,altMax:2480,totalLifts:23, totalSlopes:45, website:'https://www.lescarroz.com',           bergfex:'https://www.bergfex.at/les-carroz/'},
+  {id:'sixt-fer',       name:'Sixt-Fer-à-Cheval / Grand Massif',country:'FR',region:'Haute-Savoie',lat:46.036,lon:6.778,mp:false, altMin:755, altMax:2480,totalLifts:23, totalSlopes:35, website:'https://www.sixtferacheval.com',      bergfex:'https://www.bergfex.at/sixt-fer-a-cheval/'},
+  {id:'morillon',       name:'Morillon / Le Grand Massif',    country:'FR',region:'Haute-Savoie', lat:46.085,lon:6.693,  mp:false, altMin:700, altMax:2480,totalLifts:23, totalSlopes:50, website:'https://www.morillon.fr',            bergfex:'https://www.bergfex.at/morillon/'},
+  {id:'combloux',       name:'Combloux / Évasion Mont-Blanc', country:'FR',region:'Haute-Savoie', lat:45.872,lon:6.651,  mp:false, altMin:1000,altMax:1765,totalLifts:17, totalSlopes:25, website:'https://www.combloux.com',            bergfex:'https://www.bergfex.at/combloux/'},
+  {id:'abondance',      name:'Abondance / Portes du Soleil',  country:'FR',region:'Haute-Savoie', lat:46.272,lon:6.726,  mp:false, altMin:930, altMax:1800,totalLifts:8,  totalSlopes:35, website:'https://www.abondance.org',           bergfex:'https://www.bergfex.at/abondance/'},
+  {id:'thollon',        name:'Thollon-les-Mémises',           country:'FR',region:'Haute-Savoie', lat:46.369,lon:6.704,  mp:false, altMin:895, altMax:1989,totalLifts:14, totalSlopes:35, website:'https://www.thollon.org',             bergfex:'https://www.bergfex.at/thollon-les-memises/'},
+  {id:'val-d-allos',    name:'Val d\'Allos / La Foux',        country:'FR',region:'Provence-Alpes',lat:44.262,lon:6.570, mp:false, altMin:1500,altMax:2600,totalLifts:22, totalSlopes:180,website:'https://www.ski-valdallos.com',       bergfex:'https://www.bergfex.at/val-d-allos/'},
+  {id:'st-francois-l',  name:'St-François-Longchamp',         country:'FR',region:'Savoie',       lat:45.444,lon:6.404,  mp:false, altMin:1450,altMax:2650,totalLifts:23, totalSlopes:130,website:'https://www.saintfrancoislongchamp.com',bergfex:'https://www.bergfex.at/saint-francois-longchamp/'},
+  {id:'pralognan',      name:'Pralognan-la-Vanoise',          country:'FR',region:'Savoie',       lat:45.389,lon:6.723,  mp:false, altMin:1418,altMax:2357,totalLifts:14, totalSlopes:25, website:'https://www.pralognan.com',           bergfex:'https://www.bergfex.at/pralognan-la-vanoise/'},
+  {id:'vaujany',        name:'Vaujany / Espace Alpe d\'Huez', country:'FR',region:'Isère',        lat:45.133,lon:6.058,  mp:false, altMin:1250,altMax:3330,totalLifts:68, totalSlopes:250,website:'https://www.vaujany.com',            bergfex:'https://www.bergfex.at/vaujany/'},
+  {id:'villard-de-lans',name:'Villard de Lans / Vercors',     country:'FR',region:'Isère',        lat:45.073,lon:5.553,  mp:false, altMin:1060,altMax:2170,totalLifts:29, totalSlopes:125,website:'https://www.villarddelans.com',       bergfex:'https://www.bergfex.at/villard-de-lans/'},
+  {id:'le-mont-dore',   name:'Le Mont-Dore / Massif du Sancy',country:'FR',region:'Auvergne',     lat:45.574,lon:2.815,  mp:false, altMin:1050,altMax:1850,totalLifts:15, totalSlopes:66, website:'https://www.sancy.com',               bergfex:'https://www.bergfex.at/le-mont-dore/'},
+  {id:'les-angles-pyr', name:'Les Angles / Pyrénées',         country:'FR',region:'Pyrénées',     lat:42.550,lon:2.020,  mp:false, altMin:1600,altMax:2400,totalLifts:23, totalSlopes:100,website:'https://www.lesangles.com',          bergfex:'https://www.bergfex.at/les-angles/'},
+  {id:'ascou',          name:'Ascou Pailhères / Pyrénées',    country:'FR',region:'Pyrénées',     lat:42.721,lon:1.896,  mp:false, altMin:1480,altMax:2001,totalLifts:9,  totalSlopes:25, website:'https://www.ascou.fr',                bergfex:'https://www.bergfex.at/ascou-pailheres/'},
+  {id:'lelex',          name:'Lélex-Crozet / Monts Jura',     country:'FR',region:'Ain',          lat:46.345,lon:5.828,  mp:false, altMin:900, altMax:1680,totalLifts:10, totalSlopes:36, website:'https://www.ot-lelex.fr',             bergfex:'https://www.bergfex.at/lelex-crozet/'},
+  {id:'gerardmer',      name:'Gérardmer La Mauselaine',       country:'FR',region:'Vosges',       lat:48.072,lon:6.879,  mp:false, altMin:670, altMax:1138,totalLifts:15, totalSlopes:33, website:'https://www.gerardmer.fr',            bergfex:'https://www.bergfex.at/gerardmer/'},
+  {id:'super-besse',    name:'Super Besse / Massif du Sancy', country:'FR',region:'Auvergne',     lat:45.494,lon:2.844,  mp:false, altMin:1300,altMax:1850,totalLifts:21, totalSlopes:44, website:'https://www.superbesse.com',          bergfex:'https://www.bergfex.at/super-besse/'},
+  {id:'roubion',        name:'Roubion-Les-Buisses',           country:'FR',region:'Provence-Alpes',lat:44.083,lon:7.053, mp:false, altMin:1300,altMax:1900,totalLifts:7,  totalSlopes:20, website:'https://www.roubion.com',             bergfex:'https://www.bergfex.at/roubion-les-buisses/'},
+
+  // ── Switzerland – additional ────────────────────────────────────────
+  {id:'les-rasses',     name:'Sainte-Croix / Les Rasses',     country:'CH',region:'Vaud',          lat:46.820,lon:6.505,  mp:false, altMin:1092,altMax:1462,totalLifts:9,  totalSlopes:25, website:'https://www.lesrasses.ch',            bergfex:'https://www.bergfex.ch/les-rasses/'},
+  {id:'bruson',         name:'Bruson / Verbier Area',         country:'CH',region:'Wallis',        lat:46.054,lon:7.313,  mp:true,  altMin:1080,altMax:2330,totalLifts:4,  totalSlopes:18, website:'https://www.brusonverbier.ch',         bergfex:'https://www.bergfex.ch/bruson/'},
+  {id:'ebenalp',        name:'Ebenalp-Horn / Appenzell',      country:'CH',region:'Appenzell',     lat:47.282,lon:9.418,  mp:false, altMin:1244,altMax:1644,totalLifts:3,  totalSlopes:12, website:'https://www.ebenalp.ch',              bergfex:'https://www.bergfex.ch/ebenalp/'},
+  {id:'rothwald',       name:'Rothwald-Wasenalp am Simplon',  country:'CH',region:'Wallis',        lat:46.222,lon:8.053,  mp:false, altMin:1740,altMax:2200,totalLifts:3,  totalSlopes:8,  website:'https://www.rothwald.ch',             bergfex:'https://www.bergfex.ch/rothwald-wasenalp/'},
+  {id:'moosalp',        name:'Moosalpregion / Visperterminen',country:'CH',region:'Wallis',        lat:46.283,lon:7.877,  mp:false, altMin:1800,altMax:2300,totalLifts:5,  totalSlopes:25, website:'https://www.moosalp.ch',              bergfex:'https://www.bergfex.ch/moosalpregion/'},
+
+  // ── Austria – additional ─────────────────────────────────────────────
+  {id:'bad-hofgastein', name:'Bad Hofgastein / Gasteinertal', country:'AT',region:'Salzburg',     lat:47.173,lon:13.099,  mp:false, altMin:860, altMax:2686,totalLifts:27, totalSlopes:120,website:'https://www.gastein.com',              bergfex:'https://www.bergfex.at/bad-hofgastein/'},
+  {id:'mariazell',      name:'Mariazell / Bürgeralpe',        country:'AT',region:'Steiermark',   lat:47.770,lon:15.313,  mp:false, altMin:870, altMax:1267,totalLifts:6,  totalSlopes:15, website:'https://www.buergeralpe.at',          bergfex:'https://www.bergfex.at/mariazell/'},
+  {id:'vent',           name:'Vent / Ötztaler Alpen',         country:'AT',region:'Tirol',         lat:46.861,lon:10.921,  mp:false, altMin:1895,altMax:3210,totalLifts:5,  totalSlopes:25, website:'https://www.vent.at',                 bergfex:'https://www.bergfex.at/vent/'},
+
+  // ── MagicPass resorts missing from above ────────────────────────────
+  // Fribourg / Freiburg
+  {id:'charmey',        name:'Charmey',                       country:'CH',region:'Freiburg',    lat:46.617,lon:7.187,  mp:true,  altMin:900, altMax:1650,totalLifts:8,  totalSlopes:25, website:'https://www.charmey.ch',              mpUrl:'https://www.magicpass.ch/de/skigebiete/charmey-fribourg-1753', bergfex:'https://www.bergfex.ch/charmey/'},
+  {id:'cret-du-puy',    name:'Crêt-du-Puy',                   country:'CH',region:'Freiburg',    lat:46.633,lon:7.053,  mp:true,  altMin:830, altMax:1156,totalLifts:4,  totalSlopes:8,  website:'https://www.cretdupuy.ch',            mpUrl:'https://www.magicpass.ch/de/skigebiete/cret-du-puy-1754',      bergfex:'https://www.bergfex.ch/cret-du-puy/'},
+  {id:'moleson',        name:'Moléson-sur-Gruyères',           country:'CH',region:'Freiburg',    lat:46.549,lon:7.017,  mp:true,  altMin:1020,altMax:2002,totalLifts:7,  totalSlopes:25, website:'https://www.moleson.ch',              mpUrl:'https://www.magicpass.ch/de/skigebiete/moleson-sur-gruyeres-1757',bergfex:'https://www.bergfex.ch/moleson/'},
+  // Wallis / Valais
+  {id:'nax-mt-noble',   name:'Nax / Mont-Noble',               country:'CH',region:'Wallis',      lat:46.246,lon:7.416,  mp:true,  altMin:990, altMax:2400,totalLifts:10, totalSlopes:28, website:'https://www.nax.ch',                  mpUrl:'https://www.magicpass.ch/de/skigebiete/nax-mont-noble-1779',  bergfex:'https://www.bergfex.ch/nax/'},
+  {id:'st-luc',         name:'St-Luc / Chandolin',             country:'CH',region:'Wallis',      lat:46.220,lon:7.617,  mp:true,  altMin:1650,altMax:2890,totalLifts:18, totalSlopes:50, website:'https://www.valdanniviers.ch',         mpUrl:'https://www.magicpass.ch/de/skigebiete/st-luc-chandolin-21',  bergfex:'https://www.bergfex.ch/st-luc/'},
+  {id:'mayens-conthey',  name:'Mayens de Conthey',              country:'CH',region:'Wallis',      lat:46.183,lon:7.329,  mp:true,  altMin:900, altMax:1950,totalLifts:4,  totalSlopes:12, website:'https://www.mayens-de-conthey.ch',     mpUrl:'https://www.magicpass.ch/de/skigebiete/mayens-de-conthey-1774',bergfex:'https://www.bergfex.ch/mayens-de-conthey/'},
+  // Bern
+  {id:'beatenberg',     name:'Beatenberg / Niederhorn',        country:'CH',region:'Bern',        lat:46.690,lon:7.773,  mp:true,  altMin:1150,altMax:1950,totalLifts:8,  totalSlopes:20, website:'https://www.niederhorn.ch',            mpUrl:'https://www.magicpass.ch/de/skigebiete/beatenberg-hohwald-1799',bergfex:'https://www.bergfex.ch/beatenberg/'},
+  // Jura / Neuenburg / Solothurn
+  {id:'tramelan',       name:'Tramelan',                       country:'CH',region:'Bern',        lat:47.229,lon:7.089,  mp:true,  altMin:800, altMax:1100,totalLifts:5,  totalSlopes:12, website:'https://www.tramelan-tourisme.ch',     mpUrl:'https://www.magicpass.ch/de/skigebiete/tramelan-1822',         bergfex:'https://www.bergfex.ch/tramelan/'},
+  {id:'bugnenets',      name:'Bugnenets-Savagnières',          country:'CH',region:'Neuenburg',   lat:47.116,lon:6.840,  mp:true,  altMin:900, altMax:1350,totalLifts:8,  totalSlopes:25, website:'https://www.bugnenets.ch',             mpUrl:'https://www.magicpass.ch/de/skigebiete/bugnenets-savagnieres-10',bergfex:'https://www.bergfex.ch/bugnenets-savagnieres/'},
+  {id:'pres-d-orvin',   name:'Prés-d\'Orvin',                  country:'CH',region:'Bern',        lat:47.198,lon:7.181,  mp:true,  altMin:850, altMax:1100,totalLifts:4,  totalSlopes:8,  website:'https://www.presdeorvin.ch',           mpUrl:'https://www.magicpass.ch/de/skigebiete/pres-d-orvin-1813',    bergfex:'https://www.bergfex.ch/pres-d-orvin/'},
+  {id:'balmberg',       name:'Balmberg',                       country:'CH',region:'Solothurn',   lat:47.249,lon:7.607,  mp:true,  altMin:900, altMax:1200,totalLifts:4,  totalSlopes:8,  website:'https://www.balmberg.ch',              mpUrl:'https://www.magicpass.ch/de/skigebiete/balmberg-4444',         bergfex:'https://www.bergfex.ch/balmberg/'},
+  // France (MagicPass)
+  {id:'bernex-fr',      name:'Bernex / Portes du Soleil',     country:'FR',region:'Haute-Savoie', lat:46.325,lon:6.702,  mp:true,  altMin:900, altMax:1800,totalLifts:17, totalSlopes:55, website:'https://www.bernex.fr',               mpUrl:'https://www.magicpass.ch/de/skigebiete/bernex-5567',           bergfex:'https://www.bergfex.at/bernex/'},
+];
+
+// ──────────────────────────────────────────────
+// WMO WEATHER CODES → Icon & Label
+// ──────────────────────────────────────────────
+const WMO = {
+  0:['☀️','Klarer Himmel'],1:['🌤️','Überwiegend klar'],2:['⛅','Teilweise bewölkt'],3:['☁️','Bedeckt'],
+  45:['🌫️','Nebel'],48:['🌫️','Gefrierender Nebel'],
+  51:['🌦️','Leichter Nieselregen'],53:['🌦️','Nieselregen'],55:['🌦️','Starker Nieselregen'],
+  61:['🌧️','Leichter Regen'],63:['🌧️','Regen'],65:['🌧️','Starker Regen'],
+  71:['🌨️','Leichter Schneefall'],73:['🌨️','Schneefall'],75:['❄️','Starker Schneefall'],77:['🌨️','Schneekörner'],
+  80:['🌦️','Leichte Regenschauer'],81:['🌦️','Regenschauer'],82:['⛈️','Starke Regenschauer'],
+  85:['🌨️','Leichte Schneeschauer'],86:['❄️','Starke Schneeschauer'],
+  95:['⛈️','Gewitter'],96:['⛈️','Gewitter + Hagel'],99:['⛈️','Schweres Gewitter'],
+};
+function wmo(c){return WMO[c]||['🌡️','Unbekannt']}
+
+// ──────────────────────────────────────────────
+// APP STATE
+// ──────────────────────────────────────────────
+let map, userMarker, resortMarkers={};
+let userLat=null, userLon=null;
+let snowData={};          // resort id → {snowV,snowP,newSnow,openLifts,totalLifts,ts}
+let weatherData={};       // resort id → {icon,label,tmax,tmin} today
+let travelTimes={};       // resort id → {dist,mins}
+let favorites=new Set(JSON.parse(localStorage.getItem('ski-favs')||'[]'));
+let filterCountry='all';
+let currentResortId=null;
+
+// ──────────────────────────────────────────────
+// MAP INIT
+// ──────────────────────────────────────────────
+function initMap(){
+  map=L.map('map',{zoomControl:true}).setView([47.0,9.5],7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom:19
+  }).addTo(map);
+  RESORTS.forEach(r=>{
+    const el=document.createElement('div');
+    el.className=`lf-resort ${r.mp?'mp':'std'}`;
+    const icon=L.divIcon({className:'',html:el.outerHTML,iconSize:[12,12],iconAnchor:[6,6]});
+    const m=L.marker([r.lat,r.lon],{icon,title:r.name}).addTo(map);
+    m.on('click',()=>openDetail(r.id));
+    resortMarkers[r.id]=m;
+  });
+}
+
+function updateMapMarker(id){
+  const r=RESORTS.find(x=>x.id===id);
+  if(!r) return;
+  const isFav=favorites.has(id);
+  const el=document.createElement('div');
+  el.className=`lf-resort ${r.mp?'mp':'std'}`;
+  if(isFav) el.style.background='var(--amber)';
+  const icon=L.divIcon({className:'',html:el.outerHTML,iconSize:[12,12],iconAnchor:[6,6]});
+  resortMarkers[id].setIcon(icon);
+}
+
+// ──────────────────────────────────────────────
+// LIVE SNOW DATA – CORS proxy + multi-strategy parser
+// ──────────────────────────────────────────────
+const PROXIES=[
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+];
+const BERGFEX_URLS={
+  CH:{url:'https://www.bergfex.ch/schweiz/schneebericht/',   domain:'www.bergfex.ch'},
+  AT:{url:'https://www.bergfex.at/oesterreich/schneebericht/',domain:'www.bergfex.at'},
+  FR:{url:'https://www.bergfex.at/frankreich/schneebericht/',  domain:'www.bergfex.at'},
+  IT:{url:'https://www.bergfex.it/italien/schneebericht/',    domain:'www.bergfex.it'},
+};
+
+async function fetchSnowPage(countryKey){
+  const {url,domain}=BERGFEX_URLS[countryKey];
+  for(const proxy of PROXIES){
+    try{
+      const res=await fetch(proxy+encodeURIComponent(url),{
+        signal:AbortSignal.timeout(18000),
+        headers:{'X-Requested-With':'XMLHttpRequest'},
+      });
+      if(!res.ok) continue;
+      const html=await res.text();
+      if(html.length<3000) continue; // too short = error page
+      parseSnowData(html,domain);
+      return; // success – stop trying proxies
+    }catch(e){console.warn('Snow proxy error',proxy,countryKey,e.message)}
+  }
+}
+
+// ── Multi-strategy HTML parser ──────────────────
+function parseSnowData(html,pageDomain){
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const ts=new Date().toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'});
+  let hits=0;
+
+  // Helper: find resort by bergfex URL slug + domain
+  const bySlug=(href)=>{
+    const slug=(href||'').replace(/\?.*/,'').split('/').filter(Boolean)[0];
+    if(!slug||slug.length<2) return null;
+    return RESORTS.find(r=>{
+      if(!r.bergfex) return false;
+      try{
+        const u=new URL(r.bergfex);
+        return u.hostname===pageDomain&&u.pathname.split('/').filter(Boolean)[0]===slug;
+      }catch{return false;}
+    })||null;
+  };
+
+  // Helper: walk up to a container with at least minCh children
+  const rowOf=(el,minCh=3)=>{
+    let c=el.closest('tr')||el.closest('li');
+    if(c) return c;
+    c=el.parentElement;
+    for(let i=0;i<5&&c;i++){if((c.children||[]).length>=minCh) return c; c=c.parentElement;}
+    return null;
+  };
+
+  // Helper: extract snow entry from any text block
+  const extract=(text,resort)=>{
+    const cms=[...text.matchAll(/(\d+)\s*cm/gi)].map(m=>parseInt(m[1]));
+    const lm=text.match(/(\d+)\s*\/\s*(\d+)/);
+    if(cms.length<1) return;
+    snowData[resort.id]={
+      snowV:cms[0]??null, snowP:cms[1]??null, newSnow:cms[2]??null,
+      openLifts:lm?parseInt(lm[1]):null, totalLifts:lm?parseInt(lm[2]):null,
+      ts, src:'bergfex',
+    };
+    hits++;
+  };
+
+  // Strategy 1 – link href slug matching (most reliable)
+  doc.querySelectorAll('a[href]').forEach(a=>{
+    const resort=bySlug(a.getAttribute('href'));
+    if(!resort||snowData[resort.id]) return;
+    const row=rowOf(a);
+    if(row) extract(row.textContent||'',resort);
+  });
+
+  // Strategy 2 – table row fallback
+  if(hits<5){
+    doc.querySelectorAll('tr').forEach(tr=>{
+      const cells=tr.querySelectorAll('td');
+      if(cells.length<3) return;
+      // Check if any cell link gives us a slug match
+      const linkEl=tr.querySelector('a[href]');
+      const resort=linkEl?bySlug(linkEl.getAttribute('href')):null;
+      if(!resort||snowData[resort.id]) return;
+      extract(tr.textContent||'',resort);
+    });
+  }
+
+  // Strategy 3 – regex scan on raw HTML (plain-text tables / SSR pre-render)
+  if(hits<3){
+    const linkRe=/<a[^>]+href="(\/[a-z0-9-]+\/)"[^>]*>([^<]+)<\/a>/gi;
+    let m;
+    while((m=linkRe.exec(html))!==null){
+      const resort=bySlug(m[1]);
+      if(!resort||snowData[resort.id]) continue;
+      // Grab the surrounding ~300 chars after the match
+      const ctx=html.slice(m.index,m.index+500);
+      extract(ctx,resort);
+    }
+  }
+}
+
+async function loadAllSnowData(){
+  const st=document.getElementById('snowStatus');
+  st.className='snow-status loading';
+  st.innerHTML='<span class="spin"></span> Schneehöhen werden geladen…';
+
+  // ── Background: try Bergfex for lift counts (best-effort, might fail) ──
+  Object.keys(BERGFEX_URLS).forEach(k=>fetchSnowPage(k).catch(()=>{}));
+
+  // ── Primary: Open-Meteo snow_depth for ALL resorts – always works ──
+  const BATCH=15;
+  for(let i=0;i<RESORTS.length;i+=BATCH){
+    const batch=RESORTS.slice(i,i+BATCH);
+    await Promise.allSettled(batch.map(r=>loadResortSnow(r)));
+    const pct=Math.min(100,Math.round((i+BATCH)/RESORTS.length*100));
+    st.innerHTML=`<span class="spin"></span> ${pct}% – ${Object.keys(snowData).length} Gebiete`;
+    renderGrid();
+    if(i+BATCH<RESORTS.length) await sleep(120);
+  }
+  const count=Object.keys(snowData).length;
+  st.className='snow-status live';
+  st.innerHTML=`<span class="live-dot"></span> ${count} Gebiete · Open-Meteo`;
+  renderGrid();
+  // Load today's weather for all resorts (for card display)
+  loadCardWeather(RESORTS);
+}
+
+// ── Per-resort Open-Meteo snow fetch ──────────────────────────────────
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function loadResortSnow(r){
+  // Don't overwrite confirmed Bergfex data (has lift counts)
+  if(snowData[r.id]?.src==='bergfex') return;
+  try{
+    // Fetch at summit elevation → mountain snow depth
+    const url=`https://api.open-meteo.com/v1/forecast?`+
+      `latitude=${r.lat}&longitude=${r.lon}&elevation=${r.altMax}`+
+      `&current=snow_depth&daily=snowfall_sum&timezone=auto&forecast_days=1`;
+    const res=await fetch(url,{signal:AbortSignal.timeout(8000)});
+    if(!res.ok) return;
+    const d=await res.json();
+    const rawDepth=d.current?.snow_depth; // meters
+    if(rawDepth==null) return;
+    const snowP=Math.round(rawDepth*100); // cm at summit
+    // Estimate valley snow via lapse rate (~5 cm per 100m altitude)
+    const altDiff=r.altMax-r.altMin;
+    const snowV=Math.max(0,snowP-Math.round(altDiff*0.05));
+    const newSnow=(d.daily?.snowfall_sum?.[0]??0); // cm
+    const prev=snowData[r.id]||{};
+    snowData[r.id]={
+      snowV,
+      snowP,
+      newSnow:newSnow>0?Math.round(newSnow):null,
+      openLifts:prev.openLifts??null,
+      totalLifts:prev.totalLifts??null,
+      ts:new Date().toLocaleTimeString('de-CH',{hour:'2-digit',minute:'2-digit'}),
+      src:prev.src==='bergfex'?'bergfex+om':'open-meteo',
+    };
+  }catch(e){}
+}
+
+// ──────────────────────────────────────────────
+// FILTER & SORT
+// ──────────────────────────────────────────────
+function getFilters(){
+  return {
+    search:document.getElementById('fSearch').value.trim().toLowerCase(),
+    country:filterCountry,
+    mp: document.getElementById('fMp').checked,
+    fav:document.getElementById('fFav').checked,
+    openOnly:document.getElementById('fOpen').checked,
+    maxDist:parseInt(document.getElementById('fDist').value),
+    maxTime:parseInt(document.getElementById('fTime').value),
+    minLifts:parseInt(document.getElementById('fLifts').value),
+    minSnow:parseInt(document.getElementById('fSnow').value),
+    sort:document.getElementById('sortSel').value,
+  };
+}
+
+function applyFilters(resorts){
+  const f=getFilters();
+  return resorts.filter(r=>{
+    if(f.search&&!r.name.toLowerCase().includes(f.search)&&!r.region.toLowerCase().includes(f.search)) return false;
+    if(f.country!=='all'&&r.country!==f.country) return false;
+    if(f.mp&&!r.mp) return false;
+    if(f.fav&&!favorites.has(r.id)) return false;
+    const sd=snowData[r.id]||{};
+    // only filter by lift status when data is known (null = unknown → keep resort)
+    if(f.openOnly&&sd.openLifts===0) return false;
+    if(f.minLifts>0&&sd.openLifts!==null&&sd.openLifts<f.minLifts) return false;
+    if(f.minSnow>0&&!(sd.snowP>=f.minSnow)) return false;
+    if(userLat!==null){
+      const d=haversine(userLat,userLon,r.lat,r.lon);
+      if(d>f.maxDist) return false;
+      const tt=travelTimes[r.id];
+      if(tt&&f.maxTime<480&&tt.mins>f.maxTime) return false;
+    }
+    return true;
+  });
+}
+
+function sortResorts(resorts){
+  const f=getFilters();
+  return [...resorts].sort((a,b)=>{
+    if(f.sort==='dist'&&userLat!==null){
+      return haversine(userLat,userLon,a.lat,a.lon)-haversine(userLat,userLon,b.lat,b.lon);
+    }
+    if(f.sort==='snow'){
+      const sa=(snowData[a.id]||{}).snowP||0;
+      const sb=(snowData[b.id]||{}).snowP||0;
+      return sb-sa;
+    }
+    if(f.sort==='lifts'){
+      const la=(snowData[a.id]||{}).openLifts||0;
+      const lb=(snowData[b.id]||{}).openLifts||0;
+      return lb-la;
+    }
+    if(f.sort==='altMax') return b.altMax-a.altMax;
+    return a.name.localeCompare(b.name,'de');
+  });
+}
+
+// ──────────────────────────────────────────────
+// RENDER RESORT GRID
+// ──────────────────────────────────────────────
+function renderGrid(){
+  const f=getFilters();
+  let visible=sortResorts(applyFilters(RESORTS));
+  document.getElementById('listCount').textContent=`${visible.length} von ${RESORTS.length} Skigebieten`;
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  visible.forEach(r=>{
+    const sd=snowData[r.id]||{};
+    const isFav=favorites.has(r.id);
+    const dist=(userLat!==null)?haversine(userLat,userLon,r.lat,r.lon):null;
+    const tt=travelTimes[r.id]||null;
+    const isOpen=sd.openLifts!=null?sd.openLifts>0:null;
+    const card=document.createElement('div');
+    card.className=`r-card${isOpen===true?' open':isOpen===false?' closed':''}`;
+    card.dataset.id=r.id;
+    const rc=RC[r.region]||'#64748b';
+    const totalLifts=sd.totalLifts||r.totalLifts||0;
+    const lpct=totalLifts&&sd.openLifts!=null?Math.round(sd.openLifts/totalLifts*100):null;
+    const hasSnow=sd.snowP!=null||sd.snowV!=null||sd.newSnow;
+    card.innerHTML=`
+      <div class="r-card-hdr">
+        <div style="flex:1;min-width:0">
+          <div class="r-name">${r.name}</div>
+          <div class="r-region">
+            <span class="r-region-dot" style="background:${rc}"></span>
+            <span class="r-region-txt">${r.region}</span>
+          </div>
+        </div>
+        <div class="r-badges">
+          <button class="fav-btn" data-id="${r.id}" title="Favorit" style="opacity:${isFav?1:0.3}">⭐</button>
+          ${r.mp?'<div class="badge-mp">✦ MP</div>':''}
+          ${sd.openLifts!=null?`<div class="badge-status ${sd.openLifts>0?'open':'closed'}">${sd.openLifts>0?'● OFFEN':'○ ZU'}</div>`:''}
+        </div>
+      </div>
+      <div class="r-alt-grid">
+        <div class="r-alt-cell"><div class="r-alt-val">▲${r.altMax}m</div><div class="r-alt-lbl">Gipfel</div></div>
+        <div class="r-alt-cell"><div class="r-alt-val">▼${r.altMin}m</div><div class="r-alt-lbl">Tal</div></div>
+        <div class="r-alt-cell"><div class="r-alt-val">↕${r.altMax-r.altMin}m</div><div class="r-alt-lbl">Diff.</div></div>
+      </div>
+      <div class="r-progress">
+        ${r.totalSlopes?`<div><div class="r-prog-hdr"><span class="r-prog-lbl">Pisten</span><span class="r-prog-val" style="color:#e2e8f0">${r.totalSlopes} km</span></div></div>`:''}
+        ${sd.openLifts!=null&&totalLifts?`<div>
+          <div class="r-prog-hdr">
+            <span class="r-prog-lbl">Lifte</span>
+            <span class="r-prog-val"><span style="font-weight:700;color:${barColor(lpct)}">${sd.openLifts}</span> / ${totalLifts} (${lpct}%)</span>
+          </div>
+          <div class="r-prog-bar"><div class="r-prog-fill" style="width:${lpct}%;background:${barColor(lpct)}"></div></div>
+        </div>`:''}
+      </div>
+      ${hasSnow?`<div class="r-snow-box">
+        <div class="r-snow-title">❄ Schneebericht</div>
+        <div class="r-snow-vals">
+          ${sd.snowP!=null?`<span class="r-snow-num" style="color:#e2e8f0">▲<b>${sd.snowP}</b>cm</span>`:''}
+          ${sd.snowV!=null?`<span class="r-snow-num" style="color:#94a3b8">▼<b>${sd.snowV}</b>cm</span>`:''}
+          ${sd.newSnow?`<span class="r-snow-num" style="color:#60a5fa">+<b>${sd.newSnow}</b>cm</span>`:''}
+        </div>
+      </div>`:''}
+      ${(()=>{
+        const days=weatherData[r.id];
+        if(!days) return '<div style="font-size:9px;color:#475569;font-family:monospace;padding:2px 0">⌛ Wetter wird geladen…</div>';
+        const n=['So','Mo','Di','Mi','Do','Fr','Sa'];
+        return `<div class="r-wx"><div class="r-wx-title">3-Tages Prognose</div><div class="r-wx-days">`+days.map(w=>`<div class="r-wx-day">
+          <div class="r-wx-day-name">${n[w.date.getDay()]} ${w.date.getDate()}.${w.date.getMonth()+1}.</div>
+          <div class="r-wx-icon">${w.icon}</div>
+          <div class="r-wx-temp">${w.tmax>0?'+':''}${w.tmax}°</div>
+          <div class="r-wx-temp-lo">${w.tmin}°</div>
+          ${w.snow>0.1?`<div class="r-wx-snow">❄ ${w.snow.toFixed(1)}cm</div>`:''}
+        </div>`).join('')+'</div></div>';
+      })()}
+      <div class="r-footer">
+        <div class="r-dist">${dist!=null?`📍 ${fmtDist(dist)}${tt?' · '+fmtTime(tt.mins):''}`:''}</div>
+        <div class="r-links">
+          <a class="r-link-btn" href="${r.website}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🌐 Website</a>
+          <a class="r-link-btn" href="${r.bergfex}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🎿 Bergfex</a>
+          ${r.mp?`<a class="r-link-btn mp" href="${r.mpUrl||'https://www.magicpass.ch/de/stations'}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🎫 MP</a>`:''}
+        </div>
+      </div>
+    `;
+    card.addEventListener('click',(e)=>{
+      if(e.target.closest('.fav-btn')){toggleFav(r.id);return;}
+      if(e.target.closest('.r-links')) return;
+      // Click on card body → focus map marker
+      const m=resortMarkers[r.id];
+      if(m && map) map.setView([r.lat,r.lon],11,{animate:true});
+    });
+    grid.appendChild(card);
+  });
+  // Update map marker visibility
+  RESORTS.forEach(r=>{
+    const m=resortMarkers[r.id];
+    if(!m) return;
+    const show=visible.some(v=>v.id===r.id);
+    if(show) m.addTo(map); else map.removeLayer(m);
+  });
+}
+
+// ──────────────────────────────────────────────
+// DETAIL PANEL
+// ──────────────────────────────────────────────
+async function openDetail(id){
+  currentResortId=id;
+  const r=RESORTS.find(x=>x.id===id);
+  if(!r) return;
+  const isFav=favorites.has(id);
+  const sd=snowData[id]||{};
+  // Header
+  document.getElementById('dpName').textContent=r.name;
+  document.getElementById('dpCountry').textContent=`🏳️ ${r.country}`;
+  document.getElementById('dpRegion').textContent=r.region;
+  document.getElementById('dpAlt').textContent=`⛰️ ${r.altMin}–${r.altMax} m`;
+  document.getElementById('dpMpTag').style.display=r.mp?'':'none';
+  document.getElementById('dpFavBtn').className=`fav-dp-btn${isFav?' active':''}`;
+  document.getElementById('dpFavBtn').textContent=isFav?'⭐ Favorit entfernen':'⭐ Als Favorit';
+  // Snow
+  document.getElementById('dpSnowV').textContent=sd.snowV!=null?sd.snowV+' cm':'–';
+  document.getElementById('dpSnowP').textContent=sd.snowP!=null?sd.snowP+' cm':'–';
+  document.getElementById('dpNewSnow').textContent=sd.newSnow!=null?'+'+sd.newSnow+' cm':'–';
+  const liftsEl=document.getElementById('dpLifts');
+  const lo=sd.openLifts, lt=sd.totalLifts||r.totalLifts;
+  liftsEl.textContent=lo!=null?`${lo} / ${lt}`:`–`;
+  liftsEl.className='ib-val'+(lo===0?' red':lo<lt*0.5?' amber':lo>0?' green':'');
+  document.getElementById('dpElevation').textContent=`${r.altMin} → ${r.altMax} m`;
+  document.getElementById('dpSlopes').textContent=r.totalSlopes?r.totalSlopes+' km':'–';
+  document.getElementById('dpSnowTs').textContent=sd.ts?`(${sd.ts})` : '';
+  // Links
+  document.getElementById('dpWebsite').href=r.website;
+  document.getElementById('dpBergfex').href=r.bergfex;
+  const mpLinkEl=document.getElementById('dpMpLink');
+  mpLinkEl.href=r.mpUrl||'https://www.magicpass.ch/de/stations';
+  mpLinkEl.style.display=r.mp?'':'none';
+  // Travel
+  const travSec=document.getElementById('dpTravelSec');
+  if(userLat!==null){
+    travSec.style.display='';
+    const d=haversine(userLat,userLon,r.lat,r.lon);
+    document.getElementById('dpDist').textContent=fmtDist(d);
+    document.getElementById('dpTime').textContent='Fahrzeit wird berechnet…';
+    getTravelTime(userLat,userLon,r.lat,r.lon).then(tt=>{
+      if(tt){
+        travelTimes[id]=tt;
+        document.getElementById('dpTime').textContent=`ca. ${fmtTime(tt.mins)} Fahrzeit`;
+        renderGrid();
+      }else{
+        document.getElementById('dpTime').textContent=`(Routenberechnung nicht verfügbar)`;
+      }
+    });
+  }else{
+    travSec.style.display='none';
+  }
+  // Weather
+  document.getElementById('dpWeather').innerHTML='<div class="wx-loading"><span class="spin"></span> Wetterdaten werden geladen…</div>';
+  loadWeather(r.lat,r.lon,r.altMax,id);
+  // Show panel
+  document.getElementById('detail').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+  // Fly map
+  map.flyTo([r.lat,r.lon],10,{duration:1});
+}
+
+function closeDetail(){
+  document.getElementById('detail').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+  currentResortId=null;
+}
+
+// ──────────────────────────────────────────────
+// WEATHER – Open-Meteo API (+ snow depth fallback)
+// ──────────────────────────────────────────────
+// ── Batch card weather loader ────────────────────────────────────────
+async function loadCardWeather(resorts){
+  const BATCH=10;
+  const missing=resorts.filter(r=>!weatherData[r.id]);
+  for(let i=0;i<missing.length;i+=BATCH){
+    const batch=missing.slice(i,i+BATCH);
+    await Promise.allSettled(batch.map(async r=>{
+      try{
+        const url=`https://api.open-meteo.com/v1/forecast?latitude=${r.lat}&longitude=${r.lon}`+
+          `&daily=weather_code,temperature_2m_max,temperature_2m_min,snowfall_sum&timezone=auto&forecast_days=3`;
+        const res=await fetch(url,{signal:AbortSignal.timeout(8000)});
+        if(!res.ok) return;
+        const d=await res.json();
+        weatherData[r.id]=d.daily.time.slice(0,3).map((t,i)=>{
+          const [icon,label]=wmo(d.daily.weather_code[i]);
+          return{
+            date:new Date(t),icon,label,
+            tmax:Math.round(d.daily.temperature_2m_max[i]),
+            tmin:Math.round(d.daily.temperature_2m_min[i]),
+            snow:d.daily.snowfall_sum[i]||0,
+          };
+        });
+      }catch(e){}
+    }));
+    renderGrid();
+    if(i+BATCH<missing.length) await sleep(100);
+  }
+  renderGrid();
+}
+
+async function loadWeather(lat,lon,altMax,resortId){
+  const el=document.getElementById('dpWeather');
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
+      `&current=snow_depth,snowfall`+
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,wind_speed_10m_max`+
+      `&timezone=auto&forecast_days=3`;
+    const res=await fetch(url,{signal:AbortSignal.timeout(10000)});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const {daily,current}=data;
+    if(!daily) throw new Error('No data');
+
+    // Enrich snow panel from Open-Meteo if Bergfex gave us nothing
+    if(resortId && current){
+      const depthCm = current.snow_depth!=null ? Math.round(current.snow_depth*100) : null;
+      const newSnow1h = current.snowfall!=null ? Math.round(current.snowfall*10)/10 : null;
+      const sd=snowData[resortId]||{};
+      let enriched=false;
+      if(!sd.snowP && depthCm!=null){ sd.snowP=depthCm; enriched=true; }
+      if(!sd.newSnow && newSnow1h>0){ sd.newSnow=Math.round(newSnow1h); enriched=true; }
+      if(enriched){
+        snowData[resortId]={...sd, ts:'Open-Meteo', src:'open-meteo'};
+        document.getElementById('dpSnowP').textContent=(snowData[resortId].snowP??'–')+' cm';
+        document.getElementById('dpSnowTs').textContent='(Open-Meteo)';
+        renderGrid();
+      }
+    }
+
+    el.innerHTML='<div class="wx-grid">'+daily.time.slice(0,3).map((d,i)=>{
+      const [icon,label]=wmo(daily.weather_code[i]);
+      const tmax=Math.round(daily.temperature_2m_max[i]);
+      const tmin=Math.round(daily.temperature_2m_min[i]);
+      const snow=(daily.snowfall_sum[i]||0);
+      const wind=Math.round(daily.wind_speed_10m_max[i]||0);
+      const date=new Date(d);
+      const dayN=date.toLocaleDateString('de-CH',{weekday:'short',day:'numeric',month:'short'});
+      return `<div class="wx-day">
+        <div class="wx-date">${dayN}</div>
+        <div class="wx-icon">${icon}</div>
+        <div class="wx-desc">${label}</div>
+        <div class="wx-temp"><span class="wx-t-max">${tmax>0?'+':''}${tmax}°</span> / <span class="wx-t-min">${tmin}°</span></div>
+        ${snow>0?`<div class="wx-snow">❄️ ${snow.toFixed(1)} cm Neuschnee</div>`:''}
+        <div style="font-size:.65rem;color:var(--txt2);margin-top:2px">💨 ${wind} km/h</div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){
+    el.innerHTML='<div style="color:var(--txt2);font-size:.8rem;padding:10px 0">Wetterdaten konnten nicht geladen werden.<br><a href="https://open-meteo.com" target="_blank" rel="noopener" style="color:var(--blue)">open-meteo.com</a></div>';
+  }
+}
+
+// ──────────────────────────────────────────────
+// LOCATION
+// ──────────────────────────────────────────────
+async function fetchAllTravelTimes(lat,lon){
+  // Fetch in batches of 6 to avoid flooding OSRM
+  const resorts=[...RESORTS];
+  const BATCH=6;
+  for(let i=0;i<resorts.length;i+=BATCH){
+    const batch=resorts.slice(i,i+BATCH);
+    await Promise.all(batch.map(async r=>{
+      if(travelTimes[r.id]) return; // already cached
+      const tt=await getTravelTime(lat,lon,r.lat,r.lon);
+      if(tt) travelTimes[r.id]=tt;
+    }));
+    renderGrid(); // update cards progressively
+  }
+}
+
+function setUserLocation(lat,lon,label){
+  userLat=lat; userLon=lon;
+  document.getElementById('locInput').value=label||`${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+  document.getElementById('locHint').style.display='none';
+  // Place user marker
+  if(userMarker) userMarker.remove();
+  const el=document.createElement('div');
+  el.className='lf-user';
+  userMarker=L.marker([lat,lon],{
+    icon:L.divIcon({className:'',html:el.outerHTML,iconSize:[14,14],iconAnchor:[7,7]}),
+    title:'Mein Standort'
+  }).addTo(map);
+  map.flyTo([lat,lon],9,{duration:1.2});
+  // Pre-calculate distances + travel times
+  travelTimes={};
+  renderGrid();
+  fetchAllTravelTimes(lat,lon);
+}
+
+function geocode(query){
+  return fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`,{
+    headers:{'Accept-Language':'de'},
+    signal:AbortSignal.timeout(8000)
+  }).then(r=>r.json()).catch(()=>[]);
+}
+
+// Autocomplete
+let acTimer=null;
+document.getElementById('locInput').addEventListener('input',function(){
+  clearTimeout(acTimer);
+  const q=this.value.trim();
+  if(q.length<3){document.getElementById('acList').style.display='none';return;}
+  acTimer=setTimeout(async()=>{
+    const results=await geocode(q);
+    const list=document.getElementById('acList');
+    if(!results.length){list.style.display='none';return;}
+    list.innerHTML=results.slice(0,5).map(r=>`<div class="ac-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.split(',').slice(0,2).join(', ')}">${r.display_name.split(',').slice(0,3).join(', ')}</div>`).join('');
+    list.style.display='';
+    list.querySelectorAll('.ac-item').forEach(item=>{
+      item.addEventListener('click',()=>{
+        setUserLocation(parseFloat(item.dataset.lat),parseFloat(item.dataset.lon),item.dataset.name);
+        list.style.display='none';
+      });
+    });
+  },350);
+});
+
+document.getElementById('locSearchBtn').addEventListener('click',async()=>{
+  const q=document.getElementById('locInput').value.trim();
+  if(!q) return;
+  const results=await geocode(q);
+  if(results.length){
+    const r=results[0];
+    setUserLocation(parseFloat(r.lat),parseFloat(r.lon),r.display_name.split(',').slice(0,2).join(', '));
+  }
+  document.getElementById('acList').style.display='none';
+});
+
+document.getElementById('locInput').addEventListener('keydown',e=>{if(e.key==='Enter') document.getElementById('locSearchBtn').click()});
+
+document.getElementById('gpsBtn').addEventListener('click',()=>{
+  if(!navigator.geolocation){alert('GPS nicht verfügbar');return;}
+  navigator.geolocation.getCurrentPosition(
+    p=>setUserLocation(p.coords.latitude,p.coords.longitude,'GPS-Standort'),
+    ()=>alert('GPS-Standort konnte nicht ermittelt werden')
+  );
+});
+
+// ──────────────────────────────────────────────
+// TRAVEL TIME – OSRM
+// ──────────────────────────────────────────────
+async function getTravelTime(lat1,lon1,lat2,lon2){
+  try{
+    const url=`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+    const res=await fetch(url,{signal:AbortSignal.timeout(10000)});
+    if(!res.ok) return null;
+    const data=await res.json();
+    if(data.routes&&data.routes[0]){
+      const dist=data.routes[0].distance/1000; // km
+      const mins=Math.round(data.routes[0].duration/60);
+      return {dist,mins};
+    }
+  }catch(e){}
+  return null;
+}
+
+// ──────────────────────────────────────────────
+// FAVORITES
+// ──────────────────────────────────────────────
+function toggleFav(id){
+  if(favorites.has(id)) favorites.delete(id);
+  else favorites.add(id);
+  localStorage.setItem('ski-favs',JSON.stringify([...favorites]));
+  updateMapMarker(id);
+  renderGrid();
+  if(currentResortId===id){
+    const b=document.getElementById('dpFavBtn');
+    b.className=`fav-dp-btn${favorites.has(id)?' active':''}`;
+    b.textContent=favorites.has(id)?'⭐ Favorit entfernen':'⭐ Als Favorit';
+  }
+}
+
+document.getElementById('dpFavBtn').addEventListener('click',()=>{
+  if(currentResortId) toggleFav(currentResortId);
+});
+
+// ──────────────────────────────────────────────
+// FILTER CONTROLS
+// ──────────────────────────────────────────────
+document.querySelectorAll('.cntry-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.cntry-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    filterCountry=btn.dataset.c;
+    renderGrid();
+  });
+});
+
+['fMp','fFav','fOpen','sortSel'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',renderGrid);
+});
+
+document.getElementById('fSearch').addEventListener('input',renderGrid);
+
+document.getElementById('fDist').addEventListener('input',function(){
+  const v=parseInt(this.value);
+  document.getElementById('distVal').textContent=v>=800?'∞':v+' km';
+  renderGrid();
+});
+document.getElementById('fTime').addEventListener('input',function(){
+  const v=parseInt(this.value);
+  const h=Math.floor(v/60), m=v%60;
+  document.getElementById('timeVal').textContent=v>=480?'∞':(h>0?h+'h ':'')+m+'min';
+  renderGrid();
+});
+document.getElementById('fLifts').addEventListener('input',function(){
+  document.getElementById('liftsVal').textContent=this.value;
+  renderGrid();
+});
+document.getElementById('fSnow').addEventListener('input',function(){
+  document.getElementById('snowVal').textContent=this.value+' cm';
+  renderGrid();
+});
+
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  document.getElementById('fMp').checked=false;
+  document.getElementById('fFav').checked=false;
+  document.getElementById('fOpen').checked=false;
+  document.getElementById('fDist').value=150;
+  document.getElementById('fTime').value=480;
+  document.getElementById('fLifts').value=0;
+  document.getElementById('fSnow').value=0;
+  document.getElementById('sortSel').value='name';
+  document.getElementById('distVal').textContent='150 km';
+  document.getElementById('timeVal').textContent='∞';
+  document.getElementById('liftsVal').textContent='0';
+  document.getElementById('snowVal').textContent='0 cm';
+  document.getElementById('fSearch').value='';
+  document.querySelectorAll('.cntry-btn').forEach(b=>{b.classList.toggle('active',b.dataset.c==='all');});
+  renderGrid();
+});
+
+document.getElementById('dpClose').addEventListener('click',closeDetail);
+document.getElementById('overlay').addEventListener('click',closeDetail);
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeDetail()});
+
+// Close autocomplete on outside click
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.loc-wrap')) document.getElementById('acList').style.display='none';
+});
+
+// ──────────────────────────────────────────────
+// UTILS
+// ──────────────────────────────────────────────
+const RC={
+  'Wallis':'#e63946','Bern':'#2a9d8f','Waadt':'#457b9d','Frankreich':'#f4a261',
+  'Freiburg':'#8338ec','Solothurn':'#06d6a0','Nidwalden':'#fb8500','Obwalden':'#3a86ff',
+  'Schwyz':'#ff006e','Luzern':'#8ecae6','Italien':'#2ec4b6','Neuenburg':'#f59e0b',
+  'Bern/Freiburg':'#2a9d8f','Graubünden':'#e76f51','Ostschweiz':'#2dc653','Uri':'#577590',
+  'Uri/Graubünden':'#a8dadc','Tessin':'#ffd166','Zürich':'#6c757d','Glarus':'#22d3ee',
+  'Tirol':'#c0392b','Salzburg':'#e74c3c','Vorarlberg':'#1abc9c',
+  'Kärnten':'#9b59b6','Steiermark':'#27ae60','Niederösterreich':'#e67e22','Oberösterreich':'#2980b9',
+  'Frankreich (Savoie)':'#f4a261','Frankreich (Isère)':'#f4a261'
+};
+function barColor(pct){return pct>=75?'#22c55e':pct>=40?'#f59e0b':'#ef4444';}
+
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371;
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function fmtDist(km){
+  return km<10?km.toFixed(1)+' km':Math.round(km)+' km';
+}
+
+function fmtTime(mins){
+  const h=Math.floor(mins/60), m=mins%60;
+  return h>0?`${h}h ${m>0?m+'min':''}`:`${m} min`;
+}
+
+// ──────────────────────────────────────────────
+// BOOT
+// ──────────────────────────────────────────────
+(function boot(){
+  initMap();
+  renderGrid();
+  // Stagger snow data fetch to avoid rate limits
+  setTimeout(()=>loadAllSnowData(),500);
+  // Init favorites on map
+  favorites.forEach(id=>updateMapMarker(id));
+
+  // ── Map toggle ──────────────────────────────────
+  const mapEl=document.getElementById('map');
+  const btn=document.getElementById('mapToggleBtn');
+  let mapVisible=true;
+  btn.addEventListener('click',()=>{
+    mapVisible=!mapVisible;
+    mapEl.classList.toggle('map-hidden',!mapVisible);
+    btn.textContent=mapVisible?'🗺️ Karte ausblenden':'🗺️ Karte einblenden';
+    if(mapVisible){
+      setTimeout(()=>map.invalidateSize(),270);
+    }
+  });
+})();
+</script>
+</body>
+</html>
