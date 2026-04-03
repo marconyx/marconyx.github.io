@@ -842,13 +842,47 @@ const WMO = {
 function wmo(c){return WMO[c]||['🌡️','Unbekannt']}
 
 // ── MeteoSwiss icon codes → Emoji & Label ────────────────────────────
-const MS_ICON={
+const MS_ICON_OLD={
   1:['☀️','Sonnig'],       2:['🌤️','Heiter'],        3:['⛅','Wechselhaft'],
   4:['☁️','Bewölkt'],      5:['🌫️','Nebelig'],        6:['🌦️','Leichter Regen'],
   7:['🌧️','Regen'],        8:['⛈️','Gewitter'],       9:['🌩️','Starkes Gewitter'],
   10:['❄️','Leichter Schnee'],11:['🌨️','Starker Schnee'],12:['🌨️','Schneeregen'],
   13:['🌧️','Gefrierender Regen'],14:['🌤️','Wechselhaft'],
 };
+// ── MeteoSwiss icon codes → Emoji & Label ──
+const MS_ICON={
+  1:['☀️','Sonnig'],
+  2:['🌤️','Überwiegend sonnig'],
+  3:['⛅','Wechselhaft'],
+  4:['🌥️','Stark bewölkt'],
+  5:['☁️','Bedeckt'],
+  6:['🌫️','Nebelig'],
+  7:['🌦️','Leichter Regen'],
+  8:['🌧️','Regen'],
+  9:['⛈️','Gewitter'],
+  10:['⛈️','Starkes Gewitter'],
+  11:['🌨️','Leichter Schnee'],
+  12:['❄️','Starker Schnee'],
+  13:['🌨️','Schneeregen'],
+  14:['🌧️','Gefrierender Regen'],
+};
+function msIcon(code){
+  let c=code;
+  if(c>100) c=c-100;
+  else if(c>25) c=c-25;
+  return MS_ICON[c]||['🌡️','Unbekannt'];
+}
+function msScore(code){
+  let c=code;
+  if(c>100) c=c-100;
+  else if(c>25) c=c-25;
+  if(c===1)return 10;if(c===2)return 8;if(c===3)return 6;if(c===4)return 5;
+  if(c===5)return 4;if(c===6)return 3;if(c===7)return 2;if(c===8)return 1;
+  if(c===9||c===10)return 0;if(c===11)return 4;if(c===12)return 2;
+  if(c===13||c===14)return 1;return 5;
+}
+
+  
 function msIcon(code){const c=code>25?code-25:code;return MS_ICON[c]||['🌡️','Unbekannt'];}
 function msScore(code){
   const c=code>25?code-25:code;
