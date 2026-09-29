@@ -35,10 +35,11 @@ export const AI_PROVIDERS = [
   {
     id: 'openai',
     label: 'OpenAI-kompatibel',
-    defaultEndpoint: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-4o',
+    defaultEndpoint:
+      'https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1',
+    defaultModel: 'qwen/qwen3.6-35b-a3b',
     needsKey: true,
-    hint: 'Funktioniert auch mit Azure OpenAI, OpenRouter, Groq, LM Studio oder Ollama (/v1).',
+    hint: 'Standard: Swisscom Swiss AI Platform; funktioniert auch mit OpenAI, Azure OpenAI, OpenRouter, Groq, LM Studio oder Ollama (/v1).',
   },
   {
     id: 'anthropic',
@@ -60,8 +61,9 @@ export const AI_PROVIDERS = [
 
 const DEFAULT_SETTINGS = {
   providerId: 'openai',
-  endpoint: 'https://api.openai.com/v1',
-  model: 'gpt-4o',
+  endpoint:
+    'https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1',
+  model: 'qwen/qwen3.6-35b-a3b',
   apiKey: '',
   notes: '',
   // Prompt-Vorlage und eigener Text werden wie Endpoint und Modell gemerkt.
@@ -77,11 +79,33 @@ let settings = { ...DEFAULT_SETTINGS };
 export function loadAiSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      settings = withDefaultsForProvider({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+    }
   } catch {
     settings = { ...DEFAULT_SETTINGS };
   }
   return { ...settings };
+}
+
+/**
+ * Füllt leere oder fehlende Endpoint-/Modellwerte mit den Vorgaben des
+ * gespeicherten Anbieters auf.
+ *
+ * Nötig, weil ein leerer String beim Zusammenführen mit den Standardwerten
+ * gewinnt: Wer das Feld einmal geleert hat, stünde sonst dauerhaft ohne
+ * Endpoint da. Ausdrücklich gesetzte, nicht leere Nutzerwerte bleiben
+ * unangetastet – auch dann, wenn sich der Standard später ändert.
+ */
+function withDefaultsForProvider(candidate) {
+  const spec = providerById(candidate.providerId);
+  const endpoint = String(candidate.endpoint ?? '').trim();
+  const model = String(candidate.model ?? '').trim();
+  return {
+    ...candidate,
+    endpoint: endpoint || spec.defaultEndpoint,
+    model: model || spec.defaultModel,
+  };
 }
 
 export function getAiSettings() {

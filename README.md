@@ -271,12 +271,18 @@ Browsers und wird nie ins Repository übertragen.
 
 | Modus | Wofür | Key im Browser |
 |---|---|---|
-| **OpenAI-kompatibel** | OpenAI, Azure OpenAI, OpenRouter, Groq, LM Studio, Ollama (`/v1`) | ja |
+| **OpenAI-kompatibel** | Swisscom Swiss AI Platform (Standard), OpenAI, Azure OpenAI, OpenRouter, Groq, LM Studio, Ollama (`/v1`) | ja |
 | **Anthropic (Claude)** | Claude Messages API | ja |
 | **Eigener Proxy** | Firmen-Gateways ohne CORS, geteilte Deployments — `tools/proxy.mjs` liegt bei | nein |
 
 Einstellen unter *AI-Erkennung → Einstellungen*. Der Button bleibt gesperrt, solange
 etwas fehlt, und nennt im Tooltip den Grund.
+
+Vorbelegt ist „OpenAI-kompatibel" mit dem Endpoint
+`https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1` und
+dem Modell `qwen/qwen3.6-35b-a3b`. Ein leeres Endpoint- oder Modellfeld wird beim
+Laden wieder mit diesen Vorgaben gefüllt; ein selbst eingetragener Wert bleibt
+unverändert stehen.
 
 ### Modelle werden selbst gefunden
 
@@ -377,7 +383,7 @@ lauscht. Soll der Key **den Rechner nie im Browser sehen**, weiter wie bisher:
 ```bash
 AI_KEY=dein-key \
 AI_UPSTREAM=https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1 \
-AI_MODEL=gpt-4o \
+AI_MODEL=qwen/qwen3.6-35b-a3b \
 npm start
 ```
 
@@ -406,7 +412,7 @@ AI_API=anthropic AI_AUTH_HEADER=x-api-key AI_AUTH_SCHEME= AI_KEY=... npm start
 |---|---|---|
 | `AI_KEY` | — | Optional. Gesetzt: Key bleibt serverseitig. Sonst schickt ihn die App. |
 | `AI_UPSTREAM` | Swisscom-Endpoint | Basis-URL **ohne** `/chat/completions` |
-| `AI_MODEL` | `gpt-4o` | Vorgabe, falls die App kein Modell schickt |
+| `AI_MODEL` | `qwen/qwen3.6-35b-a3b` | Vorgabe, falls die App kein Modell schickt |
 | `AI_AUTH_HEADER` | `Authorization` | Header-Name für den Key |
 | `AI_AUTH_SCHEME` | `Bearer ` | Präfix; leer setzen für rohe Keys |
 | `AI_API` | `openai` | oder `anthropic` |

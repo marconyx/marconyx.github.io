@@ -381,6 +381,21 @@ try {
       alt.child.kill();
     }
   });
+  await test('ohne AI_MODEL meldet health das Standardmodell', async () => {
+    const other = 8906;
+    const alt = await startProxy(other, {
+      AI_KEY: KEY,
+      AI_UPSTREAM: `http://127.0.0.1:${upstreamPort}/v1`,
+      AI_MODEL: '',
+    });
+    try {
+      const health = await (await fetch(`http://127.0.0.1:${other}/api/health`)).json();
+      assert.equal(health.model, 'qwen/qwen3.6-35b-a3b');
+    } finally {
+      alt.child.kill();
+    }
+  });
+
   await test('listet Modelle, entdoppelt und sortiert sie', async () => {
     const res = await postTo(PORT, '/api/models', { apiKey: 'k' });
     assert.equal(res.status, 200);

@@ -25,6 +25,7 @@ import {
   photoToTopo,
   pickModelIds,
   promptTemplateById,
+  providerById,
   sanitizeTopoCandidate,
   saveAiSettings,
 } from '../src/ai.js';
@@ -515,6 +516,89 @@ test('ein überlanger eigener Prompt wird abgelehnt', () => {
     () => buildPromptParts({}, { template: 'custom', customPrompt: 'x'.repeat(MAX_PROMPT_CHARS + 1) }),
     /zu lang/,
   );
+});
+
+/* ------------------------------------------------------- Standardeinstellungen */
+
+const SWISSCOM_ENDPOINT =
+  'https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1';
+const SWISSCOM_MODEL = 'qwen/qwen3.6-35b-a3b';
+
+/** Führt fn mit einem frischen localStorage-Ersatz aus. */
+function withStorage(fn, seed = null) {
+  const store = new Map();
+  if (seed) store.set('canyon-topo-generator/ai/v1', JSON.stringify(seed));
+  const original = globalThis.localStorage;
+  globalThis.localStorage = {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => store.set(key, String(value)),
+    removeItem: (key) => store.delete(key),
+  };
+  try {
+    return fn();
+  } finally {
+    if (original === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = original;
+  }
+}
+
+test('der OpenAI-Anbieter zeigt auf die Swisscom Swiss AI Platform', () => {
+  const spec = providerById('openai');
+  assert.equal(spec.defaultEndpoint, SWISSCOM_ENDPOINT);
+  assert.equal(spec.defaultModel, SWISSCOM_MODEL);
+  assert.match(spec.hint, /Swisscom Swiss AI Platform/);
+  assert.match(spec.hint, /OpenAI/);
+
+  // Die übrigen Anbieter bleiben unangetastet.
+  assert.equal(providerById('anthropic').defaultEndpoint, 'https://api.anthropic.com/v1');
+  assert.equal(providerById('anthropic').defaultModel, 'claude-sonnet-4-20250514');
+  assert.equal(providerById('proxy').defaultEndpoint, 'http://127.0.0.1:8787/api/topo');
+  assert.equal(providerById('proxy').defaultModel, '');
+});
+
+test('ohne gespeicherte Werte gelten die neuen Standards', () => {
+  // Ein leerer Datensatz: alles kommt aus DEFAULT_SETTINGS.
+  const restored = withStorage(() => loadAiSettings(), {});
+  assert.equal(restored.providerId, 'openai');
+  assert.equal(restored.endpoint, SWISSCOM_ENDPOINT);
+  assert.equal(restored.model, SWISSCOM_MODEL);
+});
+
+test('leere gespeicherte Werte werden beim Laden mit den Standards gefüllt', () => {
+  const restored = withStorage(() => loadAiSettings(), {
+    providerId: 'openai',
+    endpoint: '',
+    model: '   ',
+    apiKey: 'geheim',
+  });
+  assert.equal(restored.endpoint, SWISSCOM_ENDPOINT);
+  assert.equal(restored.model, SWISSCOM_MODEL);
+  assert.equal(restored.apiKey, 'geheim', 'das Key-Verhalten bleibt unverändert');
+
+  // Auch ein Datensatz ganz ohne die Felder bekommt die Vorgaben.
+  const sparse = withStorage(() => loadAiSettings(), { providerId: 'openai' });
+  assert.equal(sparse.endpoint, SWISSCOM_ENDPOINT);
+  assert.equal(sparse.model, SWISSCOM_MODEL);
+});
+
+test('ausdrücklich gespeicherte Werte überschreibt der neue Standard nicht', () => {
+  const restored = withStorage(() => loadAiSettings(), {
+    providerId: 'openai',
+    endpoint: 'https://api.openai.com/v1',
+    model: 'gpt-4o',
+  });
+  assert.equal(restored.endpoint, 'https://api.openai.com/v1');
+  assert.equal(restored.model, 'gpt-4o');
+});
+
+test('beim Proxy-Anbieter bleibt das leere Modell leer', () => {
+  const restored = withStorage(() => loadAiSettings(), {
+    providerId: 'proxy',
+    endpoint: '',
+    model: '',
+  });
+  assert.equal(restored.endpoint, 'http://127.0.0.1:8787/api/topo');
+  assert.equal(restored.model, '', 'der Proxy kennt bewusst kein Standardmodell');
 });
 
 test('Vorlage und eigener Text überleben einen Neustart', () => {

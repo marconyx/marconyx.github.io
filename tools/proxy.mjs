@@ -38,7 +38,7 @@ const config = {
     'https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1'
   ).replace(/\/+$/, ''),
   key: process.env.AI_KEY || '',
-  model: process.env.AI_MODEL || 'gpt-4o',
+  model: process.env.AI_MODEL || 'qwen/qwen3.6-35b-a3b',
   authHeader: process.env.AI_AUTH_HEADER || 'Authorization',
   // Absichtlich nicht getrimmt: "Bearer " braucht das Leerzeichen, ein roher Key nicht.
   authScheme: process.env.AI_AUTH_SCHEME ?? 'Bearer ',

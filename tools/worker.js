@@ -89,8 +89,11 @@ export default {
     }
 
     const api = (env.AI_API || 'openai').toLowerCase();
-    const base = (env.AI_UPSTREAM || 'https://api.openai.com/v1').replace(/\/+$/, '');
-    const model = payload.model || env.AI_MODEL || 'gpt-4o';
+    const base = (
+      env.AI_UPSTREAM ||
+      'https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1'
+    ).replace(/\/+$/, '');
+    const model = payload.model || env.AI_MODEL || 'qwen/qwen3.6-35b-a3b';
 
     let url;
     let body;

@@ -98,6 +98,13 @@ class FakeNode {
       else this.textContent += String(item);
     }
   }
+  replaceChildren(...items) {
+    for (const child of this.children) child.parentNode = null;
+    this.children = [];
+    this.options = [];
+    this.textContent = '';
+    this.append(...items);
+  }
   remove() {
     const parent = this.parentNode;
     if (!parent) return;
@@ -175,7 +182,7 @@ globalThis.FileReader = class {
 
 import { readFileSync } from 'node:fs';
 
-import { PROMPT_TEMPLATES, getAiSettings } from '../src/ai.js';
+import { PROMPT_TEMPLATES, getAiSettings, providerById } from '../src/ai.js';
 import { SEGMENT_TYPES, validateTopo } from '../src/model.js';
 import { symbolOptions } from '../src/symbols.js';
 
@@ -601,6 +608,38 @@ test('"Eigener Prompt" zeigt das Textfeld, vorbelegt und gespeichert', () => {
   }
   assert.equal(getAiSettings().promptTemplate, 'optimized');
   assert.equal(elementById('ai-prompt-custom-row').hidden, true);
+});
+
+test('die Platzhalter nennen Endpoint und Modell der Swiss AI Platform', () => {
+  const markup = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(
+    markup,
+    /id="ai-endpoint"[^>]*placeholder="https:\/\/api\.swisscom\.com\/products\/swiss-ai-platform\/internal-all-models\/v1"/,
+  );
+  assert.match(markup, /placeholder="qwen\/qwen3\.6-35b-a3b"/);
+  assert.equal(markup.includes('placeholder="gpt-4o"'), false);
+});
+
+test('ein Anbieterwechsel setzt Endpoint und Modell des Anbieters', () => {
+  const select = elementById('ai-provider');
+  try {
+    select.value = 'anthropic';
+    select.dispatch('change');
+    assert.equal(getAiSettings().endpoint, 'https://api.anthropic.com/v1');
+    assert.equal(getAiSettings().model, 'claude-sonnet-4-20250514');
+
+    select.value = 'openai';
+    select.dispatch('change');
+    const spec = providerById('openai');
+    assert.equal(getAiSettings().endpoint, spec.defaultEndpoint);
+    assert.equal(getAiSettings().model, spec.defaultModel);
+    // Die Felder zeigen den Wert auch wirklich an.
+    assert.equal(elementById('ai-endpoint').value, spec.defaultEndpoint);
+    assert.equal(elementById('ai-model').value, spec.defaultModel);
+  } finally {
+    select.value = 'openai';
+    select.dispatch('change');
+  }
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);
