@@ -97,7 +97,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | --- | --- |
 | `type` | `WALK`, `POOL`, `RAPPEL`, `RAPPEL_DRY`, `RAPPEL_WET`, `JUMP`, `SLIDE`, `CLIMB`, `WEIR` |
 | `length_in_meters` | reale Länge |
-| `angle_in_degrees` | 0 = flach nach rechts, 90 = senkrecht nach unten, > 90 = überhängend |
+| `angle_in_degrees` | 0 = flach nach rechts, 90 = senkrecht nach unten, > 90 = überhängender Untergrund; bei RAPPEL bleibt der Abseilpfeil senkrecht |
 | `duration_to_walk_in_min` | optionale Gehzeit (wird bei gestauchten WALK-Segmenten angezeigt) |
 | `do_not_cut_row_after_this_segment` | Zeilenumbruch nach diesem Segment unterdrücken |
 | `force_cut_row_after_this_segment` | Zeilenumbruch nach diesem Segment erzwingen |

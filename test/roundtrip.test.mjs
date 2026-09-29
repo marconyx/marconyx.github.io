@@ -93,6 +93,70 @@ test('Renderer liefert valides SVG mit Titel und Legende', () => {
   assert.ok(svg.includes('Legend'));
 });
 
+test('RAPPEL-Winkel bis 90 Grad behalten die bisherige Pfeilgeometrie', () => {
+  for (const angle of [60, 90]) {
+    const topo = normalizeTopo({
+      segments: [{ type: 'RAPPEL', length_in_meters: 10, angle_in_degrees: angle }],
+    });
+    const placement = layoutTopo(topo).placements[0];
+    const { arrow } = rappelGeometry(topo);
+    assert.equal(arrow.x1, placement.start.x + placement.perp.x);
+    assert.equal(arrow.y1, placement.start.y + placement.perp.y);
+    assert.equal(arrow.x2, placement.end.x + placement.perp.x);
+    assert.equal(arrow.y2, placement.end.y + placement.perp.y);
+  }
+});
+
+test('RAPPEL-Überhänge zeichnen nur den Untergrund schräg, den Pfeil senkrecht', () => {
+  for (const type of ['RAPPEL', 'RAPPEL_DRY', 'RAPPEL_WET']) {
+    let arrowX;
+    for (const angle of [100, 110, 135, 170]) {
+      const topo = normalizeTopo({
+        segments: [{ type, length_in_meters: 10, angle_in_degrees: angle }],
+      });
+      const { placement, groundEnd, arrow } = rappelGeometry(topo);
+      assert.ok(placement.end.x < placement.start.x, `${type} ${angle}: Untergrund hängt über`);
+      assert.equal(groundEnd.x, placement.end.x);
+      assert.equal(groundEnd.y, placement.end.y);
+      assert.equal(arrow.x1, arrow.x2, `${type} ${angle}: Pfeil muss exakt senkrecht sein`);
+      assert.equal(arrow.x1, placement.start.x + 1);
+      assert.equal(arrow.y1, placement.start.y);
+      assert.equal(arrow.y2, placement.end.y);
+      assert.ok(arrow.y2 > arrow.y1);
+      if (arrowX !== undefined) assert.equal(arrow.x1, arrowX, 'Pfeilposition bleibt stabil');
+      arrowX = arrow.x1;
+      assert.equal(topoToJsonObject(topo).segments[0].angle_in_degrees, angle);
+      assert.equal(topoFromXml(topoToXml(topo)).segments[0].angle_in_degrees, angle);
+    }
+  }
+});
+
+test('Andere überhängende Segmenttypen behalten ihre Geometrie', () => {
+  const topo = normalizeTopo({
+    segments: [{ type: 'JUMP', length_in_meters: 10, angle_in_degrees: 110 }],
+  });
+  const placement = layoutTopo(topo).placements[0];
+  assert.ok(placement.end.x < placement.start.x);
+  assert.ok(!renderTopoSvg(topo, layoutTopo(topo)).includes('marker-end="url(#topo-arrow)"'));
+});
+
+function rappelGeometry(topo) {
+  const layout = layoutTopo(topo);
+  const placement = layout.placements[0];
+  const svg = renderTopoSvg(topo, layout);
+  const ground = /<path d="M [^"]+?" fill="none" stroke=/.exec(svg);
+  assert.ok(ground, 'Geländepfad fehlt');
+  const endpoint = / L ([\d.eE+-]+) ([\d.eE+-]+)$/.exec(ground[0].split('"')[1]);
+  assert.ok(endpoint, 'Geländeendpunkt fehlt');
+  const line = /<line x1="([^"]+)" y1="([^"]+)" x2="([^"]+)" y2="([^"]+)"[^>]+marker-end="url\(#topo-arrow\)"/.exec(svg);
+  assert.ok(line, 'Rappelpfeil fehlt');
+  return {
+    placement,
+    groundEnd: { x: Number(endpoint[1]), y: Number(endpoint[2]) },
+    arrow: { x1: Number(line[1]), y1: Number(line[2]), x2: Number(line[3]), y2: Number(line[4]) },
+  };
+}
+
 test('alle vier Infrastrukturtypen sind im Modell und mit deutschen Labels in der Palette', () => {
   assert.equal(ELEMENT_TYPES.length, 28);
   assert.deepEqual(new Set(Object.keys(SYMBOLS)), new Set(ELEMENT_TYPES));

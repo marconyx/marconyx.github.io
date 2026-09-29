@@ -82,8 +82,12 @@ function waterShapeFor(placement) {
 }
 
 function arrowFor(placement, theme) {
-  const { start, end, perp } = placement;
+  const { start, end, perp, angle } = placement;
   const offset = 1.0;
+  if (angle > 90) {
+    const x = start.x + offset;
+    return `<line x1="${x}" y1="${start.y}" x2="${x}" y2="${end.y}" stroke="${theme.accent}" stroke-width="0.14" marker-end="url(#topo-arrow)"/>`;
+  }
   const ax = start.x + perp.x * offset;
   const ay = start.y + perp.y * offset;
   const bx = end.x + perp.x * offset;
