@@ -249,6 +249,8 @@ Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, ohne Fließtext und ohne Markdow
 Schema:
 {
   "canyon_name": string,
+  "author": string,                       // "" wenn nicht erkennbar
+  "duration": string,                     // freie Angabe, z. B. "3-4 h"
   "date": "YYYY-MM-DD",
   "maximum_walk_length": number,      // gezeichnete Maximallänge von Gehstrecken, üblich 30
   "distance_of_single_line": number,  // Zeilenbreite vor dem Umbruch, üblich 60

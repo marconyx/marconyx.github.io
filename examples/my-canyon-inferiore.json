@@ -1,5 +1,7 @@
 {
     "canyon_name": "My Canyon - Inferiore",
+    "author": "Canyoning Topo Generator",
+    "duration": "3-4 h",
     "date": "2026-09-29",
     "maximum_walk_length": 30.0,
     "distance_of_single_line": 60.0,

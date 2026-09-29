@@ -3,6 +3,7 @@
  *   node test/roundtrip.test.mjs
  */
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import assert from 'node:assert/strict';
@@ -17,6 +18,9 @@ import { SYMBOLS, symbolOptions } from '../src/symbols.js';
 const here = dirname(fileURLToPath(import.meta.url));
 const examplePath = join(here, '..', 'examples', 'my-canyon-inferiore.json');
 const original = JSON.parse(readFileSync(examplePath, 'utf8'));
+const html = readFileSync(join(here, '..', 'index.html'), 'utf8');
+const xsdPath = join(here, '..', 'topo.xsd');
+const exampleXmlPath = join(here, '..', 'examples', 'my-canyon-inferiore.xml');
 const infrastructure = {
   RADIO_MAST: 'Funkmast',
   LIFT_MAST: 'Liftmast',
@@ -48,6 +52,63 @@ test('XML round-trip erhält alle Daten', () => {
   const topo = topoFromJson(JSON.stringify(original));
   const backFromXml = topoFromXml(topoToXml(topo));
   assert.deepEqual(topoToJsonObject(backFromXml), original);
+});
+
+test('Author und Dauer bleiben im App-Modell sowie JSON/XML erhalten', () => {
+  const input = {
+    ...original,
+    author: 'Max & Team',
+    duration: 'ca. 3-4 Stunden',
+  };
+  const topo = normalizeTopo(input);
+  assert.equal(topo.author, input.author);
+  assert.equal(topo.duration, input.duration);
+  assert.deepEqual(topoToJsonObject(topoFromJson(topoToJsonObject(topo))), input);
+  assert.deepEqual(topoToJsonObject(topoFromXml(topoToXml(topo))), input);
+});
+
+test('alte Dateien ohne Author und Dauer bleiben kompatibel', () => {
+  const { author, duration, ...legacy } = original;
+  const topo = topoFromJson(legacy);
+  assert.equal(topo.author, '');
+  assert.equal(topo.duration, '');
+  assert.deepEqual(topoToJsonObject(topo), legacy);
+
+  const legacyXml = topoToXml(topo);
+  assert.equal(legacyXml.includes(' author='), false);
+  assert.equal(legacyXml.includes(' duration='), false);
+  assert.deepEqual(topoToJsonObject(topoFromXml(legacyXml)), legacy);
+});
+
+test('XSD validiert das XML mit den neuen Metadaten', () => {
+  const resultWithMetadata = spawnSync(
+    'xmllint',
+    ['--noout', '--schema', xsdPath, exampleXmlPath],
+    { encoding: 'utf8' },
+  );
+  if (resultWithMetadata.error?.code === 'ENOENT') {
+    assert.match(readFileSync(xsdPath, 'utf8'), /name="author" type="xs:string"/);
+    assert.match(readFileSync(xsdPath, 'utf8'), /name="duration" type="xs:string"/);
+    return;
+  }
+  assert.equal(resultWithMetadata.status, 0, resultWithMetadata.stderr);
+
+  const { author, duration, ...legacy } = original;
+  const resultWithoutMetadata = spawnSync(
+    'xmllint',
+    ['--noout', '--schema', xsdPath, '-'],
+    { encoding: 'utf8', input: topoToXml(normalizeTopo(legacy)) },
+  );
+  assert.equal(resultWithoutMetadata.status, 0, resultWithoutMetadata.stderr);
+});
+
+test('Topo-Metadaten und Abseillängen-Label stehen in der UI', () => {
+  assert.match(
+    html,
+    /Name\s*<input[^>]+id="topo-name"[\s\S]*Author\s*<input[^>]+id="topo-author"[\s\S]*Dauer\s*<input[^>]+id="topo-duration"/,
+  );
+  assert.match(html, /Max\. Abseillänge \(m\)\s*<input[^>]+id="topo-max-walk"/);
+  assert.equal(html.includes('Max. Walk-Länge'), false);
 });
 
 test('unbekannte Felder überleben den Round-Trip', () => {

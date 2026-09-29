@@ -63,6 +63,8 @@ export function topoToXml(topo) {
     `<topo ${attrs([
       ['version', '1'],
       ['canyon_name', topo.canyon_name],
+      ['author', topo.author || null],
+      ['duration', topo.duration || null],
       ['date', topo.date],
       ...ROOT_NUMBER_FIELDS.map((field) => [field, topo[field]]),
       ...extraAttr(topo),
@@ -143,6 +145,8 @@ export function topoFromXml(xml) {
 
   const raw = {
     canyon_name: root.attributes.canyon_name,
+    author: root.attributes.author,
+    duration: root.attributes.duration,
     date: root.attributes.date,
     segments: [],
   };

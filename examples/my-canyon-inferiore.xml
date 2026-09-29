@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<topo version="1" canyon_name="My Canyon - Inferiore" date="2026-09-29" maximum_walk_length="30" distance_of_single_line="60" legend_offset_top="0">
+<topo version="1" canyon_name="My Canyon - Inferiore" author="Canyoning Topo Generator" duration="3-4 h" date="2026-09-29" maximum_walk_length="30" distance_of_single_line="60" legend_offset_top="0">
   <segment type="WALK" length_in_meters="15" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
     <element type="STONE_HOUSE" horizontal_start_rel_to_segment_start="7" vertical_start_rel_to_segment_start="0" size="1" text=""/>
   </segment>

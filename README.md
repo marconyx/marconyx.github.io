@@ -85,6 +85,8 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | Feld | Bedeutung |
 | --- | --- |
 | `canyon_name` | Titel im Topo |
+| `author` | optionaler Autor als Freitext |
+| `duration` | optionale Gesamtdauer als Freitext, z. B. `3-4 h` |
 | `date` | Datum (ISO, `YYYY-MM-DD`) |
 | `maximum_walk_length` | maximale **gezeichnete** Länge eines WALK-Segments in Metern; längere Gehstrecken werden gestaucht und erhalten eine Dauer-Klammer |
 | `distance_of_single_line` | maximale horizontale Breite einer Topo-Zeile in Metern |
@@ -137,12 +139,18 @@ an, im Inspektor lässt sich der Zustand über die Checkbox „Abgestorben" umsc
 > einlesbar. Umgekehrt ignoriert Canyon-Explore ein `dead="true"` schlicht, der
 > Baum erscheint dann wieder lebend.
 
+Auch `author` und `duration` sind optionale Erweiterungen. Leere Werte werden
+weder im JSON noch im XML geschrieben, damit ältere Dateien beim Round-Trip
+unverändert bleiben. Beim Import fehlende Werte werden als leere Eingabefelder
+behandelt.
+
 ### XML
 
 `topo.xsd` beschreibt das XML-Gegenstück. Die Abbildung ist 1:1:
 
 ```xml
-<topo version="1" canyon_name="My Canyon" date="2026-09-29"
+<topo version="1" canyon_name="My Canyon" author="Max Muster" duration="3-4 h"
+      date="2026-09-29"
       maximum_walk_length="30" distance_of_single_line="60" legend_offset_top="0">
   <segment type="RAPPEL_DRY" length_in_meters="10" angle_in_degrees="90"
            do_not_cut_row_after_this_segment="false"

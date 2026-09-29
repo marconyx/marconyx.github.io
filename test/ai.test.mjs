@@ -262,6 +262,8 @@ test('der Prompt nennt alle gültigen Typen und das Koordinatensystem', () => {
   assert.ok(prompt.includes('ROPE_RAILING_LEFT'));
   assert.ok(prompt.includes('Boggera'), 'Hinweis auf den Canyon-Namen fehlt');
   assert.ok(prompt.includes('Skizze aus dem Führer'), 'Nutzer-Zusatzinfo fehlt');
+  assert.ok(prompt.includes('"author"'), 'Author-Metadatum fehlt');
+  assert.ok(prompt.includes('"duration"'), 'Dauer-Metadatum fehlt');
   assert.ok(prompt.includes('links der Laufrichtung'), 'Koordinatenregel fehlt');
 });
 

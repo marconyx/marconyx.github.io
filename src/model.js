@@ -76,6 +76,8 @@ export const WATER_SEGMENT_TYPES = new Set(['POOL', 'WEIR']);
 
 const ROOT_KNOWN_KEYS = new Set([
   'canyon_name',
+  'author',
+  'duration',
   'date',
   'maximum_walk_length',
   'distance_of_single_line',
@@ -217,6 +219,8 @@ export function defaultLengthFor(type) {
 export function normalizeTopo(raw) {
   const topo = {
     canyon_name: String(raw?.canyon_name ?? 'My Canyon'),
+    author: raw?.author == null ? '' : String(raw.author),
+    duration: raw?.duration == null ? '' : String(raw.duration),
     date: String(raw?.date ?? todayIso()),
     maximum_walk_length: num(raw?.maximum_walk_length, 30),
     distance_of_single_line: num(raw?.distance_of_single_line, 60),
@@ -233,6 +237,8 @@ export function normalizeTopo(raw) {
 export function createEmptyTopo() {
   return normalizeTopo({
     canyon_name: 'My Canyon',
+    author: '',
+    duration: '',
     date: todayIso(),
     maximum_walk_length: 30,
     distance_of_single_line: 60,

@@ -821,6 +821,8 @@ async function loadExample() {
 function bindTopoFields() {
   const bindings = [
     ['topo-name', 'canyon_name', (value) => value],
+    ['topo-author', 'author', (value) => value],
+    ['topo-duration', 'duration', (value) => value],
     ['topo-date', 'date', (value) => value],
     ['topo-max-walk', 'maximum_walk_length', Number],
     ['topo-line-distance', 'distance_of_single_line', Number],
@@ -837,6 +839,8 @@ function bindTopoFields() {
 
 function syncTopoFields() {
   $('topo-name').value = state.topo.canyon_name;
+  $('topo-author').value = state.topo.author;
+  $('topo-duration').value = state.topo.duration;
   $('topo-date').value = state.topo.date;
   $('topo-max-walk').value = state.topo.maximum_walk_length;
   $('topo-line-distance').value = state.topo.distance_of_single_line;

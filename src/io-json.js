@@ -7,6 +7,10 @@ import { normalizeTopo } from './model.js';
 export function topoToJsonObject(topo) {
   const out = {
     canyon_name: topo.canyon_name,
+  };
+  if (topo.author) out.author = topo.author;
+  if (topo.duration) out.duration = topo.duration;
+  Object.assign(out, {
     date: topo.date,
     maximum_walk_length: topo.maximum_walk_length,
     distance_of_single_line: topo.distance_of_single_line,
@@ -44,7 +48,7 @@ export function topoToJsonObject(topo) {
       };
       return Object.assign(segmentOut, segment._extra || {});
     }),
-  };
+  });
   return Object.assign(out, topo._extra || {});
 }
 
