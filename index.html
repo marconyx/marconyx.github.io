@@ -101,9 +101,50 @@
           <label>Horizontal <input type="range" id="photo-x" min="-100" max="100" value="0" /></label>
           <label>Vertikal <input type="range" id="photo-y" min="-100" max="100" value="0" /></label>
           <button type="button" id="btn-photo-clear">Referenz entfernen</button>
-          <button type="button" id="btn-photo-ai" disabled title="Noch kein AI-Provider registriert">
-            Aus Foto erzeugen (AI)
-          </button>
+        </section>
+
+        <section class="panel__section">
+          <h2>AI-Erkennung</h2>
+          <p class="hint">
+            Erzeugt aus dem geladenen Bild bzw. der PDF-Seite ein Topo. Der Aufruf läuft
+            direkt aus deinem Browser zum Modell.
+          </p>
+          <button type="button" id="btn-photo-ai">Aus Foto erzeugen (AI)</button>
+          <button type="button" id="btn-ai-cancel" hidden>Abbrechen</button>
+          <p class="hint" id="ai-status"></p>
+
+          <details id="ai-settings">
+            <summary>Einstellungen</summary>
+            <div class="stack">
+              <label>
+                Anbieter
+                <select id="ai-provider"></select>
+              </label>
+              <p class="hint" id="ai-provider-hint"></p>
+              <label>
+                Endpoint
+                <input type="text" id="ai-endpoint" spellcheck="false" placeholder="https://api.openai.com/v1" />
+              </label>
+              <label id="ai-model-row">
+                Modell
+                <input type="text" id="ai-model" spellcheck="false" placeholder="gpt-4o" />
+              </label>
+              <label id="ai-key-row">
+                API-Key
+                <input type="password" id="ai-key" spellcheck="false" autocomplete="off" placeholder="sk-…" />
+              </label>
+              <label>
+                Zusatzinfo für das Modell (optional)
+                <input type="text" id="ai-notes" placeholder="z. B. Gerätebezeichnungen, Sprache, Region" />
+              </label>
+              <p class="hint">
+                Der Key wird nur im <code>localStorage</code> dieses Browsers gespeichert und
+                ausschließlich an den angegebenen Endpoint gesendet. Auf gemeinsam genutzten
+                Rechnern besser einen eigenen Proxy verwenden.
+              </p>
+              <button type="button" id="btn-ai-forget">Key löschen</button>
+            </div>
+          </details>
         </section>
       </aside>
 

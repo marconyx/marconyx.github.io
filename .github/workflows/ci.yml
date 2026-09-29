@@ -18,6 +18,8 @@ jobs:
           node-version: '20'
       - name: Round-Trip- und Rendering-Tests
         run: node test/roundtrip.test.mjs
+      - name: Tests der AI-Antwortverarbeitung
+        run: node test/ai.test.mjs
       - name: XML gegen Schema validieren
         run: xmllint --noout --schema topo.xsd examples/my-canyon-inferiore.xml
       - name: App als Artefakt bereitstellen

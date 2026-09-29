@@ -167,6 +167,45 @@ input[type='date'] {
   display: none;
 }
 
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+#ai-settings summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+#ai-settings input[type='text'],
+#ai-settings input[type='password'],
+#ai-settings select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#ai-status:empty {
+  display: none;
+}
+
+#ai-status.is-error {
+  color: var(--danger, #e2554c);
+}
+
+#btn-ai-cancel[hidden],
+#ai-key-row[hidden],
+#ai-model-row[hidden] {
+  display: none;
+}
+
+.is-busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .segment-add {
   display: flex;
   gap: 0.35rem;

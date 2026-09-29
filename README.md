@@ -15,6 +15,8 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
 - **Foto-/PDF-Referenz**: Bild **oder PDF** als halbtransparenten Hintergrund einblenden und
   das Topo darüber nachzeichnen (Deckkraft, Größe, Position regelbar). Bei mehrseitigen PDFs
   lässt sich die Seite auswählen.
+- **AI-Erkennung**: Foto oder PDF-Seite per Vision-Modell in ein Topo umwandeln
+  (OpenAI-kompatibel, Anthropic oder eigener Proxy) — siehe unten
 - **Speichern**: JSON (kompatibel zum Canyon-Explore-Format) und XML (mit XSD)
 - **Export**: SVG, PNG, Druck/PDF über den Browser-Druckdialog
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
@@ -30,7 +32,7 @@ python3 -m http.server 8080
 Tests (ohne Abhängigkeiten):
 
 ```bash
-node test/roundtrip.test.mjs
+npm test          # Round-Trip, Rendering und AI-Antwortverarbeitung
 ```
 
 ## Repository
@@ -142,25 +144,76 @@ Streckenelemente (`ROPE_RAILING_*`) benötigen zusätzlich die `*_end_*`-Koordin
 `null`-Werte werden als fehlendes Attribut dargestellt, unbekannte Felder wandern
 als JSON in das Attribut `extra`.
 
-## AI-Anbindung (vorbereitet, nicht aktiv)
+## AI-Erkennung: Foto/PDF → Topo
 
-Version 1 arbeitet bewusst ohne AI: ein Foto dient als Referenzlayer zum Nachzeichnen.
-Die Schnittstelle für eine automatische Erkennung existiert bereits in `src/ai.js`:
+Der Button **„Aus Foto erzeugen (AI)“** schickt das geladene Referenzbild an ein
+Vision-Modell und baut aus der Antwort ein Topo.
+
+GitHub Pages liefert nur statische Dateien — es gibt also keinen Server, der einen
+API-Key verwahren könnte. Der Aufruf geht deshalb **direkt aus dem Browser** an den
+konfigurierten Endpoint; der Key liegt ausschließlich im `localStorage` dieses
+Browsers und wird nie ins Repository übertragen.
+
+### Anbieter
+
+| Modus | Wofür | Key im Browser |
+|---|---|---|
+| **OpenAI-kompatibel** | OpenAI, Azure OpenAI, OpenRouter, Groq, LM Studio, Ollama (`/v1`) | ja |
+| **Anthropic (Claude)** | Claude Messages API | ja |
+| **Eigener Proxy** | Worker/Lambda, der den Key serverseitig hält | nein |
+
+Einstellen unter *AI-Erkennung → Einstellungen*. Der Button bleibt gesperrt, solange
+etwas fehlt, und nennt im Tooltip den Grund.
+
+### Empfehlung für geteilte Deployments
+
+Ein im Browser hinterlegter Key ist für den Eigengebrauch in Ordnung, für eine
+öffentlich erreichbare Instanz aber nicht. Dort den Modus **Eigener Proxy** wählen.
+Der Proxy bekommt:
+
+```json
+{ "image": "data:image/png;base64,…", "prompt": "…", "hints": { "canyonName": "…", "notes": "…" } }
+```
+
+und antwortet entweder direkt mit dem Topo-JSON oder mit dem durchgereichten
+Modelltext. Damit verlässt der Key nie den Server.
+
+### Was die App aus der Antwort macht
+
+Modelle antworten selten sauber. `src/ai.js` fängt das ab:
+
+- JSON wird auch aus Fließtext und Markdown-Codefences herausgeschnitten
+  (klammerzählender Scanner, robust gegen `{` `}` in Strings).
+- Synonyme werden auf gültige Typen abgebildet (`hike` → `WALK`, `anchor` → `BOLT`,
+  `swim` → `POOL`, …).
+- Unbekannte Segment- und Elementtypen werden verworfen statt eingebaut; die Anzahl
+  steht in der Statuszeile, die Details in der Browser-Konsole.
+- Punktelemente bekommen zwingend `null` als Endkoordinaten, Streckenelemente
+  zwingend Zahlen — sonst zeichnet der Renderer Strecken ins Nichts.
+- Erst danach läuft `normalizeTopo()`.
+
+Das Ergebnis landet über die normale Undo-Historie im Editor: **ein Klick auf ↶ stellt
+das vorherige Topo wieder her.** Abgedeckt von `test/ai.test.mjs`.
+
+### Grenzen
+
+Die Erkennung liefert einen *Entwurf*, keine fertige Dokumentation. Längen, Winkel und
+Symbolpositionen müssen nachgeprüft werden — deshalb blendet die App nach jedem Lauf
+„Bitte gegenprüfen“ ein. Am besten funktionieren klar gezeichnete Topos; Fotos einer
+realen Schlucht liefern erwartungsgemäß deutlich schwächere Ergebnisse.
+
+### Eigener Provider
+
+`registerTopoProvider()` überschreibt alles und bleibt der Erweiterungspunkt:
 
 ```js
 import { registerTopoProvider } from './src/ai.js';
 
 registerTopoProvider(async (image, options) => {
-  // Bild an ein Vision-Modell schicken und ein Topo-Objekt zurückgeben
+  // image ist immer eine PNG-Data-URL – bei PDFs die gerenderte Seite.
   return { canyon_name: '…', date: '…', segments: [ /* … */ ] };
 });
 ```
-
-Sobald ein Provider registriert ist, aktiviert die UI den Button
-**„Aus Foto erzeugen (AI)“**. Das Ergebnis wird über `normalizeTopo()` validiert.
-Der Provider bekommt immer eine PNG-Data-URL — bei PDFs die gerade angezeigte,
-bereits gerenderte Seite. Er muss PDFs also nicht selbst verstehen.
-API-Keys gehören in `localStorage` oder hinter einen Proxy — **niemals ins Repository**.
 
 ## PDF-Referenz
 
@@ -190,10 +243,10 @@ src/layout.js         Geometrie, Zeilenumbruch, Walk-Stauchung
 src/symbols.js        SVG-Symbolbibliothek
 src/renderer.js       SVG-Renderer inkl. Terrain und Legende
 src/exporters.js      SVG-/PNG-/Druck-Export
-src/ai.js             Schnittstelle für spätere AI-Erkennung
+src/ai.js             Foto/PDF → Topo per Vision-Modell (+ Antwort-Sanitizing)
 src/pdf.js            PDF-Seiten als Referenzbild rendern (pdf.js)
 src/app.js            Editor-Logik und UI-Bindings
-test/                 Round-Trip- und Rendering-Tests
+test/                 Round-Trip-, Rendering- und AI-Tests
 examples/             Beispiel-Topo (JSON + XML)
 vendor/pdfjs/         pdf.js (Apache-2.0), lokal eingebunden
 topo.xsd              XML-Schema
@@ -206,4 +259,7 @@ topo.xsd              XML-Schema
 - Die Layout-Regeln der Referenz-App sind nicht dokumentiert und wurden aus Beispieldatei
   und gerendertem Topo rekonstruiert — Abweichungen im Detail sind möglich, die Daten
   bleiben aber vollständig kompatibel.
-- Es werden keine Daten an Server gesendet; Foto, PDF und Topo verlassen den Browser nicht.
+- Ohne AI-Erkennung verlassen Foto, PDF und Topo den Browser nicht. Wird die AI genutzt,
+  geht genau das Referenzbild an den von dir eingestellten Endpoint — sonst nichts.
+- Der API-Key liegt nur im `localStorage` dieses Browsers. Auf gemeinsam genutzten
+  Rechnern oder öffentlichen Instanzen stattdessen den Proxy-Modus verwenden.

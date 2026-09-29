@@ -25,7 +25,16 @@ import {
   slugify,
   svgToPngBlob,
 } from './exporters.js';
-import { isTopoProviderAvailable, photoToTopo } from './ai.js';
+import {
+  AI_PROVIDERS,
+  getAiSettings,
+  isTopoProviderAvailable,
+  loadAiSettings,
+  photoToTopo,
+  providerById,
+  providerStatusText,
+  saveAiSettings,
+} from './ai.js';
 import { isPdfFile, openPdf } from './pdf.js';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
@@ -58,17 +67,26 @@ function pushHistory() {
 function undo() {
   if (!history.past.length) return;
   history.future.push(topoToJson(state.topo, 0));
-  state.topo = topoFromJson(history.past.pop());
-  state.selection = null;
-  render();
+  replaceTopo(topoFromJson(history.past.pop()));
 }
 
 function redo() {
   if (!history.future.length) return;
   history.past.push(topoToJson(state.topo, 0));
-  state.topo = topoFromJson(history.future.pop());
+  replaceTopo(topoFromJson(history.future.pop()));
+}
+
+/**
+ * Ersetzt das komplette Topo. Die Kopffelder müssen dabei mitgezogen werden,
+ * sonst zeigt die Seitenleiste weiter den alten Namen und überschreibt ihn beim
+ * nächsten Tippen wieder. Beim Bearbeiten einzelner Segmente wird bewusst nur
+ * render() gerufen, damit ein Eingabefeld unter dem Cursor nicht neu gesetzt wird.
+ */
+function replaceTopo(topo) {
+  state.topo = topo;
   state.selection = null;
   render();
+  syncTopoFields();
 }
 
 function persist() {
@@ -732,9 +750,7 @@ async function openFile(file) {
   const text = await file.text();
   try {
     pushHistory();
-    state.topo = /^\s*</.test(text) ? topoFromXml(text) : topoFromJson(text);
-    state.selection = null;
-    render();
+    replaceTopo(/^\s*</.test(text) ? topoFromXml(text) : topoFromJson(text));
     fitZoom();
     setStatus(`${file.name} geladen.`);
   } catch (error) {
@@ -747,9 +763,7 @@ async function loadExample() {
     const response = await fetch('examples/my-canyon-inferiore.json');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     pushHistory();
-    state.topo = topoFromJson(await response.text());
-    state.selection = null;
-    render();
+    replaceTopo(topoFromJson(await response.text()));
     fitZoom();
     setStatus('Beispiel-Topo geladen.');
   } catch (error) {
@@ -787,22 +801,13 @@ function syncTopoFields() {
 function bindToolbar() {
   $('btn-new').addEventListener('click', () => {
     pushHistory();
-    state.topo = createEmptyTopo();
-    state.selection = null;
-    render();
-    syncTopoFields();
+    replaceTopo(createEmptyTopo());
     setStatus('Neues Topo.');
   });
-  $('btn-example').addEventListener('click', async () => {
-    await loadExample();
-    syncTopoFields();
-  });
+  $('btn-example').addEventListener('click', loadExample);
   $('file-open').addEventListener('change', async (event) => {
     const [file] = event.target.files;
-    if (file) {
-      await openFile(file);
-      syncTopoFields();
-    }
+    if (file) await openFile(file);
     event.target.value = '';
   });
 
@@ -910,22 +915,136 @@ function bindPhoto() {
   $('btn-photo-page-prev').addEventListener('click', () => showPdfPage(state.photo.page - 1));
   $('btn-photo-page-next').addEventListener('click', () => showPdfPage(state.photo.page + 1));
   $('btn-photo-clear').addEventListener('click', clearPhoto);
+}
 
-  const aiButton = $('btn-photo-ai');
-  aiButton.disabled = !isTopoProviderAvailable();
-  aiButton.addEventListener('click', async () => {
-    try {
-      setStatus('AI-Erkennung läuft…');
-      const topo = await photoToTopo(state.photo.src);
-      pushHistory();
-      state.topo = topo;
-      render();
-      syncTopoFields();
-      setStatus('Topo aus Foto erzeugt.');
-    } catch (error) {
-      setStatus(error.message);
-    }
+/* -------------------------------------------------------------------- AI */
+
+let aiAbort = null;
+
+function setAiStatus(message, isError = false) {
+  const node = $('ai-status');
+  node.textContent = message || '';
+  node.classList.toggle('is-error', Boolean(isError));
+}
+
+function syncAiControls() {
+  const spec = providerById(getAiSettings().providerId);
+  const ready = isTopoProviderAvailable();
+  const button = $('btn-photo-ai');
+  button.disabled = !ready || aiAbort !== null;
+  button.title = providerStatusText();
+  $('ai-provider-hint').textContent = spec.hint;
+  $('ai-key-row').hidden = !spec.needsKey;
+  $('ai-model-row').hidden = spec.id === 'proxy';
+  // Die Einstellungen von Anfang an aufklappen, solange noch etwas fehlt.
+  if (!ready) $('ai-settings').open = true;
+}
+
+function bindAi() {
+  const saved = loadAiSettings();
+
+  const providerSelect = $('ai-provider');
+  for (const spec of AI_PROVIDERS) {
+    const option = document.createElement('option');
+    option.value = spec.id;
+    option.textContent = spec.label;
+    providerSelect.appendChild(option);
+  }
+  providerSelect.value = saved.providerId;
+  $('ai-endpoint').value = saved.endpoint;
+  $('ai-model').value = saved.model;
+  $('ai-key').value = saved.apiKey;
+  $('ai-notes').value = saved.notes || '';
+
+  providerSelect.addEventListener('change', () => {
+    const spec = providerById(providerSelect.value);
+    // Endpoint und Modell auf die Vorgaben des neuen Anbieters setzen, sonst
+    // zeigt der OpenAI-Endpoint plötzlich auf Anthropic.
+    const patch = {
+      providerId: spec.id,
+      endpoint: spec.defaultEndpoint,
+      model: spec.defaultModel,
+    };
+    $('ai-endpoint').value = patch.endpoint;
+    $('ai-model').value = patch.model;
+    saveAiSettings(patch);
+    syncAiControls();
   });
+
+  for (const [id, key] of [
+    ['ai-endpoint', 'endpoint'],
+    ['ai-model', 'model'],
+    ['ai-key', 'apiKey'],
+    ['ai-notes', 'notes'],
+  ]) {
+    $(id).addEventListener('input', (event) => {
+      saveAiSettings({ [key]: event.target.value.trim() });
+      syncAiControls();
+    });
+  }
+
+  $('btn-ai-forget').addEventListener('click', () => {
+    saveAiSettings({ apiKey: '' });
+    $('ai-key').value = '';
+    syncAiControls();
+    setAiStatus('API-Key gelöscht.');
+  });
+
+  $('btn-ai-cancel').addEventListener('click', () => {
+    if (aiAbort) aiAbort.abort();
+  });
+
+  $('btn-photo-ai').addEventListener('click', runAi);
+  syncAiControls();
+}
+
+async function runAi() {
+  if (!state.photo.src) {
+    setAiStatus('Zuerst ein Foto oder eine PDF-Seite laden.', true);
+    return;
+  }
+
+  aiAbort = new AbortController();
+  const report = [];
+  syncAiControls();
+  $('btn-ai-cancel').hidden = false;
+  $('btn-photo-ai').classList.add('is-busy');
+  setAiStatus('Modell analysiert das Bild…');
+  setStatus('AI-Erkennung läuft…');
+
+  try {
+    const topo = await photoToTopo(state.photo.src, {
+      signal: aiAbort.signal,
+      report,
+      hints: {
+        canyonName: state.topo.canyon_name,
+        notes: getAiSettings().notes || '',
+      },
+    });
+    pushHistory();
+    replaceTopo(topo);
+    fitZoom();
+    persist();
+
+    const count = topo.segments.length;
+    const skipped = report.length ? ` ${report.length} Angabe(n) verworfen.` : '';
+    setAiStatus(`${count} Segment(e) erkannt.${skipped} Bitte gegenprüfen.`);
+    setStatus(`Topo aus Foto erzeugt: ${count} Segmente.`);
+    if (report.length) console.warn('AI-Erkennung, verworfen:', report);
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      setAiStatus('Abgebrochen.');
+      setStatus('AI-Erkennung abgebrochen.');
+    } else {
+      setAiStatus(error.message, true);
+      setStatus('AI-Erkennung fehlgeschlagen.');
+    }
+  } finally {
+    aiAbort = null;
+    $('btn-ai-cancel').hidden = true;
+    $('btn-photo-ai').classList.remove('is-busy');
+    syncAiControls();
+  }
 }
 
 function bindCanvas() {
@@ -973,6 +1092,7 @@ function init() {
   bindToolbar();
   bindTopoFields();
   bindPhoto();
+  bindAi();
   bindCanvas();
   renderPalette();
   syncTopoFields();
