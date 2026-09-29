@@ -54,8 +54,14 @@ Pages-Unterstützung übertragen):
 Ein Build ist nicht nötig, die Dateien werden 1:1 ausgeliefert. Die Datei `.nojekyll`
 verhindert, dass GitHub Pages den Ordner durch Jekyll verarbeitet.
 
-`.github/workflows/ci.yml` läuft dagegen bei jedem Push: Tests, XSD-Validierung und
-Upload der App als Build-Artefakt.
+`.github/workflows/ci.yml` (Tests + XSD-Validierung) und `deploy.yml` sind beide auf
+`workflow_dispatch` gestellt: Hosted Runner sind für dieses Repo per
+Enterprise-Policy deaktiviert. Die Verifikation läuft deshalb lokal:
+
+```bash
+npm test
+xmllint --noout --schema topo.xsd examples/my-canyon-inferiore.xml
+```
 
 ## Lokal starten
 

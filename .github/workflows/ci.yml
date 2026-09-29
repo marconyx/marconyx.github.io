@@ -1,9 +1,8 @@
 name: CI
 
+# Läuft bewusst nur manuell: GitHub-Actions-Hosted-Runner sind für dieses Repo
+# per Enterprise-Policy deaktiviert. Lokal prüfen mit `npm test`.
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
