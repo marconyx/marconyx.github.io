@@ -1,0 +1,54 @@
+/**
+ * Import/Export im Canyon-Explore-JSON-Format (verlustfreier Round-Trip).
+ */
+import { normalizeTopo } from './model.js';
+
+/** Serialisiert das Modell in exakt die Feldreihenfolge des Originalformats. */
+export function topoToJsonObject(topo) {
+  const out = {
+    canyon_name: topo.canyon_name,
+    date: topo.date,
+    maximum_walk_length: topo.maximum_walk_length,
+    distance_of_single_line: topo.distance_of_single_line,
+    legend_offset_top: topo.legend_offset_top,
+    segments: topo.segments.map((segment) => {
+      const segmentOut = {
+        type: segment.type,
+        length_in_meters: segment.length_in_meters,
+        angle_in_degrees: segment.angle_in_degrees,
+        duration_to_walk_in_min: segment.duration_to_walk_in_min ?? null,
+        do_not_cut_row_after_this_segment:
+          segment.do_not_cut_row_after_this_segment,
+        force_cut_row_after_this_segment:
+          segment.force_cut_row_after_this_segment,
+        elements: segment.elements.map((element) => {
+          const elementOut = {
+            type: element.type,
+            horizontal_start_rel_to_segment_start:
+              element.horizontal_start_rel_to_segment_start,
+            vertical_start_rel_to_segment_start:
+              element.vertical_start_rel_to_segment_start,
+            horizontal_end_rel_to_segment_start:
+              element.horizontal_end_rel_to_segment_start ?? null,
+            vertical_end_rel_to_segment_start:
+              element.vertical_end_rel_to_segment_start ?? null,
+            size: element.size,
+            text: element.text ?? '',
+          };
+          return Object.assign(elementOut, element._extra || {});
+        }),
+      };
+      return Object.assign(segmentOut, segment._extra || {});
+    }),
+  };
+  return Object.assign(out, topo._extra || {});
+}
+
+export function topoToJson(topo, indent = 1) {
+  return JSON.stringify(topoToJsonObject(topo), null, indent);
+}
+
+export function topoFromJson(text) {
+  const raw = typeof text === 'string' ? JSON.parse(text) : text;
+  return normalizeTopo(raw);
+}

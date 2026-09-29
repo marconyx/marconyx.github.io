@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Canyoning Topo Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="toolbar__brand">
+        <strong>Canyoning Topo Generator</strong>
+        <span class="toolbar__hint" id="status">bereit</span>
+      </div>
+
+      <div class="toolbar__group">
+        <button type="button" id="btn-new">Neu</button>
+        <button type="button" id="btn-example">Beispiel</button>
+        <label class="button" for="file-open">Öffnen…</label>
+        <input type="file" id="file-open" accept=".json,.xml,application/json,text/xml" hidden />
+      </div>
+
+      <div class="toolbar__group">
+        <button type="button" id="btn-save-json">JSON speichern</button>
+        <button type="button" id="btn-save-xml">XML speichern</button>
+        <button type="button" id="btn-export-svg">SVG</button>
+        <button type="button" id="btn-export-png">PNG</button>
+        <button type="button" id="btn-print">Drucken / PDF</button>
+      </div>
+
+      <div class="toolbar__group">
+        <button type="button" id="btn-undo" title="Rückgängig (Cmd/Ctrl+Z)">↶</button>
+        <button type="button" id="btn-redo" title="Wiederholen (Cmd/Ctrl+Shift+Z)">↷</button>
+      </div>
+
+      <div class="toolbar__group">
+        <label>Layout
+          <select id="select-layout">
+            <option value="serpentine">Serpentine (Zeilen)</option>
+            <option value="linear">Linear (eine Zeile)</option>
+          </select>
+        </label>
+        <label>Stil
+          <select id="select-theme">
+            <option value="color">Farbe</option>
+            <option value="bw">Schwarz/Weiß</option>
+          </select>
+        </label>
+        <label>Format
+          <select id="select-paper">
+            <option value="screen">Bildschirm</option>
+            <option value="a4_landscape">A4 quer</option>
+            <option value="a4_portrait">A4 hoch</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel panel--left">
+        <section class="panel__section">
+          <h2>Topo</h2>
+          <label>Name <input type="text" id="topo-name" /></label>
+          <label>Datum <input type="date" id="topo-date" /></label>
+          <label>Max. Walk-Länge (m) <input type="number" id="topo-max-walk" min="1" step="1" /></label>
+          <label>Zeilenbreite (m) <input type="number" id="topo-line-distance" min="5" step="1" /></label>
+          <label>Legende Offset (m) <input type="number" id="topo-legend-offset" step="1" /></label>
+          <button type="button" id="btn-renumber">Nummern neu vergeben</button>
+        </section>
+
+        <section class="panel__section">
+          <h2>Segmente</h2>
+          <div class="segment-add">
+            <select id="select-new-segment"></select>
+            <button type="button" id="btn-add-segment">+ hinzufügen</button>
+          </div>
+          <ol class="segment-list" id="segment-list"></ol>
+        </section>
+
+        <section class="panel__section">
+          <h2>Foto-Referenz</h2>
+          <p class="hint">Foto als Hintergrund einblenden und Topo darüber nachzeichnen.</p>
+          <label class="button" for="file-photo">Foto wählen…</label>
+          <input type="file" id="file-photo" accept="image/*" hidden />
+          <label>Deckkraft <input type="range" id="photo-opacity" min="0" max="100" value="45" /></label>
+          <label>Größe <input type="range" id="photo-scale" min="20" max="300" value="100" /></label>
+          <label>Horizontal <input type="range" id="photo-x" min="-100" max="100" value="0" /></label>
+          <label>Vertikal <input type="range" id="photo-y" min="-100" max="100" value="0" /></label>
+          <button type="button" id="btn-photo-clear">Foto entfernen</button>
+          <button type="button" id="btn-photo-ai" disabled title="Noch kein AI-Provider registriert">
+            Aus Foto erzeugen (AI)
+          </button>
+        </section>
+      </aside>
+
+      <section class="canvas" id="canvas">
+        <div class="canvas__stage" id="stage">
+          <img id="photo-layer" alt="" hidden />
+          <div id="svg-host"></div>
+        </div>
+        <div class="canvas__zoom">
+          <button type="button" id="btn-zoom-out">−</button>
+          <span id="zoom-label">100%</span>
+          <button type="button" id="btn-zoom-in">+</button>
+          <button type="button" id="btn-zoom-fit">Einpassen</button>
+        </div>
+      </section>
+
+      <aside class="panel panel--right">
+        <section class="panel__section">
+          <h2>Auswahl</h2>
+          <div id="inspector"><p class="hint">Segment oder Symbol im Topo anklicken.</p></div>
+        </section>
+
+        <section class="panel__section">
+          <h2>Symbole</h2>
+          <p class="hint">Auf ein ausgewähltes Segment klicken, um ein Symbol hinzuzufügen.</p>
+          <div id="symbol-palette"></div>
+        </section>
+
+        <section class="panel__section">
+          <h2>Prüfung</h2>
+          <ul class="issues" id="issues"></ul>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

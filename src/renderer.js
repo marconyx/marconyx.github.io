@@ -1,0 +1,344 @@
+/**
+ * SVG-Renderer: zeichnet ein Layout als eigenständiges SVG-Dokument.
+ */
+import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js';
+import { symbolFor, renderUnknownSymbol } from './symbols.js';
+
+const esc = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+export const THEMES = {
+  color: {
+    label: 'Farbe',
+    terrainTop: '#e8cfae',
+    terrainBottom: '#f8efe2',
+    terrainLine: '#111111',
+    water: '#1b3fb5',
+    text: '#111111',
+    accent: '#111111',
+    background: '#ffffff',
+  },
+  bw: {
+    label: 'Schwarz/Weiß',
+    terrainTop: '#d8d8d8',
+    terrainBottom: '#ffffff',
+    terrainLine: '#000000',
+    water: '#555555',
+    text: '#000000',
+    accent: '#000000',
+    background: '#ffffff',
+  },
+};
+
+export const PAPER_PRESETS = {
+  screen: { label: 'Bildschirm (frei)', width: null, height: null },
+  a4_landscape: { label: 'A4 quer', width: 1122, height: 793 },
+  a4_portrait: { label: 'A4 hoch', width: 793, height: 1122 },
+};
+
+const MARGIN_METERS = 6;
+const POOL_DEPTH_METERS = 2.2;
+const TERRAIN_DEPTH_METERS = 14;
+
+function segmentLabelText(segment) {
+  const config = SEGMENT_LABELS[segment.type];
+  if (!config) return null;
+  return {
+    base: config.base,
+    sub: config.sub,
+    value: formatNumber(segment.length_in_meters),
+  };
+}
+
+function formatNumber(value) {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(1)));
+}
+
+function groundPathFor(row) {
+  const commands = [];
+  row.placements.forEach((placement, index) => {
+    const { start, end } = placement;
+    if (index === 0) commands.push(`M ${start.x} ${start.y}`);
+    if (WATER_SEGMENT_TYPES.has(placement.segment.type)) {
+      const midX = (start.x + end.x) / 2;
+      const midY = Math.max(start.y, end.y) + POOL_DEPTH_METERS;
+      commands.push(`Q ${midX} ${midY} ${end.x} ${end.y}`);
+    } else {
+      commands.push(`L ${end.x} ${end.y}`);
+    }
+  });
+  return commands.join(' ');
+}
+
+function waterShapeFor(placement) {
+  const { start, end } = placement;
+  const midX = (start.x + end.x) / 2;
+  const midY = Math.max(start.y, end.y) + POOL_DEPTH_METERS;
+  const surfaceY = Math.min(start.y, end.y);
+  return `M ${start.x} ${start.y} Q ${midX} ${midY} ${end.x} ${end.y} L ${end.x} ${surfaceY} L ${start.x} ${surfaceY} Z`;
+}
+
+function arrowFor(placement, theme) {
+  const { start, end, perp } = placement;
+  const offset = 1.0;
+  const ax = start.x + perp.x * offset;
+  const ay = start.y + perp.y * offset;
+  const bx = end.x + perp.x * offset;
+  const by = end.y + perp.y * offset;
+  return `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${theme.accent}" stroke-width="0.14" marker-end="url(#topo-arrow)"/>`;
+}
+
+function labelBoxFor(placement, theme) {
+  const info = segmentLabelText(placement.segment);
+  if (!info) return '';
+  const { start, end, perp } = placement;
+  const midX = (start.x + end.x) / 2 - perp.x * 2.2;
+  const midY = (start.y + end.y) / 2 - perp.y * 2.2;
+  const text = `${info.base}${info.sub}${info.value}`;
+  const width = 0.62 * text.length + 0.7;
+  return `
+    <g transform="translate(${midX},${midY})">
+      <rect x="${-width / 2}" y="-0.85" width="${width}" height="1.7" rx="0.18"
+            fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.09"/>
+      <text x="0" y="0.45" font-size="1.15" text-anchor="middle" fill="${theme.text}">${esc(info.base)}<tspan font-size="0.75" dy="0.25">${esc(info.sub)}</tspan><tspan dy="-0.25">${esc(info.value)}</tspan></text>
+    </g>`;
+}
+
+function durationBracketFor(placement, theme) {
+  const segment = placement.segment;
+  if (!placement.compressed || !segment.duration_to_walk_in_min) return '';
+  const { start, end } = placement;
+  const y = (start.y + end.y) / 2 - 1.6;
+  const x1 = start.x + (end.x - start.x) * 0.3;
+  const x2 = start.x + (end.x - start.x) * 0.7;
+  const text = `|← ${formatNumber(segment.duration_to_walk_in_min)}min →|`;
+  const width = 0.55 * text.length + 0.6;
+  return `
+    <g transform="translate(${(x1 + x2) / 2},${y})">
+      <rect x="${-width / 2}" y="-0.8" width="${width}" height="1.6" rx="0.15"
+            fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.09"/>
+      <text x="0" y="0.35" font-size="0.9" text-anchor="middle" fill="${theme.text}">${esc(text)}</text>
+    </g>`;
+}
+
+function renderElement(placed, theme, options = {}) {
+  const { element, point, endPoint } = placed;
+  const symbol = symbolFor(element.type);
+  const size = element.size > 0 ? element.size : 1;
+  const selected =
+    options.selection &&
+    options.selection.kind === 'element' &&
+    options.selection.segmentIndex === placed.segmentIndex &&
+    options.selection.elementIndex === placed.elementIndex;
+  const hooks = options.interactive
+    ? ` class="topo-element${selected ? ' is-selected' : ''}" data-seg="${placed.segmentIndex}" data-el="${placed.elementIndex}"`
+    : '';
+
+  if (symbol && symbol.range) {
+    if (!endPoint) return '';
+    return `<g${hooks} fill="${theme.text}" stroke-linejoin="round">${symbol.render(point, endPoint, { size })}</g>`;
+  }
+  const body = symbol ? symbol.render(element) : renderUnknownSymbol(element);
+  const halo = selected
+    ? `<circle cx="0" cy="0" r="${1.6}" fill="none" stroke="#1668dc" stroke-width="0.22"/>`
+    : '';
+  return `<g${hooks} transform="translate(${point.x},${point.y}) scale(${size})" fill="${theme.text}">${halo}${body}</g>`;
+}
+
+function segmentHitArea(placement, options) {
+  if (!options.interactive) return '';
+  const selected =
+    options.selection &&
+    options.selection.kind === 'segment' &&
+    options.selection.segmentIndex === placement.index;
+  return `<line class="topo-segment-hit${selected ? ' is-selected' : ''}" data-seg="${placement.index}"
+    x1="${placement.start.x}" y1="${placement.start.y}" x2="${placement.end.x}" y2="${placement.end.y}"
+    stroke="${selected ? '#1668dc' : 'transparent'}" stroke-opacity="${selected ? 0.55 : 1}" stroke-width="1.6" stroke-linecap="round"/>`;
+}
+
+function continuationMarkers(row, layout, theme) {
+  const markers = [];
+  const first = row.placements[0];
+  const last = row.placements[row.placements.length - 1];
+  if (!first || !last) return '';
+  if (row.continuesBefore) {
+    markers.push(
+      `<text x="${first.start.x - 2.2}" y="${first.start.y + 0.4}" font-size="1.1" text-anchor="middle" fill="${theme.text}">(l)</text>`,
+    );
+  }
+  if (row.continuesAfter) {
+    markers.push(
+      `<text x="${last.end.x + 2.2}" y="${last.end.y + 0.4}" font-size="1.1" text-anchor="middle" fill="${theme.text}">(l)</text>`,
+    );
+  }
+  return markers.join('');
+}
+
+function legendEntriesFor(topo) {
+  const used = new Set(topo.segments.map((segment) => segment.type));
+  const entries = [];
+  const descriptions = {
+    RAPPEL: 'R = Rappel',
+    RAPPEL_DRY: 'R_d = Rappel (dry)',
+    RAPPEL_WET: 'R_w = Rappel (wet)',
+    JUMP: 'J = Jump',
+    SLIDE: 'S = Slide',
+    CLIMB: 'C = Climb',
+    WEIR: 'W = Weir',
+  };
+  for (const [type, text] of Object.entries(descriptions)) {
+    if (used.has(type)) entries.push(text);
+  }
+  entries.push('(ri) = right', '(le) = left');
+  return entries;
+}
+
+function renderLegend(topo, layout, theme, bounds) {
+  const entries = legendEntriesFor(topo);
+  const right = bounds.maxX - 2;
+  const top = bounds.minY + 1 + (topo.legend_offset_top || 0);
+  const titleWidth = 1.08 * topo.canyon_name.length + 2.5;
+  const panelWidth = Math.max(titleWidth, 16);
+  const panelHeight = 6.5 + entries.length * 1.4 + 3;
+
+  const parts = [
+    `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" opacity="0.92"/>`,
+    `<g>
+      <rect x="${right - titleWidth}" y="${top}" width="${titleWidth}" height="3.2" rx="0.3"
+            fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.12"/>
+      <text x="${right - titleWidth / 2}" y="${top + 2.3}" font-size="1.9" font-weight="700"
+            text-anchor="middle" fill="${theme.text}">${esc(topo.canyon_name)}</text>
+    </g>`,
+  ];
+  let y = top + 5;
+  parts.push(
+    `<text x="${right}" y="${y}" font-size="1.1" font-weight="700" text-anchor="end" fill="${theme.text}">Legend:</text>`,
+  );
+  y += 1.6;
+  for (const entry of entries) {
+    const match = /^([A-Z])_([a-z]) (.*)$/.exec(entry);
+    const formatted = match
+      ? `${match[1]}<tspan font-size="0.75" dy="0.25">${esc(match[2])}</tspan><tspan dy="-0.25"> ${esc(match[3])}</tspan>`
+      : esc(entry);
+    parts.push(
+      `<text x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}">${formatted}</text>`,
+    );
+    y += 1.4;
+  }
+  y += 1.4;
+  parts.push(
+    `<text x="${right}" y="${y}" font-size="1" text-anchor="end" fill="${theme.text}">${esc(topo.date)}</text>`,
+  );
+  return parts.join('');
+}
+
+/**
+ * @param {object} topo normalisiertes Topo
+ * @param {object} layout Ergebnis aus layoutTopo()
+ * @param {object} [options] `{ theme, pxPerMeter, paper }`
+ */
+export function renderTopoSvg(topo, layout, options = {}) {
+  const theme = THEMES[options.theme] || THEMES.color;
+
+  const legendWidthMeters = Math.max(1.08 * topo.canyon_name.length + 2.5, 16) + 4;
+  const bounds = {
+    minX: layout.minX - MARGIN_METERS,
+    maxX:
+      Math.max(layout.maxX, layout.rowWidthLimit) +
+      MARGIN_METERS +
+      legendWidthMeters,
+    minY: -MARGIN_METERS,
+    maxY: layout.height + MARGIN_METERS,
+  };
+  const widthMeters = bounds.maxX - bounds.minX;
+  const heightMeters = bounds.maxY - bounds.minY;
+
+  const paper = PAPER_PRESETS[options.paper] || PAPER_PRESETS.screen;
+  const pxPerMeter = options.pxPerMeter || 16;
+  const pixelWidth = paper.width || widthMeters * pxPerMeter;
+  const pixelHeight = paper.height || heightMeters * pxPerMeter;
+
+  const rowsSvg = layout.rows
+    .map((row) => {
+      if (!row.placements.length) return '';
+      const ground = groundPathFor(row);
+      const first = row.placements[0];
+      const last = row.placements[row.placements.length - 1];
+      const bottom = row.bottom + TERRAIN_DEPTH_METERS;
+      const terrain = `${ground} L ${bounds.maxX} ${last.end.y} L ${bounds.maxX} ${bottom} L ${bounds.minX} ${bottom} L ${bounds.minX} ${first.start.y} Z`;
+
+      const water = row.placements
+        .filter((placement) => WATER_SEGMENT_TYPES.has(placement.segment.type))
+        .map(
+          (placement) =>
+            `<path d="${waterShapeFor(placement)}" fill="${theme.water}" stroke="${theme.terrainLine}" stroke-width="0.1"/>`,
+        )
+        .join('');
+
+      const arrows = row.placements
+        .filter((placement) => placement.segment.type.startsWith('RAPPEL'))
+        .map((placement) => arrowFor(placement, theme))
+        .join('');
+
+      const labels = row.placements
+        .map((placement) => labelBoxFor(placement, theme))
+        .join('');
+
+      const brackets = row.placements
+        .map((placement) => durationBracketFor(placement, theme))
+        .join('');
+
+      const elements = row.placements
+        .flatMap((placement) => placement.elements)
+        .map((placed) => renderElement(placed, theme, options))
+        .join('');
+
+      const hits = row.placements
+        .map((placement) => segmentHitArea(placement, options))
+        .join('');
+
+      return `<g class="topo-row" data-row="${row.index}">
+        <path d="${terrain}" fill="url(#topo-terrain-${row.index})" stroke="none"/>
+        <path d="${ground}" fill="none" stroke="${theme.terrainLine}" stroke-width="0.14" stroke-linejoin="round"/>
+        ${water}
+        ${arrows}
+        ${hits}
+        ${elements}
+        ${labels}
+        ${brackets}
+        ${continuationMarkers(row, layout, theme)}
+      </g>`;
+    })
+    .join('');
+
+  const gradientDefs = layout.rows
+    .filter((row) => row.placements.length)
+    .map(
+      (row) => `<linearGradient id="topo-terrain-${row.index}" gradientUnits="userSpaceOnUse"
+      x1="0" y1="${row.top}" x2="0" y2="${row.bottom + TERRAIN_DEPTH_METERS}">
+      <stop offset="0%" stop-color="${theme.terrainTop}"/>
+      <stop offset="65%" stop-color="${theme.terrainBottom}"/>
+      <stop offset="100%" stop-color="${theme.background}"/>
+    </linearGradient>`,
+    )
+    .join('');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+  viewBox="${bounds.minX} ${bounds.minY} ${widthMeters} ${heightMeters}"
+  width="${Math.round(pixelWidth)}" height="${Math.round(pixelHeight)}"
+  font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    ${gradientDefs}
+    <marker id="topo-arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="${theme.accent}"/>
+    </marker>
+  </defs>
+  <rect x="${bounds.minX}" y="${bounds.minY}" width="${widthMeters}" height="${heightMeters}" fill="${theme.background}"/>
+  ${rowsSvg}
+  ${renderLegend(topo, layout, theme, bounds)}
+</svg>`;
+}

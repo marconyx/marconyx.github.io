@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topo version="1" canyon_name="My Canyon - Inferiore" date="2026-09-29" maximum_walk_length="30" distance_of_single_line="60" legend_offset_top="0">
+  <segment type="WALK" length_in_meters="15" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="STONE_HOUSE" horizontal_start_rel_to_segment_start="7" vertical_start_rel_to_segment_start="0" size="1" text=""/>
+  </segment>
+  <segment type="RAPPEL_DRY" length_in_meters="10" angle_in_degrees="90" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT_LEFT" horizontal_start_rel_to_segment_start="-1" vertical_start_rel_to_segment_start="1" size="1" text=""/>
+    <element type="SHARP_EDGE" horizontal_start_rel_to_segment_start="5" vertical_start_rel_to_segment_start="3.5" size="1" text=""/>
+    <element type="ELEMENT_NUMBER" horizontal_start_rel_to_segment_start="-4" vertical_start_rel_to_segment_start="1" size="1" text="5"/>
+  </segment>
+  <segment type="RAPPEL_DRY" length_in_meters="17" angle_in_degrees="110" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT_RIGHT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="1" size="1" text=""/>
+    <element type="BOLT_RIGHT" horizontal_start_rel_to_segment_start="-1.5" vertical_start_rel_to_segment_start="4.5" size="1" text=""/>
+  </segment>
+  <segment type="POOL" length_in_meters="8" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="LADDER" horizontal_start_rel_to_segment_start="2.5" vertical_start_rel_to_segment_start="0" size="1.2" text=""/>
+  </segment>
+  <segment type="WALK" length_in_meters="10" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="STONE" horizontal_start_rel_to_segment_start="1" vertical_start_rel_to_segment_start="0" size="1" text=""/>
+    <element type="STONE" horizontal_start_rel_to_segment_start="6" vertical_start_rel_to_segment_start="1" size="2" text=""/>
+    <element type="LEAF_TREE" horizontal_start_rel_to_segment_start="10" vertical_start_rel_to_segment_start="0" size="1.5" text=""/>
+    <element type="WARNING_AND_TEXT" horizontal_start_rel_to_segment_start="6" vertical_start_rel_to_segment_start="8" size="1" text="rock fall"/>
+  </segment>
+  <segment type="JUMP" length_in_meters="6" angle_in_degrees="110" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="-1" vertical_start_rel_to_segment_start="-0.3" size="1" text=""/>
+    <element type="ELEMENT_NUMBER" horizontal_start_rel_to_segment_start="-2" vertical_start_rel_to_segment_start="2" size="1" text="4"/>
+  </segment>
+  <segment type="POOL" length_in_meters="7" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false"/>
+  <segment type="WALK" length_in_meters="5" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="ESCAPE_EXIT_LEFT" horizontal_start_rel_to_segment_start="1.5" vertical_start_rel_to_segment_start="2" size="1" text=""/>
+    <element type="STONE_BRIDGE" horizontal_start_rel_to_segment_start="2" vertical_start_rel_to_segment_start="-0.5" size="1" text=""/>
+  </segment>
+  <segment type="RAPPEL_WET" length_in_meters="8" angle_in_degrees="60" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT_RIGHT" horizontal_start_rel_to_segment_start="-1" vertical_start_rel_to_segment_start="1" size="1" text=""/>
+    <element type="ELEMENT_NUMBER" horizontal_start_rel_to_segment_start="-1.5" vertical_start_rel_to_segment_start="4" size="1" text="3"/>
+  </segment>
+  <segment type="WALK" length_in_meters="12" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="ROPE_RAILING_LEFT" horizontal_start_rel_to_segment_start="9" vertical_start_rel_to_segment_start="1" horizontal_end_rel_to_segment_start="15" vertical_end_rel_to_segment_start="1" size="1" text=""/>
+    <element type="CONIFER_TREE" horizontal_start_rel_to_segment_start="4" vertical_start_rel_to_segment_start="0" size="1.2" text=""/>
+    <element type="LEAF_TREE" horizontal_start_rel_to_segment_start="7" vertical_start_rel_to_segment_start="0" size="1.5" text=""/>
+    <element type="CONIFER_TREE" horizontal_start_rel_to_segment_start="5.5" vertical_start_rel_to_segment_start="0" size="0.8" text=""/>
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="8" vertical_start_rel_to_segment_start="7.5" size="1" text="dense forest"/>
+  </segment>
+  <segment type="RAPPEL" length_in_meters="5" angle_in_degrees="90" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT_LEFT" horizontal_start_rel_to_segment_start="-1" vertical_start_rel_to_segment_start="5" size="1" text=""/>
+    <element type="ELEMENT_NUMBER" horizontal_start_rel_to_segment_start="-3" vertical_start_rel_to_segment_start="6" size="1" text="2"/>
+  </segment>
+  <segment type="WALK" length_in_meters="100" angle_in_degrees="0" duration_to_walk_in_min="5" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="true">
+    <element type="STONE" horizontal_start_rel_to_segment_start="2" vertical_start_rel_to_segment_start="0" size="1" text=""/>
+    <element type="INLET_RIGHT" horizontal_start_rel_to_segment_start="14" vertical_start_rel_to_segment_start="3" size="1" text="Huge Waterfall"/>
+    <element type="WOODEN_BRIDGE" horizontal_start_rel_to_segment_start="94" vertical_start_rel_to_segment_start="4" size="0.8" text=""/>
+    <element type="CAVE" horizontal_start_rel_to_segment_start="96" vertical_start_rel_to_segment_start="-0.5" size="1" text=""/>
+  </segment>
+  <segment type="SLIDE" length_in_meters="6" angle_in_degrees="50" do_not_cut_row_after_this_segment="true" force_cut_row_after_this_segment="false">
+    <element type="TRAPPED_STONE" horizontal_start_rel_to_segment_start="1" vertical_start_rel_to_segment_start="7" size="1.5" text=""/>
+  </segment>
+  <segment type="WEIR" length_in_meters="8" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="TRUNK" horizontal_start_rel_to_segment_start="1" vertical_start_rel_to_segment_start="-0.7" size="1" text=""/>
+    <element type="BACKWATER" horizontal_start_rel_to_segment_start="5" vertical_start_rel_to_segment_start="-2" size="1" text=""/>
+  </segment>
+  <segment type="RAPPEL" length_in_meters="10" angle_in_degrees="90" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT_RIGHT" horizontal_start_rel_to_segment_start="-1" vertical_start_rel_to_segment_start="1" size="1" text=""/>
+    <element type="ELEMENT_NUMBER" horizontal_start_rel_to_segment_start="-4" vertical_start_rel_to_segment_start="1" size="1" text="1"/>
+  </segment>
+  <segment type="WALK" length_in_meters="5" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false"/>
+</topo>

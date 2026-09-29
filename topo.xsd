@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+  <xs:element name="topo">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="segment" type="segmentType" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="version" type="xs:string" default="1"/>
+      <xs:attribute name="canyon_name" type="xs:string" use="required"/>
+      <xs:attribute name="date" type="xs:string" use="required"/>
+      <xs:attribute name="maximum_walk_length" type="xs:decimal" default="30"/>
+      <xs:attribute name="distance_of_single_line" type="xs:decimal" default="60"/>
+      <xs:attribute name="legend_offset_top" type="xs:decimal" default="0"/>
+      <xs:attribute name="extra" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="segmentType">
+    <xs:sequence>
+      <xs:element name="element" type="elementType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="type" type="xs:string" use="required"/>
+    <xs:attribute name="length_in_meters" type="xs:decimal" use="required"/>
+    <xs:attribute name="angle_in_degrees" type="xs:decimal" default="0"/>
+    <xs:attribute name="duration_to_walk_in_min" type="xs:decimal"/>
+    <xs:attribute name="do_not_cut_row_after_this_segment" type="xs:boolean" default="false"/>
+    <xs:attribute name="force_cut_row_after_this_segment" type="xs:boolean" default="false"/>
+    <xs:attribute name="extra" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="elementType">
+    <xs:attribute name="type" type="xs:string" use="required"/>
+    <xs:attribute name="horizontal_start_rel_to_segment_start" type="xs:decimal" default="0"/>
+    <xs:attribute name="vertical_start_rel_to_segment_start" type="xs:decimal" default="0"/>
+    <xs:attribute name="horizontal_end_rel_to_segment_start" type="xs:decimal"/>
+    <xs:attribute name="vertical_end_rel_to_segment_start" type="xs:decimal"/>
+    <xs:attribute name="size" type="xs:decimal" default="1"/>
+    <xs:attribute name="text" type="xs:string" default=""/>
+    <xs:attribute name="extra" type="xs:string"/>
+  </xs:complexType>
+
+</xs:schema>

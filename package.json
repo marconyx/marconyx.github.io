@@ -1,0 +1,12 @@
+{
+  "name": "canyoning-topo-generator",
+  "version": "1.0.0",
+  "description": "Statischer Canyoning-Topo-Generator (HTML + SVG, GitHub-Pages-tauglich)",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node test/roundtrip.test.mjs",
+    "start": "python3 -m http.server 8080"
+  },
+  "license": "MIT"
+}
