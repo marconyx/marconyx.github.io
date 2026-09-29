@@ -326,6 +326,18 @@ const server = createServer((req, res) => {
   });
 });
 
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(
+      `Port ${config.port} ist belegt – läuft der Proxy schon?\n` +
+        `Anderen Port wählen: PORT=8788 npm run proxy`,
+    );
+  } else {
+    console.error(`Proxy konnte nicht starten: ${error.message}`);
+  }
+  process.exit(1);
+});
+
 server.listen(config.port, '127.0.0.1', () => {
   console.log(`Canyoning-Topo-Proxy läuft.
 
