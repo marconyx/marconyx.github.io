@@ -282,7 +282,9 @@ Vorbelegt ist „OpenAI-kompatibel" mit dem Endpoint
 `https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1` und
 dem Modell `qwen/qwen3.6-35b-a3b`. Ein leeres Endpoint- oder Modellfeld wird beim
 Laden wieder mit diesen Vorgaben gefüllt; ein selbst eingetragener Wert bleibt
-unverändert stehen.
+unverändert stehen. Wer noch die früheren Vorgaben `https://api.openai.com/v1`
+bzw. `gpt-4o` gespeichert hat, bekommt sie beim Laden einmalig auf die neuen
+Standards umgestellt — beide Felder unabhängig voneinander.
 
 ### Modelle werden selbst gefunden
 

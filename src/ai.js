@@ -80,12 +80,54 @@ export function loadAiSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
-      settings = withDefaultsForProvider({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+      const stored = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      const migrated = migrateLegacyDefaults(withDefaultsForProvider(stored));
+      settings = migrated.settings;
+      // Ein migrierter Wert muss zurück in den Speicher, sonst liefe die
+      // Umstellung bei jedem Start erneut und ein späterer Standardwechsel
+      // liesse sich nicht mehr von einem echten Nutzerwert unterscheiden.
+      if (migrated.changed) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      }
     }
   } catch {
     settings = { ...DEFAULT_SETTINGS };
   }
   return { ...settings };
+}
+
+/**
+ * Frühere Versionen haben die damaligen Standardwerte beim ersten Start
+ * ausdrücklich in den Speicher geschrieben. Für die App sind sie deshalb
+ * nicht von selbst gewählten Werten zu unterscheiden – der neue Standard
+ * käme nie an. Diese Migration ersetzt genau die beiden alten Vorgaben,
+ * jede für sich. Alles andere bleibt unangetastet, auch der Key.
+ */
+const LEGACY_OPENAI_DEFAULTS = {
+  endpoint: 'https://api.openai.com/v1',
+  model: 'gpt-4o',
+};
+
+function migrateLegacyDefaults(candidate) {
+  if (candidate.providerId !== 'openai') return { settings: candidate, changed: false };
+  const spec = providerById('openai');
+  const next = { ...candidate };
+  let changed = false;
+
+  // Abschliessende Slashes sind für den Aufruf bedeutungslos, für einen
+  // Textvergleich aber nicht – deshalb vorher abschneiden.
+  if (
+    String(next.endpoint ?? '').trim().replace(/\/+$/, '') ===
+    LEGACY_OPENAI_DEFAULTS.endpoint
+  ) {
+    next.endpoint = spec.defaultEndpoint;
+    changed = true;
+  }
+  if (String(next.model ?? '').trim() === LEGACY_OPENAI_DEFAULTS.model) {
+    next.model = spec.defaultModel;
+    changed = true;
+  }
+  return { settings: next, changed };
 }
 
 /**

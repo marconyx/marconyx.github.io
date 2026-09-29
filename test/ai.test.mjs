@@ -535,11 +535,17 @@ function withStorage(fn, seed = null) {
     removeItem: (key) => store.delete(key),
   };
   try {
-    return fn();
+    return fn(store);
   } finally {
     if (original === undefined) delete globalThis.localStorage;
     else globalThis.localStorage = original;
   }
+}
+
+/** Liest zurück, was loadAiSettings in den Speicher geschrieben hat. */
+function storedSettings(store) {
+  const raw = store.get('canyon-topo-generator/ai/v1');
+  return raw ? JSON.parse(raw) : null;
 }
 
 test('der OpenAI-Anbieter zeigt auf die Swisscom Swiss AI Platform', () => {
@@ -584,11 +590,95 @@ test('leere gespeicherte Werte werden beim Laden mit den Standards gefüllt', ()
 test('ausdrücklich gespeicherte Werte überschreibt der neue Standard nicht', () => {
   const restored = withStorage(() => loadAiSettings(), {
     providerId: 'openai',
+    endpoint: 'https://gateway.intern.test/v1',
+    model: 'gpt-4o-mini',
+  });
+  assert.equal(restored.endpoint, 'https://gateway.intern.test/v1');
+  assert.equal(restored.model, 'gpt-4o-mini');
+});
+
+test('die alten Standardwerte werden auf die neuen migriert', () => {
+  const restored = withStorage(
+    (store) => {
+      const result = loadAiSettings();
+      // Die Migration muss auch im Speicher ankommen, nicht nur im Ergebnis.
+      const persisted = storedSettings(store);
+      assert.equal(persisted.endpoint, SWISSCOM_ENDPOINT);
+      assert.equal(persisted.model, SWISSCOM_MODEL);
+      assert.equal(persisted.apiKey, 'geheim', 'der Key bleibt unangetastet');
+      return result;
+    },
+    {
+      providerId: 'openai',
+      endpoint: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+      apiKey: 'geheim',
+    },
+  );
+  assert.equal(restored.endpoint, SWISSCOM_ENDPOINT);
+  assert.equal(restored.model, SWISSCOM_MODEL);
+});
+
+test('ein abschliessender Slash verhindert die Migration nicht', () => {
+  const restored = withStorage(() => loadAiSettings(), {
+    providerId: 'openai',
+    endpoint: 'https://api.openai.com/v1/',
+    model: 'gpt-4o',
+  });
+  assert.equal(restored.endpoint, SWISSCOM_ENDPOINT);
+});
+
+test('Endpoint und Modell werden unabhängig voneinander migriert', () => {
+  const nurEndpoint = withStorage(() => loadAiSettings(), {
+    providerId: 'openai',
+    endpoint: 'https://api.openai.com/v1',
+    model: 'gpt-4o-mini',
+  });
+  assert.equal(nurEndpoint.endpoint, SWISSCOM_ENDPOINT);
+  assert.equal(nurEndpoint.model, 'gpt-4o-mini', 'das eigene Modell bleibt');
+
+  const nurModell = withStorage(() => loadAiSettings(), {
+    providerId: 'openai',
+    endpoint: 'https://gateway.intern.test/v1',
+    model: 'gpt-4o',
+  });
+  assert.equal(nurModell.endpoint, 'https://gateway.intern.test/v1', 'der eigene Endpoint bleibt');
+  assert.equal(nurModell.model, SWISSCOM_MODEL);
+});
+
+test('die Migration greift nur beim OpenAI-Anbieter', () => {
+  const restored = withStorage(() => loadAiSettings(), {
+    providerId: 'anthropic',
+    endpoint: 'https://api.anthropic.com/v1',
+    model: 'claude-sonnet-4-20250514',
+  });
+  assert.equal(restored.endpoint, 'https://api.anthropic.com/v1');
+  assert.equal(restored.model, 'claude-sonnet-4-20250514');
+
+  // Selbst ein untergeschobener Altwert bleibt bei Anthropic stehen.
+  const exotisch = withStorage(() => loadAiSettings(), {
+    providerId: 'anthropic',
     endpoint: 'https://api.openai.com/v1',
     model: 'gpt-4o',
   });
-  assert.equal(restored.endpoint, 'https://api.openai.com/v1');
-  assert.equal(restored.model, 'gpt-4o');
+  assert.equal(exotisch.endpoint, 'https://api.openai.com/v1');
+  assert.equal(exotisch.model, 'gpt-4o');
+});
+
+test('ohne Migration wird nichts in den Speicher zurückgeschrieben', () => {
+  withStorage(
+    (store) => {
+      loadAiSettings();
+      const persisted = storedSettings(store);
+      assert.equal(persisted.endpoint, 'https://gateway.intern.test/v1');
+      assert.equal(persisted.model, 'gpt-4o-mini');
+    },
+    {
+      providerId: 'openai',
+      endpoint: 'https://gateway.intern.test/v1',
+      model: 'gpt-4o-mini',
+    },
+  );
 });
 
 test('beim Proxy-Anbieter bleibt das leere Modell leer', () => {
