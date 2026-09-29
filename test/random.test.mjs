@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 import {
   RANGE_ELEMENT_TYPES,
   SEGMENT_TYPES,
+  WALK_TIME_ELEMENT_TYPES,
   validateTopo,
 } from '../src/model.js';
 import { topoToJsonObject, topoFromJson } from '../src/io-json.js';
@@ -225,6 +226,29 @@ test('das erzeugte XML validiert gegen die XSD', () => {
       input: topoToXml(createRandomTopo({ seed })),
     });
     assert.equal(result.status, 0, `Seed ${seed}: ${result.stderr}`);
+  }
+});
+
+test('die Gehzeit steht nur bei WALK und am Fluchtweg', () => {
+  for (const seed of SEEDS) {
+    const topo = createRandomTopo({ seed });
+    for (const segment of topo.segments) {
+      if (segment.type !== 'WALK') {
+        assert.equal(
+          segment.duration_to_walk_in_min,
+          null,
+          `Seed ${seed}: ${segment.type} hat eine Gehzeit`,
+        );
+      }
+      for (const element of segment.elements) {
+        const minutes = element.duration_to_walk_in_min;
+        if (WALK_TIME_ELEMENT_TYPES.has(element.type)) {
+          if (minutes !== null) assert.ok(minutes > 0 && minutes <= 120);
+        } else {
+          assert.equal(minutes, null, `Seed ${seed}: ${element.type}`);
+        }
+      }
+    }
   }
 });
 

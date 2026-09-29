@@ -104,7 +104,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `type` | `WALK`, `POOL`, `RAPPEL`, `RAPPEL_DRY`, `RAPPEL_WET`, `JUMP`, `SLIDE`, `CLIMB`, `WEIR` |
 | `length_in_meters` | reale Länge |
 | `angle_in_degrees` | 0 = flach nach rechts, 90 = senkrecht nach unten, > 90 = überhängender Untergrund; bei RAPPEL bleibt der Abseilpfeil senkrecht |
-| `duration_to_walk_in_min` | optionale Gehzeit (wird bei gestauchten WALK-Segmenten angezeigt) |
+| `duration_to_walk_in_min` | optionale Gehzeit; im Inspector nur bei `WALK` sichtbar (siehe [Gehzeit](#gehzeit)) |
 | `wall_distance_in_meters` | nur `RAPPEL`, `RAPPEL_DRY`, `RAPPEL_WET`: grösster Abstand zwischen frei hängendem Seil und Wand; 0 = Seil liegt an (siehe [Wanddistanz](#wanddistanz)) |
 | `do_not_cut_row_after_this_segment` | harte Keep-Together-Regel: hält dieses und das folgende Segment in derselben Zeile |
 | `force_cut_row_after_this_segment` | harte Trennstelle: die Zeile endet nach diesem Segment |
@@ -121,6 +121,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `vertical_end_rel_to_segment_start` | Endpunkt für Streckenelemente, sonst `null` |
 | `size` | Skalierungsfaktor des Symbols |
 | `text` | Beschriftung (Nummer, Warntext, Name eines Zuflusses …) |
+| `duration_to_walk_in_min` | nur `ESCAPE_EXIT_LEFT`/`ESCAPE_EXIT_RIGHT`: Gehzeit bis zum sicheren Ort (siehe [Gehzeit](#gehzeit)) |
 
 ### Symbolliste
 
@@ -143,6 +144,23 @@ an, im Inspektor lässt sich der Zustand über die Checkbox „Abgestorben" umsc
 > ist — ein Topo ohne abgestorbene Bäume exportiert unverändert und bleibt dort
 > einlesbar. Umgekehrt ignoriert Canyon-Explore ein `dead="true"` schlicht, der
 > Baum erscheint dann wieder lebend.
+
+### Gehzeit
+
+`duration_to_walk_in_min` gibt es an zwei Stellen:
+
+* **Am Segment** – die Gehzeit einer Gehstrecke. Das Feld **Gehzeit (min)** steht
+  im Inspector nur noch bei `WALK`; bei allen anderen Typen ist es fachlich ohne
+  Bedeutung. Der Wert bleibt bei einem Typwechsel erhalten und wird weiterhin
+  gelesen und geschrieben, damit JSON/XML byte-identisch bleiben.
+* **Am Fluchtweg-Symbol** – `ESCAPE_EXIT_LEFT` und `ESCAPE_EXIT_RIGHT` kennen
+  dasselbe Feld als geschätzte Gehzeit bis zum sicheren Ort. Ist es gesetzt,
+  zeichnet der Renderer die Zeit („25 min") unter das Fluchtweg-Schild, in Farbe
+  wie in Schwarz/Weiss.
+
+> **Hinweis zur Kompatibilität:** Die Gehzeit am Symbol ist – wie `dead` – eine
+> Erweiterung gegenüber Canyon-Explore. Sie wird nur geschrieben, wenn sie
+> gesetzt ist, und ein Typwechsel weg vom Fluchtweg räumt sie auf.
 
 ## Zeilenumbruch
 

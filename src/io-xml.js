@@ -99,6 +99,13 @@ export function topoToXml(topo) {
           ['text', element.text],
           // Wie im JSON nur bei true, damit bestehende Dateien unverändert bleiben.
           ['dead', element.dead ? 'true' : null],
+          // Gehzeit am Fluchtweg – ebenfalls nur, wenn gesetzt.
+          [
+            'duration_to_walk_in_min',
+            element.duration_to_walk_in_min > 0
+              ? element.duration_to_walk_in_min
+              : null,
+          ],
           ...extraAttr(element),
         ])}/>`,
       );
@@ -196,6 +203,10 @@ export function topoFromXml(xml) {
         type: tag.attributes.type,
         text: tag.attributes.text ?? '',
         dead: tag.attributes.dead === 'true',
+        duration_to_walk_in_min:
+          tag.attributes.duration_to_walk_in_min === undefined
+            ? null
+            : Number(tag.attributes.duration_to_walk_in_min),
       };
       for (const field of ELEMENT_NUMBER_FIELDS) {
         element[field] =

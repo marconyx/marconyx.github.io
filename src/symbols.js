@@ -83,7 +83,19 @@ function deadTree(kind, text) {
     ${label(text, 0, -2.6)}`;
 }
 
-function exitSign(direction, text) {
+/**
+ * Gehzeit unterhalb des Fluchtweg-Schilds. Ohne eigenes `fill`, damit die
+ * Schrift die Themefarbe der Elementgruppe erbt und in Farbe wie in
+ * Schwarz/Weiss lesbar bleibt.
+ */
+function walkTimeLabel(minutes) {
+  if (!(minutes > 0)) return '';
+  return `<text x="0" y="0.78" font-size="0.55" text-anchor="middle" font-weight="600">${esc(
+    `${Number(minutes)} min`,
+  )}</text>`;
+}
+
+function exitSign(direction, text, minutes) {
   const arrow =
     direction === 'left'
       ? '<path d="M-0.75,-0.75 L-1.15,-0.45 L-0.75,-0.15 L-0.75,-0.35 L-0.3,-0.35 L-0.3,-0.55 L-0.75,-0.55 Z" fill="#fff"/>'
@@ -93,7 +105,8 @@ function exitSign(direction, text) {
     ${arrow}
     <path d="M0.55,-0.95 a0.11,0.11 0 1,0 0.01,0 Z" fill="#fff"/>
     <path d="M0.45,-0.8 L0.75,-0.65 L0.62,-0.4 L0.8,-0.2 L0.68,-0.15 L0.5,-0.4 L0.35,-0.15 L0.24,-0.22 L0.4,-0.5 Z" fill="#fff"/>
-    ${label(text, 0, -1.25)}`;
+    ${label(text, 0, -1.25)}
+    ${walkTimeLabel(minutes)}`;
 }
 
 function inlet(direction, text) {
@@ -344,12 +357,14 @@ export const SYMBOLS = {
   ESCAPE_EXIT_LEFT: {
     label: 'Fluchtweg links',
     category: 'annotation',
-    render: (element) => exitSign('left', element.text),
+    render: (element) =>
+      exitSign('left', element.text, element.duration_to_walk_in_min),
   },
   ESCAPE_EXIT_RIGHT: {
     label: 'Fluchtweg rechts',
     category: 'annotation',
-    render: (element) => exitSign('right', element.text),
+    render: (element) =>
+      exitSign('right', element.text, element.duration_to_walk_in_min),
   },
   ROPE_RAILING_LEFT: {
     label: 'Seilgeländer links',

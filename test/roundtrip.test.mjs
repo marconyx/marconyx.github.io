@@ -522,4 +522,82 @@ test('Wanddistanz überlebt JSON, XML und XSD', () => {
   assert.ok(readFileSync(xsdPath, 'utf8').includes('name="wall_distance_in_meters"'));
 });
 
+test('die Gehzeit am Fluchtweg überlebt JSON, XML und XSD', () => {
+  const topo = normalizeTopo({
+    canyon_name: 'Fluchtweg',
+    segments: [
+      {
+        type: 'WALK',
+        length_in_meters: 30,
+        elements: [
+          {
+            type: 'ESCAPE_EXIT_LEFT',
+            horizontal_start_rel_to_segment_start: 5,
+            duration_to_walk_in_min: 25,
+          },
+          // Fremder Typ: das Feld darf nicht durchrutschen.
+          { type: 'STONE', duration_to_walk_in_min: 9 },
+        ],
+      },
+    ],
+  });
+  assert.equal(topo.segments[0].elements[0].duration_to_walk_in_min, 25);
+  assert.equal(topo.segments[0].elements[1].duration_to_walk_in_min, null);
+
+  const json = topoToJsonObject(topo);
+  assert.equal(json.segments[0].elements[0].duration_to_walk_in_min, 25);
+  assert.equal(
+    Object.hasOwn(json.segments[0].elements[1], 'duration_to_walk_in_min'),
+    false,
+    'ohne Wert bleibt die Datei byte-identisch zu vorher',
+  );
+  assert.equal(
+    topoFromJson(JSON.stringify(json)).segments[0].elements[0]
+      .duration_to_walk_in_min,
+    25,
+  );
+
+  const xml = topoToXml(topo);
+  assert.ok(xml.includes('duration_to_walk_in_min="25"'));
+  assert.equal(
+    topoFromXml(xml).segments[0].elements[0].duration_to_walk_in_min,
+    25,
+  );
+
+  const xsd = readFileSync(xsdPath, 'utf8');
+  assert.match(xsd, /name="duration_to_walk_in_min" type="xs:decimal"/);
+  const result = spawnSync('xmllint', ['--noout', '--schema', xsdPath, '-'], {
+    encoding: 'utf8',
+    input: xml,
+  });
+  if (result.error?.code !== 'ENOENT') {
+    assert.equal(result.status, 0, result.stderr);
+  }
+});
+
+test('die Gehzeit steht als Beschriftung am Fluchtweg-Schild', () => {
+  const topo = normalizeTopo({
+    canyon_name: 'Fluchtweg',
+    segments: [
+      {
+        type: 'WALK',
+        length_in_meters: 30,
+        elements: [
+          {
+            type: 'ESCAPE_EXIT_RIGHT',
+            horizontal_start_rel_to_segment_start: 5,
+            duration_to_walk_in_min: 40,
+          },
+        ],
+      },
+    ],
+  });
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  assert.match(svg, />40 min</);
+
+  topo.segments[0].elements[0].duration_to_walk_in_min = null;
+  const plain = renderTopoSvg(topo, layoutTopo(topo));
+  assert.equal(/ min</.test(plain), false, 'ohne Wert keine Beschriftung');
+});
+
 console.log(`\n${passed} Test(s) bestanden.`);

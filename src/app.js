@@ -4,6 +4,8 @@
 import {
   DEAD_CAPABLE_ELEMENT_TYPES,
   SEGMENT_TYPES,
+  WALK_TIME_ELEMENT_TYPES,
+  WALK_TIME_SEGMENT_TYPES,
   WALL_DISTANCE_SEGMENT_TYPES,
   cloneTopo,
   createEmptyTopo,
@@ -319,12 +321,16 @@ function renderInspector() {
           segment.angle_in_degrees = value ?? 0;
         }),
       ),
-      field(
-        'Gehzeit (min)',
-        numberInput(segment.duration_to_walk_in_min, (value) => {
-          segment.duration_to_walk_in_min = value;
-        }),
-      ),
+      ...(WALK_TIME_SEGMENT_TYPES.has(segment.type)
+        ? [
+            field(
+              'Gehzeit (min)',
+              numberInput(segment.duration_to_walk_in_min, (value) => {
+                segment.duration_to_walk_in_min = value;
+              }),
+            ),
+          ]
+        : []),
       ...(WALL_DISTANCE_SEGMENT_TYPES.has(segment.type)
         ? [
             field(
@@ -382,6 +388,11 @@ function renderInspector() {
       'Typ',
       selectInput(Object.keys(SYMBOLS), element.type, (value) => {
         element.type = value;
+        // Die Gehzeit gehört nur zum Fluchtweg – bei anderen Symbolen würde
+        // sie sonst unsichtbar weiterleben und beim Speichern wieder auftauchen.
+        if (!WALK_TIME_ELEMENT_TYPES.has(value)) {
+          element.duration_to_walk_in_min = null;
+        }
         if (SYMBOLS[value]?.range && element.horizontal_end_rel_to_segment_start == null) {
           element.horizontal_end_rel_to_segment_start =
             element.horizontal_start_rel_to_segment_start + 5;
@@ -457,6 +468,23 @@ function renderInspector() {
       true,
     ),
   );
+
+  if (WALK_TIME_ELEMENT_TYPES.has(element.type)) {
+    grid.append(
+      field(
+        'Gehzeit (min)',
+        numberInput(
+          element.duration_to_walk_in_min,
+          (value) => {
+            element.duration_to_walk_in_min =
+              value == null ? null : Math.max(0, value);
+          },
+          1,
+          { id: 'element-walk-time', min: 0 },
+        ),
+      ),
+    );
+  }
 
   if (DEAD_CAPABLE_ELEMENT_TYPES.has(element.type)) {
     grid.append(

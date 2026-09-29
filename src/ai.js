@@ -23,6 +23,7 @@ import {
   RANGE_ELEMENT_TYPES,
   SEGMENT_LABELS,
   SEGMENT_TYPES,
+  WALK_TIME_ELEMENT_TYPES,
   normalizeTopo,
   todayIso,
 } from './model.js';
@@ -434,9 +435,12 @@ export function elementTypeCatalogLines() {
   return ELEMENT_TYPES.map((type) => {
     const range = RANGE_ELEMENT_TYPES.has(type) ? ' [Strecke: Start UND Ende]' : '';
     const dead = DEAD_CAPABLE_ELEMENT_TYPES.has(type) ? ' [kennt "dead": true]' : '';
+    const walkTime = WALK_TIME_ELEMENT_TYPES.has(type)
+      ? ' [kennt "duration_to_walk_in_min": Gehzeit bis zum sicheren Ort]'
+      : '';
     const text =
       ELEMENT_DESCRIPTIONS[type] || `Symbol "${symbolLabelFor(type)}" aus der Palette.`;
-    return `- ${type} (${symbolLabelFor(type)})${range}${dead} = ${text}`;
+    return `- ${type} (${symbolLabelFor(type)})${range}${dead}${walkTime} = ${text}`;
   });
 }
 
@@ -493,7 +497,8 @@ const SCHEMA_BLOCK = `{
           "vertical_end_rel_to_segment_start": number|null,
           "size": number,                  // 1 = normal
           "text": string,                  // "" wenn ohne Beschriftung
-          "dead": boolean                  // nur bei Bäumen, true = abgestorben
+          "dead": boolean,                 // nur bei Bäumen, true = abgestorben
+          "duration_to_walk_in_min": number|null  // nur bei ESCAPE_EXIT_LEFT/RIGHT, sonst null
         }
       ]
     }
@@ -539,7 +544,7 @@ EINHEITEN UND WERTEBEREICHE:
 - length_in_meters: > 0. Abseilstellen typisch 3–120, Sprünge 2–15, Rutschen 3–30, Gehstrecken 5–500.
 - angle_in_degrees: 0 = flach, 90 = senkrecht, >90 = ÜBERHÄNGEND (nur bei RAPPEL* sinnvoll, typisch bis 115).
 - wall_distance_in_meters: nur bei RAPPEL, RAPPEL_DRY, RAPPEL_WET; 0 = Seil liegt an der Wand, sonst typisch 1–10. Bei allen anderen Typen 0.
-- duration_to_walk_in_min: nur bei WALK, sonst null.
+- duration_to_walk_in_min: beim Segment nur bei WALK, sonst null. Beim Element nur bei ${[...WALK_TIME_ELEMENT_TYPES].join(', ')} – geschätzte Gehzeit in Minuten vom Fluchtweg bis zum sicheren Ort, sonst null.
 - size: 1 = normal, 0.5–2 sind sinnvolle Abweichungen.
 - do_not_cut_row_after_this_segment / force_cut_row_after_this_segment: Zeilenumbruch des Topos. Im Zweifel beide false und NIE beide zugleich true am selben Segment.
 
@@ -563,13 +568,14 @@ Antworte NUR mit einem JSON-Objekt, ohne Text und ohne Markdown-Codefence.
 
 Schema: canyon_name, author, duration, date ("YYYY-MM-DD"), maximum_walk_length (30), distance_of_single_line (60), legend_offset_top (0), segments[].
 Segment: type, length_in_meters, angle_in_degrees, duration_to_walk_in_min (nur WALK, sonst null), wall_distance_in_meters (nur RAPPEL*, sonst 0), do_not_cut_row_after_this_segment, force_cut_row_after_this_segment, elements[].
-Element: type, horizontal_start_rel_to_segment_start, vertical_start_rel_to_segment_start, horizontal_end_rel_to_segment_start, vertical_end_rel_to_segment_start, size, text, dead.
+Element: type, horizontal_start_rel_to_segment_start, vertical_start_rel_to_segment_start, horizontal_end_rel_to_segment_start, vertical_end_rel_to_segment_start, size, text, dead, duration_to_walk_in_min.
 
 Segmenttypen: ${SEGMENT_TYPES.join(', ')}.
 Elementtypen: ${ELEMENT_TYPES.join(', ')}.
 Streckenelemente (alle vier Koordinaten als Zahl): ${[...RANGE_ELEMENT_TYPES].join(', ')}.
 Alle übrigen Elemente setzen beide End-Koordinaten auf null.
 "dead": true nur bei ${[...DEAD_CAPABLE_ELEMENT_TYPES].join(', ')} (kahler, toter Baum).
+"duration_to_walk_in_min" beim Element nur bei ${[...WALK_TIME_ELEMENT_TYPES].join(', ')} (Gehzeit in Minuten bis zum sicheren Ort), sonst null.
 
 Regeln: Segmente in Abstiegsreihenfolge. Elementkoordinaten lokal pro Segment in Meter, horizontal entlang, vertical quer (positiv = links der Laufrichtung). angle 0 = flach, 90 = senkrecht, >90 = überhängend. Zahlen aus dem Bild ("R_d10", "J6") übernehmen. Nur Typen aus den Listen, nichts erfinden, im Zweifel weglassen. Kein Topo erkennbar: leeres "segments"-Array.`;
 }

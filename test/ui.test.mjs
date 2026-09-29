@@ -485,6 +485,87 @@ test('ein Typwechsel weg vom Abseilen räumt die Wanddistanz auf', () => {
   assert.equal(inspectorHas('segment-wall-distance'), false);
 });
 
+/* ---------------------------------------------------------------- Gehzeit */
+
+/** Sucht ein Inspector-Feld über seinen Labeltext (viele Felder haben keine ID). */
+function inspectorHasField(labelText) {
+  return elementById('inspector')
+    .descendants()
+    .some((node) => node.tagName === 'LABEL' && node.textContent === labelText);
+}
+
+function segmentTypeSelect() {
+  return elementById('inspector')
+    .descendants()
+    .find((node) => node.tagName === 'SELECT');
+}
+
+test('die Gehzeit erscheint beim Segment nur bei WALK', () => {
+  selectFirstSegmentAs('WALK');
+  assert.ok(inspectorHasField('Gehzeit (min)'), 'WALK: Feld fehlt');
+
+  for (const type of ['RAPPEL', 'RAPPEL_DRY', 'RAPPEL_WET', 'JUMP', 'POOL']) {
+    selectFirstSegmentAs(type);
+    assert.equal(
+      inspectorHasField('Gehzeit (min)'),
+      false,
+      `${type}: Feld zu viel`,
+    );
+  }
+});
+
+test('ein Typwechsel blendet die Gehzeit aus und wieder ein, ohne den Wert zu verlieren', () => {
+  selectFirstSegmentAs('WALK');
+  const input = elementById('inspector')
+    .descendants()
+    .find((node) => node.tagName === 'INPUT' && node.type === 'number');
+  state.topo.segments[0].duration_to_walk_in_min = 12;
+  elementById('topo-name').dispatch('input');
+  assert.ok(input, 'Gehzeit-Feld erwartet');
+
+  segmentTypeSelect().value = 'RAPPEL';
+  segmentTypeSelect().dispatch('change');
+  assert.equal(inspectorHasField('Gehzeit (min)'), false);
+  assert.equal(
+    state.topo.segments[0].duration_to_walk_in_min,
+    12,
+    'der gespeicherte Wert bleibt erhalten',
+  );
+
+  segmentTypeSelect().value = 'WALK';
+  segmentTypeSelect().dispatch('change');
+  assert.ok(inspectorHasField('Gehzeit (min)'), 'nach der Rückkehr fehlt das Feld');
+  assert.equal(state.topo.segments[0].duration_to_walk_in_min, 12);
+});
+
+test('die Gehzeit gibt es beim Symbol nur am Fluchtweg', () => {
+  selectFirstSegmentAs('WALK');
+  state.topo.segments[0].elements = [
+    { type: 'ESCAPE_EXIT_LEFT', horizontal_start_rel_to_segment_start: 1 },
+  ];
+  state.selection = { kind: 'element', segmentIndex: 0, elementIndex: 0 };
+  elementById('topo-name').dispatch('input');
+  assert.ok(inspectorHas('element-walk-time'), 'Fluchtweg: Feld fehlt');
+
+  const input = elementById('element-walk-time');
+  input.value = '25';
+  input.dispatch('change');
+  assert.equal(state.topo.segments[0].elements[0].duration_to_walk_in_min, 25);
+  assert.match(svg(), /25 min/, 'die Gehzeit fehlt am Schild');
+
+  input.value = '-5';
+  input.dispatch('change');
+  assert.equal(state.topo.segments[0].elements[0].duration_to_walk_in_min, 0);
+
+  const typeSelect = elementById('inspector')
+    .descendants()
+    .find((node) => node.tagName === 'SELECT');
+  typeSelect.value = 'STONE';
+  typeSelect.dispatch('change');
+  assert.equal(inspectorHas('element-walk-time'), false, 'STONE: Feld zu viel');
+  assert.equal(state.topo.segments[0].elements[0].duration_to_walk_in_min, null);
+});
+
 
 test('das Auswahlfeld für die Prompt-Vorlage kennt alle Vorlagen', () => {
   const markup = readFileSync(new URL('../index.html', import.meta.url), 'utf8');

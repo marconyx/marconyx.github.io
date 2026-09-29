@@ -42,6 +42,8 @@
     <xs:attribute name="size" type="xs:decimal" default="1"/>
     <xs:attribute name="text" type="xs:string" default=""/>
     <xs:attribute name="dead" type="xs:boolean" default="false"/>
+    <!-- Erweiterung: Gehzeit des Fluchtwegs (nur ESCAPE_EXIT_LEFT/RIGHT). -->
+    <xs:attribute name="duration_to_walk_in_min" type="xs:decimal"/>
     <xs:attribute name="extra" type="xs:string"/>
   </xs:complexType>
 

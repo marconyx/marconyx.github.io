@@ -75,6 +75,22 @@ export const DEAD_CAPABLE_ELEMENT_TYPES = new Set(['LEAF_TREE', 'CONIFER_TREE'])
 export const WATER_SEGMENT_TYPES = new Set(['POOL', 'WEIR']);
 
 /**
+ * Segmenttypen mit Gehzeit. Nur bei der Gehstrecke ist die Angabe sinnvoll –
+ * abgeseilt, gesprungen oder geschwommen wird nicht gegangen.
+ * Das Datenfeld bleibt bei allen Typen erhalten, es wird nur nicht angeboten.
+ */
+export const WALK_TIME_SEGMENT_TYPES = new Set(['WALK']);
+
+/**
+ * Elementtypen mit Gehzeit: Fluchtwege. Dort ist die Angabe die wichtigste
+ * Information überhaupt – wie lange dauert der Ausstieg.
+ */
+export const WALK_TIME_ELEMENT_TYPES = new Set([
+  'ESCAPE_EXIT_LEFT',
+  'ESCAPE_EXIT_RIGHT',
+]);
+
+/**
  * Segmenttypen mit Wanddistanz. Nur beim Abseilen hängt das Seil frei vor der
  * Wand; bei allen anderen Typen wäre das Feld bedeutungslos.
  */
@@ -115,6 +131,7 @@ const ELEMENT_KNOWN_KEYS = new Set([
   'size',
   'text',
   'dead',
+  'duration_to_walk_in_min',
 ]);
 
 function collectExtra(obj, knownKeys) {
@@ -138,6 +155,12 @@ function nullableNum(value) {
   if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Wie nullableNum, aber negative Werte gelten als "nicht gesetzt". */
+function nonNegativeOrNull(value) {
+  const parsed = nullableNum(value);
+  return parsed === null || parsed < 0 ? null : parsed;
 }
 
 function bool(value, fallback = false) {
@@ -178,6 +201,12 @@ export function normalizeElement(raw) {
     // Abgestorbener Baum – eine Erweiterung gegenüber dem Canyon-Explore-Format.
     // Nur bei Bäumen zulässig und nur geschrieben, wenn gesetzt (siehe io-json.js).
     dead: DEAD_CAPABLE_ELEMENT_TYPES.has(type) && bool(raw?.dead),
+    // Gehzeit des Fluchtwegs. Ebenfalls eine Erweiterung: nur bei den beiden
+    // ESCAPE_EXIT_*-Symbolen zulässig, nie negativ und nur geschrieben, wenn
+    // gesetzt – sonst wären bestehende Dateien nicht mehr byte-identisch.
+    duration_to_walk_in_min: WALK_TIME_ELEMENT_TYPES.has(type)
+      ? nonNegativeOrNull(raw?.duration_to_walk_in_min)
+      : null,
   };
   const extra = collectExtra(raw, ELEMENT_KNOWN_KEYS);
   if (extra) element._extra = extra;

@@ -14,6 +14,7 @@ import {
   AI_TEMPERATURE,
   MAX_PROMPT_CHARS,
   PROMPT_TEMPLATES,
+  buildCompactInstructions,
   buildOptimizedInstructions,
   buildPrompt,
   buildPromptParts,
@@ -32,6 +33,7 @@ import {
   ELEMENT_TYPES,
   RANGE_ELEMENT_TYPES,
   SEGMENT_TYPES,
+  WALK_TIME_ELEMENT_TYPES,
   validateTopo,
 } from '../src/model.js';
 import { layoutTopo } from '../src/layout.js';
@@ -432,6 +434,16 @@ test('die optimierte Vorlage nennt jeden Segment- und jeden Symboltyp', () => {
   for (const type of ELEMENT_TYPES) {
     assert.ok(prompt.includes(type), `Elementtyp ${type} fehlt`);
   }
+});
+
+test('die optimierte Vorlage erklärt die Gehzeit von Segment und Fluchtweg', () => {
+  for (const prompt of [buildOptimizedInstructions(), buildCompactInstructions()]) {
+    assert.match(prompt, /duration_to_walk_in_min/);
+    for (const type of WALK_TIME_ELEMENT_TYPES) {
+      assert.ok(prompt.includes(type), `${type} fehlt`);
+    }
+  }
+  assert.match(buildOptimizedInstructions(), /beim Segment nur bei WALK/);
 });
 
 test('die optimierte Vorlage erklärt Rolle, Vorgehen, Einheiten und Ausgabe', () => {

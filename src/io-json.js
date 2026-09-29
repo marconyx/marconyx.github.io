@@ -43,6 +43,9 @@ export function topoToJsonObject(topo) {
           // Sonst trüge jede exportierte Datei ein Feld, das das Originalformat
           // nicht kennt – und bestehende Topos wären nicht mehr byte-identisch.
           if (element.dead) elementOut.dead = true;
+          if (element.duration_to_walk_in_min > 0) {
+            elementOut.duration_to_walk_in_min = element.duration_to_walk_in_min;
+          }
           return Object.assign(elementOut, element._extra || {});
         }),
       };

@@ -14,6 +14,7 @@
 import {
   RANGE_ELEMENT_TYPES,
   SEGMENT_TYPES,
+  WALK_TIME_ELEMENT_TYPES,
   WALL_DISTANCE_SEGMENT_TYPES,
   normalizeTopo,
   renumberElements,
@@ -199,6 +200,10 @@ function buildElement(rng, variant, segmentLength) {
       element.vertical_start_rel_to_segment_start + between(rng, -1.5, 1.5);
   }
   if (variant.dead) element.dead = true;
+  // Fluchtwege tragen gelegentlich die Gehzeit bis zum sicheren Ort.
+  if (WALK_TIME_ELEMENT_TYPES.has(type) && chance(rng, 0.7)) {
+    element.duration_to_walk_in_min = intBetween(rng, 5, 60);
+  }
   return element;
 }
 
