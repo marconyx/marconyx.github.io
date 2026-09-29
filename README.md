@@ -182,20 +182,50 @@ Daran lässt sich clientseitig nichts ändern. `tools/proxy.mjs` löst es: Zwisc
 Servern gelten keine CORS-Regeln. Der Proxy **serviert zusätzlich die App selbst**,
 damit laufen App und API auf demselben Origin und CORS entfällt vollständig.
 
+#### Der übliche Weg: einmal starten, danach alles in der Oberfläche
+
+```bash
+npm start
+```
+
+Dann **http://127.0.0.1:8787/** öffnen und unter *AI-Erkennung → Einstellungen*
+Anbieter, Endpoint, Modell und Key eintragen. Mehr nicht — **keine
+Umgebungsvariablen, kein Neustart, kein Anbieterwechsel.**
+
+Das funktioniert, weil beide Seiten mitdenken:
+
+- Der Proxy nimmt Endpoint, Modell und Key **pro Anfrage** entgegen. Änderungen in
+  der Oberfläche wirken sofort; er muss nie neu gestartet werden.
+- Die App erkennt einen laufenden Proxy von selbst. Scheitert ein Direktaufruf an
+  CORS, **wiederholt sie ihn still über den Proxy** und schreibt „(über den lokalen
+  Proxy)" in die Statuszeile. Die Einstellungen zeigen oben an, ob er läuft.
+
+Ein Browser kann keinen Prozess starten — dieser eine Schritt bleibt. Wer ihn auch
+sparen will, lässt den Proxy ab Login mitlaufen:
+
+```bash
+npm run autostart:install    # macOS: LaunchAgent · Linux: systemd-User-Service
+npm run autostart:status
+npm run autostart:uninstall
+```
+
+**Abwägung:** Auf diesem Weg liegt der Key im Browser (`localStorage`) und wird pro
+Anfrage mitgeschickt — vertretbar, weil der Proxy ausschliesslich an `127.0.0.1`
+lauscht. Soll der Key **den Rechner nie im Browser sehen**, weiter wie bisher:
+
 ```bash
 AI_KEY=dein-key \
 AI_UPSTREAM=https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1 \
 AI_MODEL=gpt-4o \
-npm run proxy
+npm start
 ```
 
-Dann **http://127.0.0.1:8787/** öffnen (nicht den anderen Server) und unter
-*AI-Erkennung → Einstellungen* den Anbieter **Eigener Proxy** wählen — der Endpoint
-`http://127.0.0.1:8787/api/topo` ist bereits vorausgefüllt. Ein Key gehört dort
-**nicht** hin; er bleibt im Proxy.
+… und in der App den Anbieter **Eigener Proxy** wählen; das Key-Feld bleibt leer.
+Mit `AI_ALLOW_CLIENT_CONFIG=false` ignoriert der Proxy Angaben aus dem Browser
+vollständig.
 
 Nur Node ≥ 18 nötig, keine Abhängigkeiten. `GET /api/health` zeigt die aktive
-Konfiguration (ohne den Key).
+Konfiguration (ohne den Key) und ob Angaben aus der App akzeptiert werden.
 
 #### Auth-Schema anpassen
 
@@ -203,21 +233,22 @@ Vorgabe ist `Authorization: Bearer <key>`. Erwartet dein Gateway etwas anderes:
 
 ```bash
 # roher Key in eigenem Header
-AI_AUTH_HEADER=X-Api-Key AI_AUTH_SCHEME= AI_KEY=... npm run proxy
+AI_AUTH_HEADER=X-Api-Key AI_AUTH_SCHEME= AI_KEY=... npm start
 
 # Anthropic-Format statt OpenAI
-AI_API=anthropic AI_AUTH_HEADER=x-api-key AI_AUTH_SCHEME= AI_KEY=... npm run proxy
+AI_API=anthropic AI_AUTH_HEADER=x-api-key AI_AUTH_SCHEME= AI_KEY=... npm start
 ```
 
 | Variable | Vorgabe | Zweck |
 |---|---|---|
-| `AI_KEY` | — | Pflicht. Verlässt den Proxy nie. |
+| `AI_KEY` | — | Optional. Gesetzt: Key bleibt serverseitig. Sonst schickt ihn die App. |
 | `AI_UPSTREAM` | Swisscom-Endpoint | Basis-URL **ohne** `/chat/completions` |
 | `AI_MODEL` | `gpt-4o` | Vorgabe, falls die App kein Modell schickt |
 | `AI_AUTH_HEADER` | `Authorization` | Header-Name für den Key |
 | `AI_AUTH_SCHEME` | `Bearer ` | Präfix; leer setzen für rohe Keys |
 | `AI_API` | `openai` | oder `anthropic` |
 | `PORT` | `8787` | |
+| `AI_ALLOW_CLIENT_CONFIG` | `true` | `false` ignoriert Endpoint/Modell/Key aus der App |
 
 Bei `401`/`403` nennt der Proxy den Klartext des Gateways und weist auf die
 Auth-Variablen hin — im Browser wäre diese Information nicht sichtbar gewesen.
@@ -234,6 +265,9 @@ npx wrangler secret put AI_KEY
 
 `ALLOWED_ORIGIN` unbedingt auf den eigenen Origin setzen, sonst kann jeder den
 Worker — und damit deinen Key — benutzen.
+
+Der Worker nimmt **bewusst keine** Konfiguration aus dem Browser entgegen: Er ist
+öffentlich erreichbar, dort gehört der Key ausschliesslich in die Secrets.
 
 ### Eigener Proxy von Hand
 
@@ -316,6 +350,7 @@ src/pdf.js            PDF-Seiten als Referenzbild rendern (pdf.js)
 src/app.js            Editor-Logik und UI-Bindings
 tools/proxy.mjs       Lokaler AI-Proxy (löst CORS) + serviert die App
 tools/worker.js       Derselbe Proxy als Cloudflare Worker
+tools/autostart.sh    Proxy ab Login mitlaufen lassen (LaunchAgent/systemd)
 test/                 Round-Trip-, Rendering- und AI-Tests
 examples/             Beispiel-Topo (JSON + XML)
 vendor/pdfjs/         pdf.js (Apache-2.0), lokal eingebunden

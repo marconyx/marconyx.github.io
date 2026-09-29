@@ -273,7 +273,105 @@ try {
     const data = await response.json();
     assert.equal(data.keyConfigured, true);
     assert.equal(data.model, 'fake-vision');
+    assert.equal(data.acceptsClientConfig, true, 'Die App muss die Automatik erkennen können');
     assert.ok(!JSON.stringify(data).includes(KEY), 'Der Key darf nicht in /api/health stehen');
+  });
+
+  await test('übernimmt Endpoint, Modell und Key aus der Anfrage', async () => {
+    const response = await post(PORT, {
+      image: IMAGE,
+      prompt: 'x',
+      endpoint: `http://127.0.0.1:${upstreamPort}/anders`,
+      model: 'aus-der-app',
+      apiKey: 'app-key',
+    });
+    assert.equal(response.status, 200);
+    const last = received.at(-1);
+    assert.equal(last.path, '/anders/chat/completions');
+    assert.equal(last.body.model, 'aus-der-app');
+    assert.equal(last.headers.authorization, 'Bearer app-key');
+  });
+
+  await test('kürzt einen versehentlich vollständigen Pfad auf die Basis', async () => {
+    await post(PORT, {
+      image: IMAGE,
+      prompt: 'x',
+      endpoint: `http://127.0.0.1:${upstreamPort}/v1/chat/completions`,
+    });
+    assert.equal(received.at(-1).path, '/v1/chat/completions', 'kein doppeltes /chat/completions');
+  });
+
+  await test('die App kann pro Anfrage auf das Anthropic-Format umschalten', async () => {
+    await post(PORT, {
+      image: IMAGE,
+      prompt: 'x',
+      endpoint: `http://127.0.0.1:${upstreamPort}/v1`,
+      api: 'anthropic',
+      apiKey: 'claude-key',
+    });
+    const last = received.at(-1);
+    assert.equal(last.path, '/v1/messages');
+    assert.equal(last.headers['anthropic-version'], '2023-06-01');
+  });
+
+  await test('ohne Key in Umgebung UND Anfrage kommt eine hilfreiche Meldung', async () => {
+    const other = 8904;
+    const alt = await startProxy(other, {
+      AI_KEY: '',
+      AI_UPSTREAM: `http://127.0.0.1:${upstreamPort}/v1`,
+    });
+    try {
+      const withKey = await post(other, { image: IMAGE, prompt: 'x', apiKey: 'nur-aus-app' });
+      assert.equal(withKey.status, 200, 'Key allein aus der App muss genügen');
+      assert.equal(received.at(-1).headers.authorization, 'Bearer nur-aus-app');
+
+      const without = await post(other, { image: IMAGE, prompt: 'x' });
+      assert.equal(without.status, 500);
+      assert.match((await without.json()).error, /in der App/);
+    } finally {
+      alt.child.kill();
+    }
+  });
+
+  await test('AI_ALLOW_CLIENT_CONFIG=false ignoriert Angaben aus dem Browser', async () => {
+    const other = 8905;
+    const alt = await startProxy(other, {
+      AI_KEY: KEY,
+      AI_UPSTREAM: `http://127.0.0.1:${upstreamPort}/v1`,
+      AI_MODEL: 'nur-server',
+      AI_ALLOW_CLIENT_CONFIG: 'false',
+    });
+    try {
+      const health = await (await fetch(`http://127.0.0.1:${other}/api/health`)).json();
+      assert.equal(health.acceptsClientConfig, false);
+
+      await post(other, {
+        image: IMAGE,
+        prompt: 'x',
+        endpoint: 'http://127.0.0.1:1/boese',
+        model: 'untergeschoben',
+        apiKey: 'fremder-key',
+      });
+      const last = received.at(-1);
+      assert.equal(last.path, '/v1/chat/completions', 'Endpoint aus dem Browser muss ignoriert werden');
+      assert.equal(last.body.model, 'nur-server');
+      assert.equal(last.headers.authorization, `Bearer ${KEY}`);
+    } finally {
+      alt.child.kill();
+    }
+  });
+  await test('weist einen Key mit Nicht-ASCII-Zeichen verständlich ab', async () => {
+    const before = received.length;
+    const res = await post(PORT, {
+      image: IMAGE,
+      prompt: 'x',
+      apiKey: 'AI_KEY=… kopierter Platzhalter',
+    });
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.match(body.error, /unzulässiges Zeichen/);
+    assert.match(body.error, /…/, 'das störende Zeichen soll genannt werden');
+    assert.equal(received.length, before, 'so ein Key darf den Upstream nie erreichen');
   });
 } finally {
   proxy.child.kill();

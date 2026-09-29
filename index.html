@@ -107,7 +107,8 @@
           <h2>AI-Erkennung</h2>
           <p class="hint">
             Erzeugt aus dem geladenen Bild bzw. der PDF-Seite ein Topo. Der Aufruf läuft
-            direkt aus deinem Browser zum Modell.
+            direkt aus deinem Browser zum Modell — blockiert ein Gateway das (CORS),
+            springt automatisch der lokale Proxy ein, sofern er läuft (<code>npm start</code>).
           </p>
           <button type="button" id="btn-photo-ai">Aus Foto erzeugen (AI)</button>
           <button type="button" id="btn-ai-cancel" hidden>Abbrechen</button>
@@ -143,6 +144,7 @@
                 Rechnern besser einen eigenen Proxy verwenden.
               </p>
               <button type="button" id="btn-ai-forget">Key löschen</button>
+              <p class="hint" id="ai-proxy-state"></p>
             </div>
           </details>
         </section>

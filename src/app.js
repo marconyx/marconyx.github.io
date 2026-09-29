@@ -27,6 +27,8 @@ import {
 } from './exporters.js';
 import {
   AI_PROVIDERS,
+  LOCAL_PROXY_PORT,
+  detectLocalProxy,
   getAiSettings,
   isTopoProviderAvailable,
   loadAiSettings,
@@ -938,6 +940,36 @@ function syncAiControls() {
   $('ai-model-row').hidden = spec.id === 'proxy';
   // Die Einstellungen von Anfang an aufklappen, solange noch etwas fehlt.
   if (!ready) $('ai-settings').open = true;
+  refreshProxyState();
+}
+
+/**
+ * Zeigt an, ob der lokale Proxy läuft. Er wird erst gebraucht, wenn ein Gateway
+ * den Direktaufruf blockiert – aber es hilft, das vorher zu wissen statt erst im
+ * Fehlerfall.
+ */
+async function refreshProxyState() {
+  const target = $('ai-proxy-state');
+  if (!target) return;
+
+  const settings = getAiSettings();
+  if (settings.providerId === 'proxy') {
+    target.textContent = '';
+    return;
+  }
+
+  const proxy = await detectLocalProxy();
+  if (proxy) {
+    target.textContent =
+      `Lokaler Proxy auf Port ${LOCAL_PROXY_PORT} erreichbar – ` +
+      'er springt automatisch ein, falls das Gateway den Direktaufruf blockiert.';
+    target.classList.remove('is-error');
+  } else {
+    target.textContent =
+      `Kein lokaler Proxy auf Port ${LOCAL_PROXY_PORT}. Wird nur gebraucht, wenn der ` +
+      'Direktaufruf an CORS scheitert – dann im Projektordner "npm start" ausführen.';
+    target.classList.remove('is-error');
+  }
 }
 
 function bindAi() {
@@ -1006,6 +1038,7 @@ async function runAi() {
 
   aiAbort = new AbortController();
   const report = [];
+  let usedProxy = false;
   syncAiControls();
   $('btn-ai-cancel').hidden = false;
   $('btn-photo-ai').classList.add('is-busy');
@@ -1016,6 +1049,10 @@ async function runAi() {
     const topo = await photoToTopo(state.photo.src, {
       signal: aiAbort.signal,
       report,
+      onNotice: (message) => {
+        usedProxy = true;
+        setAiStatus(message);
+      },
       hints: {
         canyonName: state.topo.canyon_name,
         notes: getAiSettings().notes || '',
@@ -1028,7 +1065,8 @@ async function runAi() {
 
     const count = topo.segments.length;
     const skipped = report.length ? ` ${report.length} Angabe(n) verworfen.` : '';
-    setAiStatus(`${count} Segment(e) erkannt.${skipped} Bitte gegenprüfen.`);
+    const via = usedProxy ? ' (über den lokalen Proxy)' : '';
+    setAiStatus(`${count} Segment(e) erkannt${via}.${skipped} Bitte gegenprüfen.`);
     setStatus(`Topo aus Foto erzeugt: ${count} Segmente.`);
     if (report.length) console.warn('AI-Erkennung, verworfen:', report);
   } catch (error) {

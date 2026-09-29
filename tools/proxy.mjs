@@ -43,6 +43,10 @@ const config = {
   // Absichtlich nicht getrimmt: "Bearer " braucht das Leerzeichen, ein roher Key nicht.
   authScheme: process.env.AI_AUTH_SCHEME ?? 'Bearer ',
   api: (process.env.AI_API || 'openai').toLowerCase(),
+  // Erlaubt der App, Endpoint/Key/Modell pro Anfrage mitzuschicken. Damit muss der
+  // Proxy nie neu gestartet werden, wenn sich in der Oberfläche etwas ändert.
+  // Nur vertretbar, weil ausschliesslich an 127.0.0.1 gebunden wird.
+  allowClientConfig: process.env.AI_ALLOW_CLIENT_CONFIG !== 'false',
   maxBody: 32 * 1024 * 1024,
 };
 
@@ -114,11 +118,11 @@ function splitDataUrl(image) {
   return { mediaType: match[1], base64: match[2] };
 }
 
-function buildUpstreamRequest(image, prompt, model) {
-  if (config.api === 'anthropic') {
+function buildUpstreamRequest(image, prompt, { model, base, api }) {
+  if (api === 'anthropic') {
     const { mediaType, base64 } = splitDataUrl(image);
     return {
-      url: `${config.upstream}/messages`,
+      url: `${base}/messages`,
       body: {
         model,
         max_tokens: 4096,
@@ -135,7 +139,7 @@ function buildUpstreamRequest(image, prompt, model) {
     };
   }
   return {
-    url: `${config.upstream}/chat/completions`,
+    url: `${base}/chat/completions`,
     body: {
       model,
       max_tokens: 4096,
@@ -149,6 +153,29 @@ function buildUpstreamRequest(image, prompt, model) {
         },
       ],
     },
+  };
+}
+
+/**
+ * Baut die effektive Konfiguration einer Anfrage.
+ * Die App darf Endpoint, Modell, Key und API-Form mitschicken – sonst greift die
+ * Umgebung. So lässt sich alles in der Oberfläche umstellen, ohne den Proxy
+ * anzufassen. Der Key wird weder geloggt noch zurückgegeben.
+ */
+function resolveRequestConfig(payload) {
+  const fromClient = config.allowClientConfig ? payload : {};
+  const base = String(fromClient.endpoint || config.upstream)
+    .trim()
+    .replace(/\/+$/, '')
+    // Schickt die App versehentlich den vollen Pfad, kürzen wir auf die Basis.
+    .replace(/\/(chat\/completions|messages)$/, '');
+  return {
+    base,
+    api: String(fromClient.api || config.api).toLowerCase(),
+    model: fromClient.model || config.model,
+    key: fromClient.apiKey || config.key,
+    authHeader: fromClient.authHeader || config.authHeader,
+    authScheme: fromClient.authScheme ?? config.authScheme,
   };
 }
 
@@ -171,13 +198,6 @@ function extractText(data) {
 }
 
 async function handleTopo(req, res) {
-  if (!config.key) {
-    sendJson(res, 500, {
-      error: 'AI_KEY ist nicht gesetzt. Proxy mit AI_KEY=... neu starten.',
-    });
-    return;
-  }
-
   let payload;
   try {
     payload = await readBody(req);
@@ -192,10 +212,24 @@ async function handleTopo(req, res) {
     return;
   }
 
-  const model = payload.model || config.model;
+  const cfg = resolveRequestConfig(payload);
+
+  if (!cfg.key) {
+    sendJson(res, 500, {
+      error:
+        'Kein API-Key vorhanden. Entweder in der App unter "Einstellungen" eintragen ' +
+        'oder den Proxy mit AI_KEY=… starten.',
+    });
+    return;
+  }
+  if (!cfg.base) {
+    sendJson(res, 400, { error: 'Kein Endpoint konfiguriert.' });
+    return;
+  }
+
   let request;
   try {
-    request = buildUpstreamRequest(image, prompt, model);
+    request = buildUpstreamRequest(image, prompt, cfg);
   } catch (error) {
     sendJson(res, 400, { error: error.message });
     return;
@@ -203,9 +237,22 @@ async function handleTopo(req, res) {
 
   const headers = {
     'Content-Type': 'application/json',
-    [config.authHeader]: `${config.authScheme}${config.key}`,
+    [cfg.authHeader]: `${cfg.authScheme}${cfg.key}`,
   };
-  if (config.api === 'anthropic') headers['anthropic-version'] = '2023-06-01';
+  if (cfg.api === 'anthropic') headers['anthropic-version'] = '2023-06-01';
+
+  // HTTP-Header dürfen nur Latin-1 enthalten. Ein versehentlich kopiertes "…"
+  // oder ein Umlaut im Key liesse fetch sonst mit einer kryptischen
+  // ByteString-Meldung scheitern – die dem Nutzer gar nichts sagt.
+  const offending = [...`${cfg.authScheme}${cfg.key}`].find((char) => char.charCodeAt(0) > 255);
+  if (offending) {
+    sendJson(res, 400, {
+      error:
+        `Der API-Key enthält ein unzulässiges Zeichen ("${offending}"). ` +
+        'Sieht nach einem Kopierfehler aus – bitte den Key erneut einfügen.',
+    });
+    return;
+  }
 
   let upstream;
   try {
@@ -258,7 +305,7 @@ async function handleTopo(req, res) {
   }
 
   // Der Browser bekommt nur den Modelltext – Sanitizing passiert in src/ai.js.
-  console.log(`[proxy] ok – Modell ${model}, ${text.length} Zeichen`);
+  console.log(`[proxy] ok – Modell ${cfg.model}, ${text.length} Zeichen`);
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders() });
   res.end(JSON.stringify(text));
 }
@@ -317,6 +364,8 @@ const server = createServer((req, res) => {
       model: config.model,
       authHeader: config.authHeader,
       keyConfigured: Boolean(config.key),
+      // Die App erkennt daran, dass sie Endpoint/Key selbst mitschicken darf.
+      acceptsClientConfig: config.allowClientConfig,
     });
     return;
   }
@@ -346,8 +395,9 @@ server.listen(config.port, '127.0.0.1', () => {
   Upstream      ${config.upstream}  (${config.api})
   Modell        ${config.model}
   Auth-Header   ${config.authHeader}: ${config.authScheme}<key>
-  Key gesetzt   ${config.key ? 'ja' : 'NEIN – mit AI_KEY=... neu starten'}
+  Key gesetzt   ${config.key ? 'ja' : 'nein – dann in der App eintragen'}
+  App-Konfig    ${config.allowClientConfig ? 'erlaubt (Einstellungen wirken sofort)' : 'gesperrt'}
 
-In der App: Anbieter "Eigener Proxy", Endpoint http://127.0.0.1:${config.port}/api/topo
+Die App unter http://127.0.0.1:${config.port}/ findet den Proxy von selbst.
 `);
 });

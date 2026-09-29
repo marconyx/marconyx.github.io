@@ -105,6 +105,7 @@ export function isTopoProviderAvailable() {
   const spec = providerById(settings.providerId);
   if (!settings.endpoint) return false;
   if (spec.needsKey && !settings.apiKey) return false;
+  if (spec.needsKey && badKeyCharacter(settings.apiKey)) return false;
   if (spec.id !== 'proxy' && !settings.model) return false;
   return true;
 }
@@ -115,8 +116,21 @@ export function providerStatusText() {
   const spec = providerById(settings.providerId);
   if (!settings.endpoint) return 'Kein Endpoint hinterlegt.';
   if (spec.needsKey && !settings.apiKey) return 'Kein API-Key hinterlegt.';
+  if (spec.needsKey) {
+    const bad = badKeyCharacter(settings.apiKey);
+    if (bad) return `Der Key enthält ein unzulässiges Zeichen ("${bad}") – vermutlich ein Kopierfehler.`;
+  }
   if (spec.id !== 'proxy' && !settings.model) return 'Kein Modell hinterlegt.';
   return `Bereit: ${spec.label}${settings.model ? ` · ${settings.model}` : ''}`;
+}
+
+/**
+ * HTTP-Header sind auf Latin-1 beschränkt. Wird versehentlich ein Platzhalter
+ * wie "AI_KEY=…" oder ein Text mit Umlauten eingefügt, scheitert der Aufruf
+ * sonst tief in fetch mit einer Meldung, die niemandem weiterhilft.
+ */
+export function badKeyCharacter(key) {
+  return [...String(key || '')].find((char) => char.charCodeAt(0) > 255) || null;
 }
 
 /* -------------------------------------------------------------------- Prompt */
@@ -419,6 +433,75 @@ async function callProxy(image, prompt, { signal, hints }) {
   return typeof data === 'string' ? data : JSON.stringify(data);
 }
 
+/* ------------------------------------------------- Lokaler Proxy (Automatik) */
+
+/**
+ * Der lokale Proxy aus tools/proxy.mjs. Läuft er, kann die App ihn auch dann
+ * verwenden, wenn "OpenAI-kompatibel" eingestellt ist — sie schickt Endpoint,
+ * Modell und Key einfach mit. Das ist der Ausweg aus dem CORS-Problem, ohne dass
+ * der Nutzer den Anbieter umstellen oder den Proxy neu starten muss.
+ */
+export const LOCAL_PROXY_PORT = 8787;
+
+function localProxyBase() {
+  // Wird die App vom Proxy selbst ausgeliefert, ist er per Definition derselbe Origin.
+  if (
+    typeof location !== 'undefined' &&
+    location.port === String(LOCAL_PROXY_PORT) &&
+    /^https?:$/.test(location.protocol)
+  ) {
+    return location.origin;
+  }
+  return `http://127.0.0.1:${LOCAL_PROXY_PORT}`;
+}
+
+let localProxyCache = { checkedAt: 0, info: null };
+
+/**
+ * Prüft, ob der lokale Proxy erreichbar ist. Das Ergebnis wird kurz behalten,
+ * damit nicht jeder Tastendruck in den Einstellungen eine Anfrage auslöst.
+ */
+export async function detectLocalProxy({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && now - localProxyCache.checkedAt < 5000) return localProxyCache.info;
+
+  let info = null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1200);
+    const response = await fetch(`${localProxyBase()}/api/health`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.ok) info = { ...data, base: localProxyBase() };
+    }
+  } catch {
+    /* Nicht erreichbar ist der Normalfall, kein Fehler. */
+  }
+  localProxyCache = { checkedAt: now, info };
+  return info;
+}
+
+/** Ruft den lokalen Proxy mit den aktuellen App-Einstellungen auf. */
+async function callLocalProxy(image, prompt, { signal, hints }) {
+  const response = await fetch(`${localProxyBase()}/api/topo`, {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      image,
+      prompt,
+      hints,
+      endpoint: settings.endpoint,
+      model: settings.model || undefined,
+      apiKey: settings.apiKey || undefined,
+      api: settings.providerId === 'anthropic' ? 'anthropic' : 'openai',
+    }),
+  });
+  const data = await readJson(response);
+  return typeof data === 'string' ? data : JSON.stringify(data);
+}
+
 async function readJson(response) {
   const text = await response.text();
   let parsed = null;
@@ -471,6 +554,7 @@ export async function photoToTopo(image, options = {}) {
   const hints = options.hints || {};
   const prompt = buildPrompt(hints);
   const context = { signal: options.signal, hints };
+  const notify = typeof options.onNotice === 'function' ? options.onNotice : () => {};
 
   let text;
   try {
@@ -481,19 +565,43 @@ export async function photoToTopo(image, options = {}) {
     if (error?.name === 'AbortError') throw error;
     // fetch wirft bei CORS und Netzproblemen denselben nichtssagenden TypeError.
     if (error instanceof TypeError) {
-      const viaProxy = settings.providerId === 'proxy';
-      throw new Error(
-        viaProxy
-          ? `Der Proxy unter ${settings.endpoint} antwortet nicht. Läuft er? Starten mit: AI_KEY=… node tools/proxy.mjs`
-          : `Der Endpoint ist aus dem Browser nicht erreichbar (CORS oder Netzwerk): ${settings.endpoint}. `
-            + 'Firmen-Gateways blockieren den Preflight – dagegen hilft nur ein Proxy: '
-            + 'AI_KEY=… AI_UPSTREAM=' + settings.endpoint + ' node tools/proxy.mjs, '
-            + 'danach Anbieter "Eigener Proxy" wählen.',
-      );
+      text = await recoverViaLocalProxy(image, prompt, context, notify);
+    } else {
+      throw error;
     }
-    throw error;
   }
 
   const report = options.report || [];
   return sanitizeTopoCandidate(extractJsonObject(text), report);
+}
+
+/**
+ * Letzte Rettung, wenn der Direktaufruf am CORS-Preflight scheitert: Läuft der
+ * lokale Proxy, wird der Aufruf still über ihn wiederholt. Der Nutzer muss dafür
+ * nichts umstellen — das ist der Kern der Automatik.
+ */
+async function recoverViaLocalProxy(image, prompt, context, notify) {
+  if (settings.providerId === 'proxy') {
+    throw new Error(
+      `Der Proxy unter ${settings.endpoint} antwortet nicht. Starten mit: npm start`,
+    );
+  }
+
+  const proxy = await detectLocalProxy({ force: true });
+  if (!proxy) {
+    throw new Error(
+      `Der Endpoint ist aus dem Browser nicht erreichbar (CORS oder Netzwerk): ${settings.endpoint}. ` +
+        'Firmen-Gateways blockieren den Preflight. Lokalen Proxy starten mit "npm start", ' +
+        `dann http://127.0.0.1:${LOCAL_PROXY_PORT}/ öffnen — der Rest passiert automatisch.`,
+    );
+  }
+  if (!proxy.acceptsClientConfig) {
+    throw new Error(
+      'Der lokale Proxy nimmt keine Konfiguration aus der App an ' +
+        '(AI_ALLOW_CLIENT_CONFIG=false). Anbieter "Eigener Proxy" wählen.',
+    );
+  }
+
+  notify(`Direktaufruf durch CORS blockiert – nutze den lokalen Proxy auf Port ${LOCAL_PROXY_PORT}.`);
+  return callLocalProxy(image, prompt, context);
 }
