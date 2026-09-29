@@ -74,6 +74,16 @@ export const DEAD_CAPABLE_ELEMENT_TYPES = new Set(['LEAF_TREE', 'CONIFER_TREE'])
 /** Segmenttypen, die Wasser am Grund zeigen. */
 export const WATER_SEGMENT_TYPES = new Set(['POOL', 'WEIR']);
 
+/**
+ * Segmenttypen mit Wanddistanz. Nur beim Abseilen hängt das Seil frei vor der
+ * Wand; bei allen anderen Typen wäre das Feld bedeutungslos.
+ */
+export const WALL_DISTANCE_SEGMENT_TYPES = new Set([
+  'RAPPEL',
+  'RAPPEL_DRY',
+  'RAPPEL_WET',
+]);
+
 const ROOT_KNOWN_KEYS = new Set([
   'canyon_name',
   'author',
@@ -90,6 +100,7 @@ const SEGMENT_KNOWN_KEYS = new Set([
   'length_in_meters',
   'angle_in_degrees',
   'duration_to_walk_in_min',
+  'wall_distance_in_meters',
   'do_not_cut_row_after_this_segment',
   'force_cut_row_after_this_segment',
   'elements',
@@ -184,6 +195,11 @@ export function normalizeSegment(raw) {
     length_in_meters: num(raw?.length_in_meters, defaultLengthFor(type)),
     angle_in_degrees: num(raw?.angle_in_degrees, defaultAngleFor(type)),
     duration_to_walk_in_min: nullableNum(raw?.duration_to_walk_in_min),
+    // Abstand der Wand zum frei hängenden Seil. Nur beim Abseilen sinnvoll und
+    // nie negativ; 0 heisst "Seil liegt an der Wand" (siehe io-json.js).
+    wall_distance_in_meters: WALL_DISTANCE_SEGMENT_TYPES.has(type)
+      ? Math.max(0, num(raw?.wall_distance_in_meters, 0))
+      : 0,
     do_not_cut_row_after_this_segment: bool(
       raw?.do_not_cut_row_after_this_segment,
     ),

@@ -3,6 +3,18 @@
  */
 import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js';
 import { symbolFor, renderUnknownSymbol } from './symbols.js';
+import {
+  PAPER_PRESETS,
+  contentBoundsFor,
+  fitBoundsToPaper,
+  legendEntriesFor,
+  legendMetaLinesFor,
+  legendPanelWidthMeters,
+  legendTitleWidthMeters,
+  paperPreset,
+} from './sheet.js';
+
+export { PAPER_PRESETS };
 
 const esc = (value) =>
   String(value ?? '')
@@ -33,13 +45,8 @@ export const THEMES = {
   },
 };
 
-export const PAPER_PRESETS = {
-  screen: { label: 'Bildschirm (frei)', width: null, height: null },
-  a4_landscape: { label: 'A4 quer', width: 1122, height: 793 },
-  a4_portrait: { label: 'A4 hoch', width: 793, height: 1122 },
-};
+const LEGEND_LINE_HEIGHT = 1.4;
 
-const MARGIN_METERS = 6;
 const POOL_DEPTH_METERS = 2.2;
 const TERRAIN_DEPTH_METERS = 14;
 
@@ -66,6 +73,10 @@ function groundPathFor(row) {
       const midX = (start.x + end.x) / 2;
       const midY = Math.max(start.y, end.y) + POOL_DEPTH_METERS;
       commands.push(`Q ${midX} ${midY} ${end.x} ${end.y}`);
+    } else if (placement.wallBulge) {
+      // Frei hängendes Abseilen: die Wand weicht gerundet zurück.
+      const { control } = placement.wallBulge;
+      commands.push(`Q ${control.x} ${control.y} ${end.x} ${end.y}`);
     } else {
       commands.push(`L ${end.x} ${end.y}`);
     }
@@ -183,32 +194,15 @@ function continuationMarkers(row, layout, theme) {
   return markers.join('');
 }
 
-function legendEntriesFor(topo) {
-  const used = new Set(topo.segments.map((segment) => segment.type));
-  const entries = [];
-  const descriptions = {
-    RAPPEL: 'R = Rappel',
-    RAPPEL_DRY: 'R_d = Rappel (dry)',
-    RAPPEL_WET: 'R_w = Rappel (wet)',
-    JUMP: 'J = Jump',
-    SLIDE: 'S = Slide',
-    CLIMB: 'C = Climb',
-    WEIR: 'W = Weir',
-  };
-  for (const [type, text] of Object.entries(descriptions)) {
-    if (used.has(type)) entries.push(text);
-  }
-  entries.push('(ri) = right', '(le) = left');
-  return entries;
-}
-
 function renderLegend(topo, layout, theme, bounds) {
   const entries = legendEntriesFor(topo);
+  const metaLines = legendMetaLinesFor(topo);
   const right = bounds.maxX - 2;
   const top = bounds.minY + 1 + (topo.legend_offset_top || 0);
-  const titleWidth = 1.08 * topo.canyon_name.length + 2.5;
-  const panelWidth = Math.max(titleWidth, 16);
-  const panelHeight = 6.5 + entries.length * 1.4 + 3;
+  const titleWidth = legendTitleWidthMeters(topo);
+  const panelWidth = legendPanelWidthMeters(topo);
+  const panelHeight =
+    6.5 + (entries.length + metaLines.length) * LEGEND_LINE_HEIGHT + 3;
 
   const parts = [
     `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" opacity="0.92"/>`,
@@ -220,6 +214,15 @@ function renderLegend(topo, layout, theme, bounds) {
     </g>`,
   ];
   let y = top + 5;
+  // Author und Dauer stehen direkt unter dem Titel – nur wenn gefüllt, sonst
+  // bliebe eine leere Beschriftungszeile stehen.
+  for (const line of metaLines) {
+    parts.push(
+      `<text class="topo-legend-meta" data-meta="${line.key}" x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}"><tspan font-weight="700">${esc(line.label)}:</tspan> ${esc(line.value)}</text>`,
+    );
+    y += LEGEND_LINE_HEIGHT;
+  }
+  if (metaLines.length) y += 0.4;
   parts.push(
     `<text x="${right}" y="${y}" font-size="1.1" font-weight="700" text-anchor="end" fill="${theme.text}">Legend:</text>`,
   );
@@ -232,9 +235,9 @@ function renderLegend(topo, layout, theme, bounds) {
     parts.push(
       `<text x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}">${formatted}</text>`,
     );
-    y += 1.4;
+    y += LEGEND_LINE_HEIGHT;
   }
-  y += 1.4;
+  y += LEGEND_LINE_HEIGHT;
   parts.push(
     `<text x="${right}" y="${y}" font-size="1" text-anchor="end" fill="${theme.text}">${esc(topo.date)}</text>`,
   );
@@ -249,20 +252,16 @@ function renderLegend(topo, layout, theme, bounds) {
 export function renderTopoSvg(topo, layout, options = {}) {
   const theme = THEMES[options.theme] || THEMES.color;
 
-  const legendWidthMeters = Math.max(1.08 * topo.canyon_name.length + 2.5, 16) + 4;
-  const bounds = {
-    minX: layout.minX - MARGIN_METERS,
-    maxX:
-      Math.max(layout.maxX, layout.rowWidthLimit) +
-      MARGIN_METERS +
-      legendWidthMeters,
-    minY: -MARGIN_METERS,
-    maxY: layout.height + MARGIN_METERS,
-  };
+  // Aussenmasse aus dem Layout, danach auf das Seitenverhältnis des Formats
+  // gedehnt. Ohne das würde der Inhalt auf A4 verzerrt.
+  const bounds = fitBoundsToPaper(
+    contentBoundsFor(topo, layout),
+    options.paper,
+  );
   const widthMeters = bounds.maxX - bounds.minX;
   const heightMeters = bounds.maxY - bounds.minY;
 
-  const paper = PAPER_PRESETS[options.paper] || PAPER_PRESETS.screen;
+  const paper = paperPreset(options.paper);
   const pxPerMeter = options.pxPerMeter || 16;
   const pixelWidth = paper.width || widthMeters * pxPerMeter;
   const pixelHeight = paper.height || heightMeters * pxPerMeter;

@@ -7,13 +7,15 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
 
 ## Funktionen
 
-- **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen
+- **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
+  bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
 - **Symbole**: 28 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Funk- und Liftmasten, Fluchtwege, Warnungen …)
   per Klick einfügen und im Topo frei verschieben. Ist bereits ein Symbol ausgewählt,
   entsteht das neue an derselben Stelle und direkt dahinter in der Reihenfolge —
   sonst in der Segmentmitte und am Ende.
 - **Layout**: Serpentine (automatischer Zeilenumbruch) oder Linear, Farbe oder Schwarz/Weiß,
-  Bildschirm / A4 quer / A4 hoch
+  Bildschirm / A4 quer / A4 hoch. In der Serpentine bestimmt das Format die nutzbare
+  Zeilenbreite — siehe [Zeilenumbruch](#zeilenumbruch).
 - **Foto-/PDF-Referenz**: Bild **oder PDF** als halbtransparenten Hintergrund einblenden und
   das Topo darüber nachzeichnen (Deckkraft, Größe, Position regelbar). Bei mehrseitigen PDFs
   lässt sich die Seite auswählen.
@@ -89,7 +91,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `duration` | optionale Gesamtdauer als Freitext, z. B. `3-4 h` |
 | `date` | Datum (ISO, `YYYY-MM-DD`) |
 | `maximum_walk_length` | maximale **gezeichnete** Länge eines WALK-Segments in Metern; längere Gehstrecken werden gestaucht und erhalten eine Dauer-Klammer |
-| `distance_of_single_line` | maximale horizontale Breite einer Topo-Zeile in Metern |
+| `distance_of_single_line` | Zeilenbreite in Metern für das Format *Bildschirm*; bei A4 wird die Breite aus dem Format abgeleitet |
 | `legend_offset_top` | vertikaler Versatz der Legende in Metern |
 | `segments` | Liste der Abschnitte, von oben nach unten |
 
@@ -101,8 +103,9 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `length_in_meters` | reale Länge |
 | `angle_in_degrees` | 0 = flach nach rechts, 90 = senkrecht nach unten, > 90 = überhängender Untergrund; bei RAPPEL bleibt der Abseilpfeil senkrecht |
 | `duration_to_walk_in_min` | optionale Gehzeit (wird bei gestauchten WALK-Segmenten angezeigt) |
-| `do_not_cut_row_after_this_segment` | Zeilenumbruch nach diesem Segment unterdrücken |
-| `force_cut_row_after_this_segment` | Zeilenumbruch nach diesem Segment erzwingen |
+| `wall_distance_in_meters` | nur `RAPPEL`, `RAPPEL_DRY`, `RAPPEL_WET`: grösster Abstand zwischen frei hängendem Seil und Wand; 0 = Seil liegt an (siehe [Wanddistanz](#wanddistanz)) |
+| `do_not_cut_row_after_this_segment` | harte Keep-Together-Regel: hält dieses und das folgende Segment in derselben Zeile |
+| `force_cut_row_after_this_segment` | harte Trennstelle: die Zeile endet nach diesem Segment |
 | `elements` | Symbole auf diesem Segment |
 
 ### Element
@@ -139,10 +142,55 @@ an, im Inspektor lässt sich der Zustand über die Checkbox „Abgestorben" umsc
 > einlesbar. Umgekehrt ignoriert Canyon-Explore ein `dead="true"` schlicht, der
 > Baum erscheint dann wieder lebend.
 
+## Zeilenumbruch
+
+Im Layout **Serpentine** verteilt der Generator die Segmente selbständig auf Zeilen.
+
+- **Zielbreite**: Beim Format *Bildschirm* gilt `distance_of_single_line`. Bei *A4 quer*
+  und *A4 hoch* wird die Zeilenbreite gesucht, deren fertiges Blatt (inklusive Rand und
+  Legendenspalte) dem Seitenverhältnis des Formats am nächsten kommt. *A4 hoch* ergibt
+  dadurch schmalere Zeilen und mehr davon als *A4 quer*.
+- **Aufteilung**: Die Zeilen werden per Dynamischer Programmierung gleichmäßig gefüllt
+  (minimale Summe der quadrierten Restbreiten), nicht gierig von links nach rechts und
+  nicht nach einer festen Segmentzahl.
+- **Zeilenumbruch erzwingen** (`force_cut_row_after_this_segment`) trennt hart nach dem
+  Segment — auch wenn die Zeile noch Platz hätte.
+- **Umbruch verhindern** (`do_not_cut_row_after_this_segment`) hält das Segment mit dem
+  folgenden zusammen — auch wenn die Zielbreite dabei überschritten wird. Das Blatt wächst
+  in diesem Fall mit, abgeschnitten wird nichts.
+- **Konflikt**: Sind beide Flags am selben Übergang gesetzt, gewinnt das Erzwingen. Die
+  Oberfläche schließt die Kombination aus (das Setzen der einen Option löscht die andere);
+  ältere Dateien mit beiden Flags bleiben lesbar und werden nach dieser Regel ausgewertet.
+
+Das Layout **Linear** stellt weiterhin alle Segmente in eine einzige Zeile und ignoriert
+Format und Umbruch-Flags.
+
+### Legende
+
+Die Legende zeigt Titel, optional `author` und `duration`, die Abkürzungen der
+verwendeten Segmenttypen sowie das Datum. Leere Werte erzeugen keine Zeile; der
+Legendenkasten und die Blattbreite wachsen mit dem längsten Text, damit nichts überlappt.
+Änderungen an Name, Author und Dauer erscheinen sofort beim Tippen im Topo.
+
 Auch `author` und `duration` sind optionale Erweiterungen. Leere Werte werden
 weder im JSON noch im XML geschrieben, damit ältere Dateien beim Round-Trip
 unverändert bleiben. Beim Import fehlende Werte werden als leere Eingabefelder
 behandelt.
+
+### Wanddistanz
+
+Abseilstellen hängen oft frei vor der Wand. Das Feld `wall_distance_in_meters`
+(Inspector: **Wanddistanz (m)**, nur bei `RAPPEL`, `RAPPEL_DRY`, `RAPPEL_WET`)
+gibt den grössten waagrechten Abstand zwischen Seil und Wand an. Gezeichnet wird
+die Wand dann als gerundeter Überhang: Sie weicht in der Mitte genau um diesen
+Betrag zurück und mündet oben wie unten wieder exakt in die Nachbarsegmente. Der
+Abseilpfeil bleibt dabei senkrecht auf der Seillinie, auch bei Winkeln über 90°.
+
+Die Ausbuchtung geht in die Zeilen- und Blattbreite ein, wird also nie
+abgeschnitten. Der Wert ist nie negativ, und `0` bedeutet „Seil liegt an der
+Wand" – dann wird die Wand wie bisher als Gerade gezeichnet. Nur Werte grösser 0
+werden in JSON/XML geschrieben, ältere Dateien bleiben damit byte-identisch. Ein
+Typwechsel weg vom Abseilen setzt den Wert zurück.
 
 ### XML
 
@@ -380,6 +428,7 @@ src/model.js          Datenmodell, Defaults, Validierung
 src/io-json.js        JSON-Import/-Export (Originalformat)
 src/io-xml.js         XML-Import/-Export
 src/layout.js         Geometrie, Zeilenumbruch, Walk-Stauchung
+src/sheet.js          Formatvorgaben, Legenden- und Blattmasse
 src/symbols.js        SVG-Symbolbibliothek
 src/renderer.js       SVG-Renderer inkl. Terrain und Legende
 src/exporters.js      SVG-/PNG-/Druck-Export

@@ -4,6 +4,7 @@
 import {
   DEAD_CAPABLE_ELEMENT_TYPES,
   SEGMENT_TYPES,
+  WALL_DISTANCE_SEGMENT_TYPES,
   cloneTopo,
   createEmptyTopo,
   createElement,
@@ -137,6 +138,7 @@ function render() {
   // würde das Bild dem Zeiger davonlaufen (siehe layoutTopo, Option `frame`).
   currentLayout = layoutTopo(state.topo, {
     layout: state.view.layout,
+    paper: state.view.paper,
     frame: drag ? drag.frame : null,
   });
   currentSvgText = renderTopoSvg(state.topo, currentLayout, {
@@ -212,10 +214,12 @@ function field(labelText, input, full = false) {
   return label;
 }
 
-function numberInput(value, onChange, step = 1) {
+function numberInput(value, onChange, step = 1, options = {}) {
   const input = document.createElement('input');
   input.type = 'number';
   input.step = String(step);
+  if (options.id) input.id = options.id;
+  if (options.min != null) input.min = String(options.min);
   input.value = value ?? '';
   input.addEventListener('change', () => {
     pushHistory();
@@ -254,9 +258,10 @@ function selectInput(options, value, onChange) {
   return select;
 }
 
-function checkboxInput(value, onChange) {
+function checkboxInput(value, onChange, id) {
   const input = document.createElement('input');
   input.type = 'checkbox';
+  if (id) input.id = id;
   input.checked = !!value;
   input.addEventListener('change', () => {
     pushHistory();
@@ -290,6 +295,11 @@ function renderInspector() {
         'Typ',
         selectInput(SEGMENT_TYPES, segment.type, (value) => {
           segment.type = value;
+          // Die Wanddistanz gibt es nur beim Abseilen – sonst bliebe ein Wert
+          // hängen, den weder UI noch Datei nach dem Laden wieder kennen.
+          if (!WALL_DISTANCE_SEGMENT_TYPES.has(value)) {
+            segment.wall_distance_in_meters = 0;
+          }
         }),
         true,
       ),
@@ -311,17 +321,44 @@ function renderInspector() {
           segment.duration_to_walk_in_min = value;
         }),
       ),
+      ...(WALL_DISTANCE_SEGMENT_TYPES.has(segment.type)
+        ? [
+            field(
+              'Wanddistanz (m)',
+              numberInput(
+                segment.wall_distance_in_meters,
+                (value) => {
+                  segment.wall_distance_in_meters = Math.max(0, value ?? 0);
+                },
+                0.5,
+                { id: 'segment-wall-distance', min: 0 },
+              ),
+            ),
+          ]
+        : []),
       field(
         'Zeilenumbruch erzwingen',
-        checkboxInput(segment.force_cut_row_after_this_segment, (value) => {
-          segment.force_cut_row_after_this_segment = value;
-        }),
+        checkboxInput(
+          segment.force_cut_row_after_this_segment,
+          (value) => {
+            segment.force_cut_row_after_this_segment = value;
+            // Beides zusammen wäre widersprüchlich. Die Layout-Engine gibt dem
+            // Erzwingen den Vorrang; die UI macht das direkt sichtbar.
+            if (value) segment.do_not_cut_row_after_this_segment = false;
+          },
+          'segment-force-cut',
+        ),
       ),
       field(
         'Umbruch verhindern',
-        checkboxInput(segment.do_not_cut_row_after_this_segment, (value) => {
-          segment.do_not_cut_row_after_this_segment = value;
-        }),
+        checkboxInput(
+          segment.do_not_cut_row_after_this_segment,
+          (value) => {
+            segment.do_not_cut_row_after_this_segment = value;
+            if (value) segment.force_cut_row_after_this_segment = false;
+          },
+          'segment-prevent-cut',
+        ),
       ),
     );
     host.appendChild(grid);
@@ -818,6 +855,13 @@ async function loadExample() {
 
 /* ---------------------------------------------------------------- Bindings */
 
+/**
+ * Kopffelder binden. `input` statt `change`: Name, Author und Dauer stehen in
+ * der Legende und sollen beim Tippen sofort im Topo erscheinen, ohne dass das
+ * Feld erst verlassen werden muss. Für die Undo-Historie zählt trotzdem die
+ * ganze Eingabe als ein Schritt – sonst läge nach dem Tippen für jeden
+ * Buchstaben ein Eintrag im Stapel.
+ */
 function bindTopoFields() {
   const bindings = [
     ['topo-name', 'canyon_name', (value) => value],
@@ -829,9 +873,27 @@ function bindTopoFields() {
     ['topo-legend-offset', 'legend_offset_top', Number],
   ];
   for (const [id, key, transform] of bindings) {
-    $(id).addEventListener('change', (event) => {
-      pushHistory();
+    const input = $(id);
+    let valueBeforeEdit;
+
+    input.addEventListener('input', (event) => {
+      if (valueBeforeEdit === undefined) valueBeforeEdit = state.topo[key];
       state.topo[key] = transform(event.target.value);
+      render();
+    });
+
+    input.addEventListener('change', (event) => {
+      const next = transform(event.target.value);
+      if (valueBeforeEdit !== undefined && valueBeforeEdit !== next) {
+        const edited = state.topo[key];
+        state.topo[key] = valueBeforeEdit;
+        pushHistory();
+        state.topo[key] = edited;
+      } else if (valueBeforeEdit === undefined && state.topo[key] !== next) {
+        pushHistory();
+      }
+      valueBeforeEdit = undefined;
+      state.topo[key] = next;
       render();
     });
   }

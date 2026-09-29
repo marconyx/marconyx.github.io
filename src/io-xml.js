@@ -75,6 +75,14 @@ export function topoToXml(topo) {
       ['type', segment.type],
       ...SEGMENT_NUMBER_FIELDS.map((field) => [field, segment[field]]),
       ['duration_to_walk_in_min', segment.duration_to_walk_in_min],
+      // Wie im JSON nur bei gesetztem Wert, damit bestehende Dateien
+      // byte-identisch bleiben.
+      [
+        'wall_distance_in_meters',
+        segment.wall_distance_in_meters > 0
+          ? segment.wall_distance_in_meters
+          : null,
+      ],
       ...SEGMENT_BOOL_FIELDS.map((field) => [field, segment[field]]),
       ...extraAttr(segment),
     ]);
@@ -170,6 +178,11 @@ export function topoFromXml(xml) {
         tag.attributes.duration_to_walk_in_min === undefined
           ? null
           : Number(tag.attributes.duration_to_walk_in_min);
+      if (tag.attributes.wall_distance_in_meters !== undefined) {
+        currentSegment.wall_distance_in_meters = Number(
+          tag.attributes.wall_distance_in_meters,
+        );
+      }
       for (const field of SEGMENT_BOOL_FIELDS) {
         currentSegment[field] = tag.attributes[field] === 'true';
       }

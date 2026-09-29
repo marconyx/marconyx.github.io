@@ -1,0 +1,577 @@
+/**
+ * Serpentine-Layout, Formatwahl, Umbruchregeln und Legende:
+ *   node test/layout.test.mjs
+ */
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+import { normalizeTopo } from '../src/model.js';
+import { topoFromJson, topoToJsonObject } from '../src/io-json.js';
+import { topoFromXml, topoToXml } from '../src/io-xml.js';
+import { layoutTopo, rowBreakRulesFor } from '../src/layout.js';
+import { renderTopoSvg } from '../src/renderer.js';
+import {
+  contentBoundsFor,
+  fitBoundsToPaper,
+  legendMetaTextsFor,
+  paperAspectRatio,
+  PAPER_PRESETS,
+} from '../src/sheet.js';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const example = JSON.parse(
+  readFileSync(join(here, '..', 'examples', 'my-canyon-inferiore.json'), 'utf8'),
+);
+
+let passed = 0;
+function test(name, fn) {
+  try {
+    fn();
+    passed += 1;
+    console.log(`  ok  ${name}`);
+  } catch (error) {
+    console.error(`  FAIL ${name}\n       ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+
+console.log('Serpentine-Layout Tests');
+
+/** Flaches Topo aus gleich langen Gehstücken – die Zeilenbreite ist damit exakt vorhersagbar. */
+function flatTopo(count, lengthInMeters = 10, overrides = {}) {
+  return normalizeTopo({
+    canyon_name: 'Test',
+    maximum_walk_length: 1000,
+    distance_of_single_line: 60,
+    segments: Array.from({ length: count }, (_, index) => ({
+      type: 'POOL',
+      length_in_meters: lengthInMeters,
+      angle_in_degrees: 0,
+      ...(overrides[index] || {}),
+    })),
+  });
+}
+
+function rowWidths(layout) {
+  return layout.rows.map((row) => row.maxX - row.minX);
+}
+
+function rowSegments(layout) {
+  return layout.rows.map((row) => row.placements.map((p) => p.index));
+}
+
+/* ------------------------------------------------ automatische Aufteilung */
+
+test('Serpentine teilt automatisch auf und hält die Zielbreite ein', () => {
+  const topo = flatTopo(12, 10); // 120 m Gesamtbreite, Ziel 60 m
+  const layout = layoutTopo(topo);
+  assert.equal(layout.rowWidthLimit, 60);
+  assert.ok(layout.rows.length > 1, 'mehr als eine Zeile erwartet');
+  for (const width of rowWidths(layout)) {
+    assert.ok(width <= 60 + 1e-9, `Zeile zu breit: ${width}`);
+  }
+  assert.deepEqual(rowSegments(layout), [
+    [0, 1, 2, 3, 4, 5],
+    [6, 7, 8, 9, 10, 11],
+  ]);
+});
+
+test('die Aufteilung folgt der Breite, nicht einer festen Segmentzahl', () => {
+  // Gleiche Segmentzahl, doppelte Länge: es muss doppelt so viele Zeilen geben.
+  const narrow = layoutTopo(flatTopo(12, 20));
+  const wide = layoutTopo(flatTopo(12, 10));
+  assert.ok(
+    narrow.rows.length > wide.rows.length,
+    'längere Segmente müssen mehr Zeilen ergeben',
+  );
+  assert.deepEqual(rowSegments(narrow), [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [9, 10, 11],
+  ]);
+});
+
+test('die Zeilen werden ausgeglichen gefüllt statt gierig', () => {
+  // 7 x 10 m bei 30 m Ziel: gierig ergäbe 3/3/1, ausgeglichen 3/2/2.
+  const layout = layoutTopo(
+    normalizeTopo({
+      distance_of_single_line: 30,
+      maximum_walk_length: 1000,
+      segments: Array.from({ length: 7 }, () => ({
+        type: 'POOL',
+        length_in_meters: 10,
+        angle_in_degrees: 0,
+      })),
+    }),
+  );
+  const sizes = rowSegments(layout).map((row) => row.length);
+  assert.equal(sizes.reduce((a, b) => a + b, 0), 7);
+  assert.ok(
+    Math.max(...sizes) - Math.min(...sizes) <= 1,
+    `Zeilen unausgeglichen: ${sizes.join('/')}`,
+  );
+});
+
+test('jede Zeile startet links und läuft nach rechts', () => {
+  const layout = layoutTopo(flatTopo(12, 10));
+  for (const row of layout.rows) {
+    assert.equal(row.placements[0].start.x, 0, 'Zeilenanfang muss bei x=0 liegen');
+    const last = row.placements[row.placements.length - 1];
+    assert.ok(last.end.x > row.placements[0].start.x);
+  }
+});
+
+/* ---------------------------------------------------------------- Formate */
+
+test('alle drei Formate ergeben sinnvolle, unterschiedliche Zeileneinteilungen', () => {
+  const topo = normalizeTopo(example);
+  const byPaper = {};
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    byPaper[paper] = layoutTopo(topo, { paper });
+  }
+
+  assert.equal(byPaper.screen.rowWidthLimit, topo.distance_of_single_line);
+  assert.notDeepEqual(
+    byPaper.a4_portrait.rowAssignment,
+    byPaper.a4_landscape.rowAssignment,
+    'A4 hoch und A4 quer müssen sich unterscheiden',
+  );
+  assert.ok(
+    byPaper.a4_portrait.rowWidthLimit < byPaper.a4_landscape.rowWidthLimit,
+    'A4 hoch muss schmalere Zeilen erzeugen als A4 quer',
+  );
+  assert.ok(
+    byPaper.a4_portrait.rows.length > byPaper.a4_landscape.rows.length,
+    'A4 hoch muss mehr Zeilen erzeugen als A4 quer',
+  );
+  for (const [paper, layout] of Object.entries(byPaper)) {
+    assert.equal(
+      layout.placements.length,
+      topo.segments.length,
+      `${paper}: jedes Segment muss platziert sein`,
+    );
+  }
+});
+
+test('A4-Layouts treffen das Seitenverhältnis des Formats besser als die Rohbreite', () => {
+  const topo = normalizeTopo(example);
+  const deviation = (layout) => {
+    const bounds = contentBoundsFor(topo, layout);
+    const ratio =
+      (bounds.maxX - bounds.minX) / (bounds.maxY - bounds.minY);
+    return Math.abs(Math.log(ratio / paperAspectRatio('a4_landscape')));
+  };
+  assert.ok(
+    deviation(layoutTopo(topo, { paper: 'a4_landscape' })) <
+      deviation(layoutTopo(topo, { paper: 'screen' })),
+    'A4 quer muss das Format besser ausnutzen als die reine Bildschirmbreite',
+  );
+});
+
+test('das gerenderte SVG hat exakt das Seitenverhältnis des Formats', () => {
+  const topo = normalizeTopo(example);
+  for (const paper of ['a4_landscape', 'a4_portrait']) {
+    const svg = renderTopoSvg(topo, layoutTopo(topo, { paper }), { paper });
+    const viewBox = /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
+    const preset = PAPER_PRESETS[paper];
+    assert.equal(
+      Math.round((viewBox[2] / viewBox[3]) * 1000),
+      Math.round((preset.width / preset.height) * 1000),
+      `${paper}: viewBox muss zum Pixelmass passen (sonst verzerrt)`,
+    );
+    assert.equal(Number(/ width="(\d+)"/.exec(svg)[1]), preset.width);
+    assert.equal(Number(/ height="(\d+)"/.exec(svg)[1]), preset.height);
+  }
+});
+
+test('das freie Bildschirmformat bleibt ungedehnt', () => {
+  const topo = normalizeTopo(example);
+  const layout = layoutTopo(topo, { paper: 'screen' });
+  assert.deepEqual(
+    fitBoundsToPaper(contentBoundsFor(topo, layout), 'screen'),
+    contentBoundsFor(topo, layout),
+  );
+});
+
+/* ------------------------------------------------------ Umbruch erzwingen */
+
+test('Zeilenumbruch erzwingen trennt auch bei reichlich Platz', () => {
+  const topo = flatTopo(4, 10, {
+    1: { force_cut_row_after_this_segment: true },
+  });
+  const layout = layoutTopo(topo);
+  assert.deepEqual(rowSegments(layout), [
+    [0, 1],
+    [2, 3],
+  ]);
+  // Ohne das Flag stünde alles in einer Zeile.
+  assert.deepEqual(rowSegments(layoutTopo(flatTopo(4, 10))), [[0, 1, 2, 3]]);
+});
+
+test('mehrere erzwungene Trennstellen ergeben mehrere kurze Zeilen', () => {
+  const topo = flatTopo(5, 5, {
+    0: { force_cut_row_after_this_segment: true },
+    2: { force_cut_row_after_this_segment: true },
+  });
+  assert.deepEqual(rowSegments(layoutTopo(topo)), [[0], [1, 2], [3, 4]]);
+});
+
+test('ein erzwungener Umbruch am letzten Segment erzeugt keine leere Zeile', () => {
+  const topo = flatTopo(3, 5, {
+    2: { force_cut_row_after_this_segment: true },
+  });
+  const layout = layoutTopo(topo);
+  assert.equal(layout.rows.length, 1);
+  assert.ok(layout.rows.every((row) => row.placements.length > 0));
+});
+
+/* ----------------------------------------------------- Umbruch verhindern */
+
+test('Umbruch verhindern hält Segmente auch über die Zielbreite hinaus zusammen', () => {
+  const topo = flatTopo(4, 20, {
+    1: { do_not_cut_row_after_this_segment: true },
+  }); // Ziel 60 m, ohne Flag: 3 + 1
+  const layout = layoutTopo(topo);
+  const rows = rowSegments(layout);
+  const rowOf = (index) => rows.findIndex((row) => row.includes(index));
+  assert.equal(rowOf(1), rowOf(2), 'Segment 2 und 3 müssen zusammenbleiben');
+});
+
+test('eine Keep-Together-Kette sprengt die Zielbreite, ohne etwas abzuschneiden', () => {
+  const topo = flatTopo(5, 30, {
+    0: { do_not_cut_row_after_this_segment: true },
+    1: { do_not_cut_row_after_this_segment: true },
+    2: { do_not_cut_row_after_this_segment: true },
+  }); // 0..3 zusammen = 120 m bei Ziel 60 m
+  const layout = layoutTopo(topo);
+  assert.deepEqual(rowSegments(layout), [[0, 1, 2, 3], [4]]);
+
+  const widest = Math.max(...rowWidths(layout));
+  assert.ok(widest > layout.rowWidthLimit, 'die Zeile muss überbreit sein');
+  assert.ok(
+    layout.width >= widest,
+    'das Blatt muss die überbreite Zeile aufnehmen',
+  );
+
+  const bounds = contentBoundsFor(topo, layout);
+  assert.ok(
+    bounds.maxX > widest,
+    'die Aussenmasse müssen die Überbreite enthalten',
+  );
+  const svg = renderTopoSvg(topo, layout);
+  const viewBox = /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
+  assert.ok(
+    viewBox[0] + viewBox[2] >= widest,
+    'die viewBox darf die überbreite Zeile nicht abschneiden',
+  );
+});
+
+test('Verhindern wirkt auch dort, wo sonst automatisch umgebrochen würde', () => {
+  const plain = layoutTopo(flatTopo(6, 15));
+  const breakAfter = plain.rowAssignment.findIndex(
+    (row, index) => index > 0 && row !== plain.rowAssignment[index - 1],
+  );
+  assert.ok(breakAfter > 0, 'Vorbedingung: es muss automatisch umgebrochen werden');
+
+  const kept = layoutTopo(
+    flatTopo(6, 15, {
+      [breakAfter - 1]: { do_not_cut_row_after_this_segment: true },
+    }),
+  );
+  assert.equal(
+    kept.rowAssignment[breakAfter - 1],
+    kept.rowAssignment[breakAfter],
+    'der markierte Übergang darf nicht mehr umbrechen',
+  );
+});
+
+/* -------------------------------------------------------------- Konflikte */
+
+test('Konflikt am selben Übergang: Erzwingen schlägt Verhindern', () => {
+  const { forced, keepTogether } = rowBreakRulesFor([
+    {
+      force_cut_row_after_this_segment: true,
+      do_not_cut_row_after_this_segment: true,
+    },
+    {},
+  ]);
+  assert.equal(forced[0], true);
+  assert.equal(keepTogether[0], false);
+
+  const topo = flatTopo(4, 10, {
+    1: {
+      force_cut_row_after_this_segment: true,
+      do_not_cut_row_after_this_segment: true,
+    },
+  });
+  assert.deepEqual(rowSegments(layoutTopo(topo)), [
+    [0, 1],
+    [2, 3],
+  ]);
+});
+
+test('benachbarte Flags gelten beide: Verhindern davor, Erzwingen danach', () => {
+  const topo = flatTopo(5, 10, {
+    1: { do_not_cut_row_after_this_segment: true },
+    2: { force_cut_row_after_this_segment: true },
+  });
+  assert.deepEqual(rowSegments(layoutTopo(topo)), [
+    [0, 1, 2],
+    [3, 4],
+  ]);
+});
+
+test('Erzwingen bricht eine Keep-Together-Kette genau an der markierten Stelle', () => {
+  const topo = flatTopo(6, 10, {
+    0: { do_not_cut_row_after_this_segment: true },
+    1: { do_not_cut_row_after_this_segment: true },
+    2: {
+      do_not_cut_row_after_this_segment: true,
+      force_cut_row_after_this_segment: true,
+    },
+    3: { do_not_cut_row_after_this_segment: true },
+  });
+  assert.deepEqual(rowSegments(layoutTopo(topo)), [
+    [0, 1, 2],
+    [3, 4, 5],
+  ]);
+});
+
+/* ------------------------------------------------------ Kompatibilität/IO */
+
+test('die Umbruch-Flags überleben JSON und XML unverändert', () => {
+  const topo = flatTopo(3, 10, {
+    0: { force_cut_row_after_this_segment: true },
+    1: { do_not_cut_row_after_this_segment: true },
+  });
+  const json = topoToJsonObject(topo);
+  assert.equal(json.segments[0].force_cut_row_after_this_segment, true);
+  assert.equal(json.segments[1].do_not_cut_row_after_this_segment, true);
+
+  for (const back of [
+    topoFromJson(JSON.stringify(json)),
+    topoFromXml(topoToXml(topo)),
+  ]) {
+    assert.deepEqual(
+      back.segments.map((s) => [
+        s.force_cut_row_after_this_segment,
+        s.do_not_cut_row_after_this_segment,
+      ]),
+      topo.segments.map((s) => [
+        s.force_cut_row_after_this_segment,
+        s.do_not_cut_row_after_this_segment,
+      ]),
+    );
+    assert.deepEqual(rowSegments(layoutTopo(back)), rowSegments(layoutTopo(topo)));
+  }
+});
+
+test('alte Dateien mit widersprüchlichen Flags bleiben lesbar', () => {
+  const legacy = topoFromJson(
+    JSON.stringify({
+      canyon_name: 'Legacy',
+      distance_of_single_line: 60,
+      maximum_walk_length: 1000,
+      segments: [
+        { type: 'POOL', length_in_meters: 10, angle_in_degrees: 0 },
+        {
+          type: 'POOL',
+          length_in_meters: 10,
+          angle_in_degrees: 0,
+          force_cut_row_after_this_segment: 'true',
+          do_not_cut_row_after_this_segment: 'true',
+        },
+        { type: 'POOL', length_in_meters: 10, angle_in_degrees: 0 },
+      ],
+    }),
+  );
+  assert.equal(legacy.segments[1].force_cut_row_after_this_segment, true);
+  assert.equal(legacy.segments[1].do_not_cut_row_after_this_segment, true);
+  assert.deepEqual(rowSegments(layoutTopo(legacy)), [[0, 1], [2]]);
+});
+
+/* ------------------------------------------------------ Linear unverändert */
+
+test('Linear bleibt eine Zeile – auch mit Flags und Formatwahl', () => {
+  const topo = flatTopo(8, 25, {
+    1: { force_cut_row_after_this_segment: true },
+    3: { do_not_cut_row_after_this_segment: true },
+  });
+  const reference = layoutTopo(topo, { layout: 'linear' });
+  assert.equal(reference.rows.length, 1);
+  assert.equal(reference.rowWidthLimit, Number.POSITIVE_INFINITY);
+  assert.deepEqual(reference.rowAssignment, new Array(8).fill(0));
+  // Segmente liegen lückenlos hintereinander.
+  reference.placements.forEach((placement, index) => {
+    assert.equal(placement.start.x, index * 25);
+  });
+
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const layout = layoutTopo(topo, { layout: 'linear', paper });
+    assert.deepEqual(
+      layout.placements.map((p) => [p.start.x, p.start.y, p.end.x, p.end.y]),
+      reference.placements.map((p) => [p.start.x, p.start.y, p.end.x, p.end.y]),
+      `${paper}: Linear darf sich vom Format nicht beeinflussen lassen`,
+    );
+  }
+});
+
+test('Linear rendert ohne unendliche Aussenmasse', () => {
+  const topo = normalizeTopo(example);
+  const layout = layoutTopo(topo, { layout: 'linear' });
+  const bounds = contentBoundsFor(topo, layout);
+  assert.ok(Number.isFinite(bounds.maxX), 'maxX muss endlich sein');
+  const svg = renderTopoSvg(topo, layout);
+  assert.ok(!svg.includes('Infinity'), 'kein Infinity im SVG');
+  assert.ok(svg.startsWith('<svg') && svg.includes('</svg>'));
+});
+
+/* ------------------------------------------ Symbole, Überhang, Drag-Rahmen */
+
+test('Überhänge und Rappel-Geometrie bleiben in jedem Format gleich', () => {
+  const topo = normalizeTopo({
+    distance_of_single_line: 40,
+    maximum_walk_length: 1000,
+    segments: [
+      { type: 'WALK', length_in_meters: 20, angle_in_degrees: 0 },
+      { type: 'RAPPEL', length_in_meters: 12, angle_in_degrees: 135 },
+      { type: 'WALK', length_in_meters: 20, angle_in_degrees: 0 },
+    ],
+  });
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const layout = layoutTopo(topo, { paper });
+    const rappel = layout.placements[1];
+    assert.ok(rappel.end.x < rappel.start.x, `${paper}: Überhang läuft zurück`);
+    assert.equal(
+      Math.round(rappel.end.y - rappel.start.y),
+      Math.round(Math.sin((135 * Math.PI) / 180) * 12),
+    );
+    const svg = renderTopoSvg(topo, layout, { paper });
+    assert.ok(svg.includes('marker-end="url(#topo-arrow)"'));
+  }
+});
+
+test('Symbole bleiben relativ zu ihrem Segment verankert', () => {
+  const topo = normalizeTopo({
+    distance_of_single_line: 30,
+    maximum_walk_length: 1000,
+    segments: Array.from({ length: 6 }, () => ({
+      type: 'POOL',
+      length_in_meters: 10,
+      angle_in_degrees: 0,
+      elements: [
+        {
+          type: 'STONE',
+          horizontal_start_rel_to_segment_start: 4,
+          vertical_start_rel_to_segment_start: 2,
+        },
+      ],
+    })),
+  });
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const layout = layoutTopo(topo, { paper });
+    for (const placement of layout.placements) {
+      const placed = placement.elements[0];
+      assert.equal(placed.point.x - placement.start.x, 4);
+      assert.equal(placed.point.y - placement.start.y, -2);
+    }
+  }
+});
+
+test('Der Drag-Rahmen friert die Zeilenaufteilung ein', () => {
+  const topo = normalizeTopo(example);
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const frame = layoutTopo(topo, { paper });
+    const element = topo.segments[0].elements[0];
+    const before = { ...element };
+    element.horizontal_start_rel_to_segment_start = 400;
+    element.vertical_start_rel_to_segment_start = -300;
+    const dragged = layoutTopo(topo, { paper, frame });
+    assert.deepEqual(
+      dragged.rowAssignment,
+      frame.rowAssignment,
+      `${paper}: die Zeilenaufteilung darf beim Ziehen nicht springen`,
+    );
+    assert.equal(dragged.rowWidthLimit, frame.rowWidthLimit);
+    assert.ok(dragged.width >= frame.width);
+    Object.assign(element, before);
+  }
+});
+
+/* ---------------------------------------------------------------- Legende */
+
+test('Author und Dauer stehen in der Legende', () => {
+  const topo = normalizeTopo({
+    ...example,
+    author: 'Marco & Team',
+    duration: 'ca. 4 h',
+  });
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  assert.ok(svg.includes('Author:'), 'Author-Beschriftung fehlt');
+  assert.ok(svg.includes('Marco &amp; Team'), 'Author-Wert fehlt/unescaped');
+  assert.ok(svg.includes('Dauer:'), 'Dauer-Beschriftung fehlt');
+  assert.ok(svg.includes('ca. 4 h'), 'Dauer-Wert fehlt');
+  assert.ok(svg.includes(topo.canyon_name));
+});
+
+test('leere Metadaten erzeugen keine leeren Legendenzeilen', () => {
+  const topo = normalizeTopo({ ...example, author: '   ', duration: '' });
+  assert.deepEqual(legendMetaTextsFor(topo), []);
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  assert.ok(!svg.includes('Author:'));
+  assert.ok(!svg.includes('Dauer:'));
+  assert.ok(!svg.includes('data-meta='));
+});
+
+test('nur ein gefülltes Feld ergibt genau eine Zusatzzeile', () => {
+  const topo = normalizeTopo({ ...example, author: 'Solo', duration: '' });
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  assert.equal((svg.match(/data-meta="/g) || []).length, 1);
+  assert.ok(svg.includes('data-meta="author"'));
+});
+
+test('lange Metadaten verbreitern die Legende, statt sich zu überlappen', () => {
+  const plain = normalizeTopo({ ...example, author: '', duration: '' });
+  const rich = normalizeTopo({
+    ...example,
+    author: 'Eine ausgesprochen lange Autorenangabe mit Team',
+    duration: 'ungefähr fünfeinhalb bis sechs Stunden',
+  });
+  const widthOf = (topo) => {
+    const layout = layoutTopo(topo);
+    const bounds = contentBoundsFor(topo, layout);
+    return bounds.maxX - bounds.minX;
+  };
+  assert.ok(widthOf(rich) > widthOf(plain), 'die Legendenspalte muss mitwachsen');
+
+  // Die Legende darf nicht in das Topo hineinragen.
+  const layout = layoutTopo(rich);
+  const bounds = contentBoundsFor(rich, layout);
+  const svg = renderTopoSvg(rich, layout);
+  const panel = /<rect x="([-\d.]+)" y="[-\d.]+" width="([\d.]+)"[^>]*opacity="0.92"/.exec(
+    svg,
+  );
+  assert.ok(panel, 'Legendenkasten fehlt');
+  const panelLeft = Number(panel[1]);
+  const drawingRight = Math.max(layout.maxX, layout.rowWidthLimit);
+  assert.ok(
+    panelLeft >= drawingRight,
+    `Legende (${panelLeft}) überlappt das Topo (${drawingRight})`,
+  );
+  assert.ok(Number(panel[1]) + Number(panel[2]) <= bounds.maxX);
+});
+
+test('Metadaten wirken sich sofort auf das nächste Rendering aus', () => {
+  const topo = normalizeTopo({ ...example, author: '', duration: '' });
+  const before = renderTopoSvg(topo, layoutTopo(topo));
+  assert.ok(!before.includes('data-meta="duration"'));
+  topo.duration = '3 h';
+  const after = renderTopoSvg(topo, layoutTopo(topo));
+  assert.ok(after.includes('data-meta="duration"'));
+  assert.ok(after.includes('3 h'));
+});
+
+console.log(`\n${passed} Test(s) bestanden.`);

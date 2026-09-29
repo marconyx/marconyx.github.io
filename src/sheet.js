@@ -1,0 +1,172 @@
+/**
+ * Blattgeometrie: Formatvorgaben, Legendenmasse und Aussenmasse des Topos.
+ *
+ * Bewusst eigenes Modul, weil sowohl die Layout-Engine (`layout.js`) als auch
+ * der Renderer (`renderer.js`) dieselben Masse brauchen: Die Layout-Engine muss
+ * wissen, wie breit eine Zeile im gewählten Format sein darf, und dafür zählt
+ * das fertige Blatt inklusive Rand und Legende – nicht nur die nackte Zeile.
+ */
+
+/** Zielformate. `width`/`height` in Pixeln (A4 bei 96 dpi), `null` = frei. */
+export const PAPER_PRESETS = {
+  screen: { label: 'Bildschirm (frei)', width: null, height: null },
+  a4_landscape: { label: 'A4 quer', width: 1122, height: 793 },
+  a4_portrait: { label: 'A4 hoch', width: 793, height: 1122 },
+};
+
+export function paperPreset(key) {
+  return PAPER_PRESETS[key] || PAPER_PRESETS.screen;
+}
+
+/** Seitenverhältnis Breite/Höhe, oder `null` für das freie Bildschirmformat. */
+export function paperAspectRatio(key) {
+  const paper = paperPreset(key);
+  if (!paper.width || !paper.height) return null;
+  return paper.width / paper.height;
+}
+
+export const MARGIN_METERS = 6;
+
+const LEGEND_TITLE_CHAR_METERS = 1.08;
+const LEGEND_ENTRY_CHAR_METERS = 0.55;
+const LEGEND_MIN_WIDTH_METERS = 16;
+const LEGEND_GAP_METERS = 4;
+
+const SEGMENT_LEGEND_TEXTS = {
+  RAPPEL: 'R = Rappel',
+  RAPPEL_DRY: 'R_d = Rappel (dry)',
+  RAPPEL_WET: 'R_w = Rappel (wet)',
+  JUMP: 'J = Jump',
+  SLIDE: 'S = Slide',
+  CLIMB: 'C = Climb',
+  WEIR: 'W = Weir',
+};
+
+/** Abkürzungserklärungen der tatsächlich verwendeten Segmenttypen. */
+export function legendEntriesFor(topo) {
+  const used = new Set((topo.segments || []).map((segment) => segment.type));
+  const entries = [];
+  for (const [type, text] of Object.entries(SEGMENT_LEGEND_TEXTS)) {
+    if (used.has(type)) entries.push(text);
+  }
+  entries.push('(ri) = right', '(le) = left');
+  return entries;
+}
+
+function trimmed(value) {
+  return value == null ? '' : String(value).trim();
+}
+
+/**
+ * Kopfdaten der Legende: Author und Dauer, jeweils nur wenn gefüllt.
+ * Leere Felder dürfen keine leere Beschriftungszeile erzeugen.
+ */
+export function legendMetaLinesFor(topo) {
+  const lines = [];
+  const author = trimmed(topo?.author);
+  if (author) lines.push({ key: 'author', label: 'Author', value: author });
+  const duration = trimmed(topo?.duration);
+  if (duration) lines.push({ key: 'duration', label: 'Dauer', value: duration });
+  return lines;
+}
+
+export function legendMetaTextsFor(topo) {
+  return legendMetaLinesFor(topo).map((line) => `${line.label}: ${line.value}`);
+}
+
+export function legendTitleWidthMeters(topo) {
+  return LEGEND_TITLE_CHAR_METERS * String(topo?.canyon_name ?? '').length + 2.5;
+}
+
+/**
+ * Breite des Legendenkastens. Wächst mit dem längsten Text, damit Author und
+ * Dauer nicht über den Rand oder ins Topo hinauslaufen.
+ */
+export function legendPanelWidthMeters(topo) {
+  const texts = [
+    ...legendEntriesFor(topo),
+    ...legendMetaTextsFor(topo),
+    String(topo?.date ?? ''),
+  ];
+  const longest = texts.reduce(
+    (max, text) => Math.max(max, LEGEND_ENTRY_CHAR_METERS * text.length + 1.5),
+    0,
+  );
+  return Math.max(
+    legendTitleWidthMeters(topo),
+    LEGEND_MIN_WIDTH_METERS,
+    longest,
+  );
+}
+
+/** Platz, den die Legende rechts neben dem Topo beansprucht. */
+export function legendReservedWidthMeters(topo) {
+  return legendPanelWidthMeters(topo) + LEGEND_GAP_METERS;
+}
+
+/** Rechte Zeichenkante des Topos ohne Legende (Linear hat keine Zeilengrenze). */
+export function drawingRightEdge(layout) {
+  return Number.isFinite(layout.rowWidthLimit)
+    ? Math.max(layout.maxX, layout.rowWidthLimit)
+    : layout.maxX;
+}
+
+/** Aussenmasse des Blatts in Metern, inkl. Rand und Legendenspalte. */
+export function contentBoundsFor(topo, layout) {
+  return {
+    minX: layout.minX - MARGIN_METERS,
+    maxX:
+      drawingRightEdge(layout) + MARGIN_METERS + legendReservedWidthMeters(topo),
+    minY: -MARGIN_METERS,
+    maxY: layout.height + MARGIN_METERS,
+  };
+}
+
+/**
+ * Dehnt die Aussenmasse auf das Seitenverhältnis des Formats – nach rechts bzw.
+ * unten, damit sich nichts verschiebt. Ohne das würde der Inhalt beim Export
+ * auf A4 verzerrt, weil viewBox und Pixelmass unterschiedliche Verhältnisse
+ * hätten.
+ */
+export function fitBoundsToPaper(bounds, paperKey) {
+  const aspect = paperAspectRatio(paperKey);
+  if (!aspect) return { ...bounds };
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+  if (width <= 0 || height <= 0) return { ...bounds };
+  if (width / height < aspect) {
+    return { ...bounds, maxX: bounds.minX + height * aspect };
+  }
+  return { ...bounds, maxY: bounds.minY + width / aspect };
+}
+
+/**
+ * Wandverlauf eines Abseilers, der frei vor der Wand hängt.
+ *
+ * `wall_distance_in_meters` ist der grösste waagrechte Abstand zwischen Seil
+ * (Gerade Start→Ende) und Wand. Die Wand weicht nach hinten aus – also entgegen
+ * der Seilseite, auf der auch der Pfeil sitzt – und mündet oben wie unten
+ * wieder exakt in den Nachbarsegmenten. Gezeichnet wird eine quadratische
+ * Bézier-Kurve: Legt man den Kontrollpunkt auf die doppelte Auslenkung, ist die
+ * maximale Abweichung der Kurve exakt die Wanddistanz.
+ *
+ * Bewusst hier und nicht im Renderer, weil die Layout-Engine denselben
+ * Extrempunkt braucht: Ohne ihn liefe die Wand über den Blattrand hinaus.
+ */
+export function wallBulgeFor(placement) {
+  const distance = placement?.segment?.wall_distance_in_meters || 0;
+  if (!(distance > 0)) return null;
+  const { start, end, dir } = placement;
+  // Normale zur Laufrichtung, zeigt von der Seilseite weg in die Wand hinein.
+  const normal = { x: -dir.y, y: dir.x };
+  const midX = (start.x + end.x) / 2;
+  const midY = (start.y + end.y) / 2;
+  return {
+    distance,
+    normal,
+    // Kontrollpunkt der Bézier-Kurve (doppelte Auslenkung).
+    control: { x: midX + normal.x * 2 * distance, y: midY + normal.y * 2 * distance },
+    // Tatsächlicher Scheitel der Kurve – nur der zählt für die Blattgrenzen.
+    apex: { x: midX + normal.x * distance, y: midY + normal.y * distance },
+  };
+}

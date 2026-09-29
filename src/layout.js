@@ -12,9 +12,22 @@
  *    (bei flachem Gelände also nach oben).
  *  - `maximum_walk_length` begrenzt die gezeichnete Länge von WALK-Segmenten;
  *    gestauchte Segmente bekommen eine Dauer-Klammer (|← 5min →|).
- *  - `distance_of_single_line` ist die maximale horizontale Breite einer Zeile.
+ *  - `distance_of_single_line` ist die Zeilenbreite für das freie Bildschirm-
+ *    format. Bei A4 ergibt sich die nutzbare Breite aus dem Format, siehe
+ *    `planRowWidthLimit`.
+ *
+ * Zeilenumbruch (nur Serpentine):
+ *  - `force_cut_row_after_this_segment` ist eine harte Trennstelle NACH dem
+ *    Segment – auch wenn die Zeile noch Platz hätte.
+ *  - `do_not_cut_row_after_this_segment` hält das Segment mit dem folgenden
+ *    zusammen – auch wenn die Zielbreite dabei überschritten wird. Das Blatt
+ *    wächst dann mit, abgeschnitten wird nichts.
+ *  - Konflikt (beide Flags am selben Übergang): Erzwingen gewinnt. Es ist die
+ *    explizitere Ansage und immer erfüllbar. Die UI schliesst die Kombination
+ *    zusätzlich aus; alte Dateien bleiben dadurch trotzdem lesbar.
  */
 import { WATER_SEGMENT_TYPES } from './model.js';
+import { contentBoundsFor, paperAspectRatio, wallBulgeFor } from './sheet.js';
 
 const ROW_GAP_METERS = 14;
 const ROW_PADDING_METERS = 4;
@@ -80,75 +93,206 @@ export function worldToLocal(placement, point) {
   };
 }
 
-/**
- * @param {object} topo normalisiertes Topo
- * @param {object} [options] `{ layout: 'serpentine' | 'linear', frame }`
- *
- * `frame` ist ein früheres Layout, dessen Zeilenversatz und Aussenmasse
- * übernommen werden. Nötig beim Ziehen eines Symbols: Elementpositionen gehen
- * sonst in die Zeilengrenzen ein, das Bild würde bei jedem Mausschritt neu
- * skaliert und verschöbe sich unter dem Zeiger weg.
- */
-export function layoutTopo(topo, options = {}) {
-  const mode = options.layout || 'serpentine';
-  const frame = options.frame || null;
-  const maxWalk = topo.maximum_walk_length > 0 ? topo.maximum_walk_length : 30;
-  const rowWidthLimit =
-    mode === 'linear'
-      ? Number.POSITIVE_INFINITY
-      : topo.distance_of_single_line > 0
-        ? topo.distance_of_single_line
-        : 60;
+/* ------------------------------------------------------- Zeilenaufteilung */
 
+function segmentMetricsFor(topo, maximumWalkLength) {
+  return topo.segments.map((segment) => {
+    const drawn = drawnLengthOf(segment, maximumWalkLength);
+    const angle = segment.angle_in_degrees;
+    const rad = toRadians(angle);
+    const dir = { x: Math.cos(rad), y: Math.sin(rad) };
+    // Eine ausweichende Wand braucht zusätzlich Platz in der Breite.
+    const wallSpan =
+      Math.abs(dir.y) * (segment.wall_distance_in_meters || 0);
+    return {
+      segment,
+      drawn,
+      angle,
+      dir,
+      perp: { x: dir.y, y: -dir.x },
+      // Überhänge laufen nach links; für die Zeilenbreite zählt der Betrag.
+      horizontalSpan: Math.abs(dir.x * drawn) + wallSpan,
+    };
+  });
+}
+
+/**
+ * Harte Umbruchregeln je Übergang i -> i+1.
+ * Der Index bezeichnet das Segment VOR dem Übergang.
+ */
+export function rowBreakRulesFor(segments) {
+  const forced = [];
+  const keepTogether = [];
+  const list = segments || [];
+  for (let index = 0; index < Math.max(list.length - 1, 0); index += 1) {
+    const segment = list[index];
+    const force = !!segment.force_cut_row_after_this_segment;
+    const prevent = !!segment.do_not_cut_row_after_this_segment;
+    forced[index] = force;
+    // Konfliktregel: Erzwingen schlägt Verhindern.
+    keepTogether[index] = prevent && !force;
+  }
+  return { forced, keepTogether };
+}
+
+/** Segmente, die zwingend in derselben Zeile bleiben, zu Blöcken bündeln. */
+function chunksOf(metrics, keepTogether) {
+  const chunks = [];
+  let current = null;
+  metrics.forEach((metric, index) => {
+    if (!current) current = { from: index, to: index, span: 0 };
+    current.span += metric.horizontalSpan;
+    current.to = index;
+    if (!keepTogether[index]) {
+      chunks.push(current);
+      current = null;
+    }
+  });
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+/**
+ * Zeilen eines Abschnitts optimal füllen (Knuth-artige DP): minimiert die
+ * Summe der quadrierten Restbreiten, die letzte Zeile eines Abschnitts zählt
+ * nicht mit. Das nutzt das Format deutlich besser aus als gieriges Füllen und
+ * hängt – anders als eine feste Segmentzahl – allein an der Zielbreite.
+ */
+function solveBlock(prefix, from, to, limit) {
+  const best = new Array(to + 1).fill(Number.POSITIVE_INFINITY);
+  const next = new Array(to + 1).fill(-1);
+  best[to] = 0;
+  for (let i = to - 1; i >= from; i -= 1) {
+    for (let j = i + 1; j <= to; j += 1) {
+      const width = prefix[j] - prefix[i];
+      const overfull = width > limit;
+      // Mehrere Blöcke passen nicht mehr; ein einzelner zu breiter Block muss
+      // wegen Keep-Together so stehen bleiben.
+      if (overfull && j > i + 1) break;
+      // Auch die letzte Zeile wird bewertet. Sonst bliebe ein gieriges
+      // 3/3/1 stehen, wo 3/2/2 das Blatt gleichmässig füllt.
+      const penalty = overfull ? 0 : (limit - width) ** 2;
+      const total = penalty + best[j];
+      if (total < best[i]) {
+        best[i] = total;
+        next[i] = j;
+      }
+    }
+  }
+  const rows = [];
+  let cursor = from;
+  while (cursor < to) {
+    const stop = next[cursor];
+    rows.push({ from: cursor, to: stop });
+    cursor = stop;
+  }
+  return rows;
+}
+
+/** Chunk-Folge in Zeilen aufteilen, harte Trennstellen respektiert. */
+function partitionChunks(chunks, forced, limit) {
+  const prefix = [0];
+  chunks.forEach((chunk, index) => {
+    prefix.push(prefix[index] + chunk.span);
+  });
+
+  const rows = [];
+  let blockStart = 0;
+  for (let index = 1; index <= chunks.length; index += 1) {
+    const isBlockEnd =
+      index === chunks.length || forced[chunks[index - 1].to] === true;
+    if (!isBlockEnd) continue;
+    rows.push(...solveBlock(prefix, blockStart, index, limit));
+    blockStart = index;
+  }
+  return rows;
+}
+
+function assignmentFor(chunks, rows, segmentCount) {
+  const assignment = new Array(segmentCount).fill(0);
+  rows.forEach((row, rowIndex) => {
+    for (let index = row.from; index < row.to; index += 1) {
+      const chunk = chunks[index];
+      for (let seg = chunk.from; seg <= chunk.to; seg += 1) {
+        assignment[seg] = rowIndex;
+      }
+    }
+  });
+  return assignment;
+}
+
+function round(value) {
+  return Math.round(value * 1000) / 1000;
+}
+
+/**
+ * Zielbreite einer Zeile. Beim freien Bildschirmformat bleibt es bei
+ * `distance_of_single_line`. Bei A4 wird die Breite gesucht, deren fertiges
+ * Blatt dem Seitenverhältnis des Formats am nächsten kommt – A4 hoch wird
+ * dadurch schmaler (mehr Zeilen), A4 quer breiter (weniger Zeilen).
+ */
+function planRowWidthLimit(topo, chunks, baseWidth, paperKey, buildFor) {
+  const aspect = paperAspectRatio(paperKey);
+  if (!aspect || !chunks.length) return baseWidth;
+
+  const spans = chunks.map((chunk) => chunk.span);
+  const total = spans.reduce((sum, span) => sum + span, 0);
+  const widest = Math.max(...spans, 1);
+
+  const candidates = new Set([round(baseWidth)]);
+  for (let rows = 1; rows <= chunks.length; rows += 1) {
+    candidates.add(round(Math.max(total / rows, widest)));
+  }
+
+  let best = null;
+  for (const limit of [...candidates].sort((a, b) => a - b)) {
+    if (!(limit > 0)) continue;
+    const layout = buildFor(limit);
+    const bounds = contentBoundsFor(topo, layout);
+    const width = bounds.maxX - bounds.minX;
+    const height = bounds.maxY - bounds.minY;
+    if (!(width > 0) || !(height > 0)) continue;
+    // Logarithmisch, damit "doppelt so breit" und "halb so breit" gleich
+    // schlecht bewertet werden.
+    const score = Math.abs(Math.log(width / height / aspect));
+    if (!best || score < best.score - 1e-9) best = { score, limit };
+  }
+  return best ? best.limit : baseWidth;
+}
+
+/* -------------------------------------------------------------- Platzieren */
+
+function buildLayout(metrics, assignment, rowWidthLimit, mode, frame) {
   const rows = [];
   const placements = [];
 
-  let rowIndex = 0;
-  let cursor = { x: 0, y: 0 };
-  let rowHorizontalUsed = 0;
-  let pendingBreak = false;
-
-  const startRow = () => {
-    rows[rowIndex] = rows[rowIndex] || {
-      index: rowIndex,
+  const rowCount = metrics.length ? Math.max(...assignment) + 1 : 1;
+  for (let index = 0; index < rowCount; index += 1) {
+    rows.push({
+      index,
       placements: [],
       minY: 0,
       maxY: 0,
       minX: 0,
       maxX: 0,
-      continuesBefore: rowIndex > 0,
-      continuesAfter: false,
-    };
-    return rows[rowIndex];
-  };
+      continuesBefore: index > 0,
+      continuesAfter: index < rowCount - 1,
+    });
+  }
 
-  startRow();
+  let cursor = { x: 0, y: 0 };
+  let previousRow = 0;
 
-  topo.segments.forEach((segment, index) => {
-    const drawn = drawnLengthOf(segment, maxWalk);
-    const angle = segment.angle_in_degrees;
-    const rad = toRadians(angle);
-    const dir = { x: Math.cos(rad), y: Math.sin(rad) };
-    const perp = { x: dir.y, y: -dir.x };
-    const horizontalSpan = Math.abs(dir.x * drawn);
-
-    const wouldOverflow =
-      rowHorizontalUsed > 0 && rowHorizontalUsed + horizontalSpan > rowWidthLimit;
-
-    if ((pendingBreak || wouldOverflow) && mode !== 'linear') {
-      rows[rowIndex].continuesAfter = true;
-      rowIndex += 1;
+  metrics.forEach((metric, index) => {
+    const rowIndex = assignment[index];
+    if (rowIndex !== previousRow) {
       cursor = { x: 0, y: 0 };
-      rowHorizontalUsed = 0;
-      startRow();
+      previousRow = rowIndex;
     }
-    pendingBreak = false;
 
+    const { segment, dir, perp, drawn, angle } = metric;
     const start = { ...cursor };
-    const end = {
-      x: start.x + dir.x * drawn,
-      y: start.y + dir.y * drawn,
-    };
+    const end = { x: start.x + dir.x * drawn, y: start.y + dir.y * drawn };
 
     const placement = {
       index,
@@ -167,12 +311,14 @@ export function layoutTopo(topo, options = {}) {
       isWater: WATER_SEGMENT_TYPES.has(segment.type),
     };
     placement.elements = placeElements(segment, placement);
+    placement.wallBulge = wallBulgeFor(placement);
 
     placements.push(placement);
     const row = rows[rowIndex];
     row.placements.push(placement);
 
     const trackedPoints = [start, end, ...placement.elements.map((e) => e.point)];
+    if (placement.wallBulge) trackedPoints.push(placement.wallBulge.apex);
     for (const element of placement.elements) {
       if (element.endPoint) trackedPoints.push(element.endPoint);
     }
@@ -184,10 +330,6 @@ export function layoutTopo(topo, options = {}) {
     }
 
     cursor = end;
-    rowHorizontalUsed += horizontalSpan;
-
-    if (segment.force_cut_row_after_this_segment) pendingBreak = true;
-    if (segment.do_not_cut_row_after_this_segment) pendingBreak = false;
   });
 
   // Zeilen vertikal stapeln und lokale Koordinaten in Weltkoordinaten überführen.
@@ -205,6 +347,10 @@ export function layoutTopo(topo, options = {}) {
     for (const placement of row.placements) {
       placement.start.y += row.offsetY;
       placement.end.y += row.offsetY;
+      if (placement.wallBulge) {
+        placement.wallBulge.control.y += row.offsetY;
+        placement.wallBulge.apex.y += row.offsetY;
+      }
       for (const element of placement.elements) {
         element.point.y += row.offsetY;
         if (element.endPoint) element.endPoint.y += row.offsetY;
@@ -225,9 +371,11 @@ export function layoutTopo(topo, options = {}) {
   // verschiebt also nichts, verhindert aber, dass ein weit gezogenes Symbol
   // am Blattrand abgeschnitten wird und kurz verschwindet.
   const plainHeight = Math.max(offsetY - ROW_GAP_METERS, 1);
+  // Eine Zeile darf breiter als die Zielbreite werden (Keep-Together). Das
+  // Blatt wächst dann mit, statt den Überhang abzuschneiden.
   const plainWidth = Math.max(
     maxX - minX,
-    rowWidthLimit === Infinity ? maxX : rowWidthLimit,
+    Number.isFinite(rowWidthLimit) ? rowWidthLimit : maxX,
   );
   const height = frame ? Math.max(frame.height, plainHeight) : plainHeight;
   const width = frame ? Math.max(frame.width, plainWidth) : plainWidth;
@@ -240,9 +388,69 @@ export function layoutTopo(topo, options = {}) {
     width,
     height,
     rowWidthLimit,
-    maximumWalkLength: maxWalk,
+    rowAssignment: assignment,
+    maximumWalkLength: 0,
     mode,
   };
+}
+
+/**
+ * @param {object} topo normalisiertes Topo
+ * @param {object} [options] `{ layout: 'serpentine' | 'linear', paper, frame }`
+ *
+ * `paper` ist der Formatschlüssel aus `sheet.js` und bestimmt in der Serpentine
+ * die nutzbare Zeilenbreite.
+ *
+ * `frame` ist ein früheres Layout, dessen Zeilenaufteilung, Zeilenversatz und
+ * Aussenmasse übernommen werden. Nötig beim Ziehen eines Symbols:
+ * Elementpositionen gehen sonst in die Zeilengrenzen ein, das Bild würde bei
+ * jedem Mausschritt neu skaliert und verschöbe sich unter dem Zeiger weg.
+ */
+export function layoutTopo(topo, options = {}) {
+  const mode = options.layout || 'serpentine';
+  const frame = options.frame || null;
+  const maxWalk = topo.maximum_walk_length > 0 ? topo.maximum_walk_length : 30;
+  const baseWidth =
+    topo.distance_of_single_line > 0 ? topo.distance_of_single_line : 60;
+
+  const metrics = segmentMetricsFor(topo, maxWalk);
+
+  let rowWidthLimit;
+  let assignment;
+
+  if (mode === 'linear') {
+    rowWidthLimit = Number.POSITIVE_INFINITY;
+    assignment = metrics.map(() => 0);
+  } else if (
+    frame?.rowAssignment &&
+    frame.rowAssignment.length === metrics.length &&
+    frame.mode === mode
+  ) {
+    // Während des Ziehens darf sich die Zeilenaufteilung nicht ändern.
+    rowWidthLimit = frame.rowWidthLimit;
+    assignment = frame.rowAssignment;
+  } else {
+    const { forced, keepTogether } = rowBreakRulesFor(topo.segments);
+    const chunks = chunksOf(metrics, keepTogether);
+    const partitionFor = (limit) =>
+      assignmentFor(
+        chunks,
+        partitionChunks(chunks, forced, limit),
+        metrics.length,
+      );
+    rowWidthLimit = planRowWidthLimit(
+      topo,
+      chunks,
+      baseWidth,
+      options.paper,
+      (limit) => buildLayout(metrics, partitionFor(limit), limit, mode, null),
+    );
+    assignment = partitionFor(rowWidthLimit);
+  }
+
+  const layout = buildLayout(metrics, assignment, rowWidthLimit, mode, frame);
+  layout.maximumWalkLength = maxWalk;
+  return layout;
 }
 
 /** Zusammenhängende Gelände-Polylinie je Zeile (für Terrain-Füllung). */

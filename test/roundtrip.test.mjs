@@ -8,7 +8,13 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import assert from 'node:assert/strict';
 
-import { ELEMENT_TYPES, RANGE_ELEMENT_TYPES, normalizeTopo, validateTopo } from '../src/model.js';
+import {
+  ELEMENT_TYPES,
+  RANGE_ELEMENT_TYPES,
+  WALL_DISTANCE_SEGMENT_TYPES,
+  normalizeTopo,
+  validateTopo,
+} from '../src/model.js';
 import { topoFromJson, topoToJsonObject } from '../src/io-json.js';
 import { topoToXml, topoFromXml } from '../src/io-xml.js';
 import { layoutTopo } from '../src/layout.js';
@@ -396,6 +402,124 @@ test('Ein Rahmen aus demselben Stand ändert nichts', () => {
       `${mode}: Rahmen darf kein anderes Layout erzeugen`,
     );
   }
+});
+
+/* --------------------------------------------------- Wanddistanz (Überhang) */
+
+function rappelTopo(overrides = {}, type = 'RAPPEL') {
+  return normalizeTopo({
+    canyon_name: 'Wand',
+    segments: [
+      { type, length_in_meters: 20, angle_in_degrees: 90, ...overrides },
+    ],
+  });
+}
+
+test('Wanddistanz gibt es nur bei den drei Abseiltypen', () => {
+  assert.deepEqual([...WALL_DISTANCE_SEGMENT_TYPES].sort(), [
+    'RAPPEL',
+    'RAPPEL_DRY',
+    'RAPPEL_WET',
+  ]);
+  for (const type of ['RAPPEL', 'RAPPEL_DRY', 'RAPPEL_WET']) {
+    const segment = rappelTopo({ wall_distance_in_meters: 4 }, type).segments[0];
+    assert.equal(segment.wall_distance_in_meters, 4);
+  }
+  for (const type of ['WALK', 'JUMP', 'POOL', 'SLIDE', 'CLIMB']) {
+    const segment = rappelTopo({ wall_distance_in_meters: 4 }, type).segments[0];
+    assert.equal(segment.wall_distance_in_meters, 0, type);
+  }
+});
+
+test('Wanddistanz wird nie negativ und versteht Zahlen als Text', () => {
+  assert.equal(rappelTopo({ wall_distance_in_meters: -3 }).segments[0].wall_distance_in_meters, 0);
+  assert.equal(rappelTopo({ wall_distance_in_meters: '2.5' }).segments[0].wall_distance_in_meters, 2.5);
+  assert.equal(rappelTopo({ wall_distance_in_meters: 'x' }).segments[0].wall_distance_in_meters, 0);
+  assert.equal(rappelTopo().segments[0].wall_distance_in_meters, 0);
+});
+
+test('Ohne Wanddistanz bleibt alles exakt wie bisher', () => {
+  const topo = rappelTopo();
+  assert.equal(layoutTopo(topo).placements[0].wallBulge, null);
+  const json = topoToJsonObject(topo);
+  assert.equal('wall_distance_in_meters' in json.segments[0], false);
+  assert.equal(topoToXml(topo).includes('wall_distance_in_meters'), false);
+  // Die Beispieldatei kennt das Feld nicht – sie muss byte-gleich bleiben.
+  assert.deepEqual(topoToJsonObject(normalizeTopo(original)), original);
+});
+
+test('Die Wandkurve weicht genau um die Wanddistanz zurück', () => {
+  for (const distance of [1, 4, 12.5]) {
+    const topo = rappelTopo({ wall_distance_in_meters: distance });
+    const placement = layoutTopo(topo).placements[0];
+    const { start, end, wallBulge } = placement;
+    // Senkrechtes Abseilen: die Wand weicht waagrecht nach hinten aus.
+    assert.equal(wallBulge.distance, distance);
+    assert.ok(Math.abs(wallBulge.apex.x - (start.x - distance)) < 1e-9, `Scheitel bei ${distance}`);
+    assert.ok(Math.abs(wallBulge.apex.y - (start.y + end.y) / 2) < 1e-9);
+    // Ober- und Unterpunkt bleiben auf der Seillinie, es wird nichts versetzt.
+    assert.ok(Math.abs(start.x) < 1e-9);
+    assert.ok(Math.abs(end.x) < 1e-9);
+    assert.ok(Math.abs(end.y - start.y - 20) < 1e-9);
+  }
+});
+
+test('Die Wand wird gerundet gezeichnet und der Pfeil bleibt senkrecht', () => {
+  for (const type of ['RAPPEL', 'RAPPEL_DRY', 'RAPPEL_WET']) {
+    for (const theme of ['color', 'bw']) {
+      const topo = rappelTopo({ wall_distance_in_meters: 6 }, type);
+      const layout = layoutTopo(topo);
+      const svg = renderTopoSvg(topo, layout, { theme });
+      const { control, apex } = layout.placements[0].wallBulge;
+      assert.ok(
+        svg.includes(`Q ${control.x} ${control.y} `),
+        `${type}/${theme}: gerundete Wand fehlt`,
+      );
+      assert.ok(Math.abs(apex.x + 6) < 1e-9, `${type}/${theme}: falscher Scheitel`);
+      const arrow = /<line x1="([^"]+)" y1="([^"]+)" x2="([^"]+)" y2="([^"]+)"[^>]+marker-end="url\(#topo-arrow\)"/.exec(svg);
+      assert.ok(arrow, `${type}/${theme}: Pfeil fehlt`);
+      assert.ok(
+        Math.abs(Number(arrow[1]) - Number(arrow[3])) < 1e-9,
+        `${type}/${theme}: Pfeil steht nicht senkrecht`,
+      );
+    }
+  }
+});
+
+test('Auch beim Überhang (Winkel > 90) bleibt der Pfeil senkrecht', () => {
+  const topo = rappelTopo({ wall_distance_in_meters: 5, angle_in_degrees: 110 });
+  const layout = layoutTopo(topo);
+  const svg = renderTopoSvg(topo, layout);
+  const arrow = /<line x1="([^"]+)" y1="[^"]+" x2="([^"]+)"[^>]+marker-end="url\(#topo-arrow\)"/.exec(svg);
+  assert.ok(arrow, 'Rappelpfeil fehlt');
+  assert.equal(arrow[1], arrow[2]);
+  assert.equal(layout.placements[0].wallBulge.distance, 5);
+  // Der Überhang läuft nach links, die Wand weicht zusätzlich zurück.
+  assert.ok(layout.placements[0].wallBulge.apex.x < layout.placements[0].end.x);
+});
+
+test('Die Wandkurve wird vom Blatt nicht abgeschnitten', () => {
+  const distance = 9;
+  const topo = rappelTopo({ wall_distance_in_meters: distance });
+  const layout = layoutTopo(topo);
+  assert.ok(layout.minX <= layout.placements[0].wallBulge.apex.x);
+  const svg = renderTopoSvg(topo, layout);
+  const viewBox = /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
+  assert.ok(viewBox[0] <= layout.placements[0].wallBulge.apex.x);
+  // Ohne Wand wäre das Blatt schmaler – die Kurve verbreitert es.
+  const plain = layoutTopo(rappelTopo());
+  assert.ok(layout.minX < plain.minX);
+});
+
+test('Wanddistanz überlebt JSON, XML und XSD', () => {
+  const topo = rappelTopo({ wall_distance_in_meters: 7.5 });
+  const json = topoToJsonObject(topo);
+  assert.equal(json.segments[0].wall_distance_in_meters, 7.5);
+  assert.equal(topoFromJson(JSON.stringify(json)).segments[0].wall_distance_in_meters, 7.5);
+  const xml = topoToXml(topo);
+  assert.ok(xml.includes('wall_distance_in_meters="7.5"'));
+  assert.equal(topoFromXml(xml).segments[0].wall_distance_in_meters, 7.5);
+  assert.ok(readFileSync(xsdPath, 'utf8').includes('name="wall_distance_in_meters"'));
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);

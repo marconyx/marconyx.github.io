@@ -46,6 +46,10 @@ export function topoToJsonObject(topo) {
           return Object.assign(elementOut, element._extra || {});
         }),
       };
+      // Erweiterung gegenüber Canyon-Explore: nur schreiben, wenn gesetzt.
+      if (segment.wall_distance_in_meters > 0) {
+        segmentOut.wall_distance_in_meters = segment.wall_distance_in_meters;
+      }
       return Object.assign(segmentOut, segment._extra || {});
     }),
   });

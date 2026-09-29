@@ -261,6 +261,7 @@ Schema:
       "length_in_meters": number,       // Höhe bei Abseilstellen/Sprüngen, Länge bei Geh-/Wasserstrecken
       "angle_in_degrees": number,       // 0 = flach, 90 = senkrecht, >90 = überhängend
       "duration_to_walk_in_min": number|null,  // nur bei WALK sinnvoll
+      "wall_distance_in_meters": number,       // nur bei RAPPEL*, 0 = Seil liegt an der Wand
       "do_not_cut_row_after_this_segment": boolean,
       "force_cut_row_after_this_segment": boolean,
       "elements": [
