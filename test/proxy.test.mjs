@@ -13,6 +13,8 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
 
+import worker from '../tools/worker.js';
+
 const PROXY_SCRIPT = fileURLToPath(new URL('../tools/proxy.mjs', import.meta.url));
 const KEY = 'geheimer-test-key';
 const IMAGE =
@@ -62,6 +64,16 @@ function startUpstream() {
         return;
       }
 
+      if (body.model === 'kein-denkschalter' && body.chat_template_kwargs) {
+        reply(400, { error: { message: 'Unrecognized request argument: chat_template_kwargs' } });
+        return;
+      }
+      if (body.model === 'denkt-zu-viel') {
+        reply(200, {
+          choices: [{ finish_reason: 'length', message: { content: '', reasoning: 'Hmm …' } }],
+        });
+        return;
+      }
       if (body.model === 'kein-json' && body.response_format) {
         reply(400, { error: { message: 'response_format is not supported by this model' } });
         return;
@@ -126,6 +138,27 @@ function postTo(port, path, payload) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+}
+
+/** Ruft den Cloudflare-Worker direkt auf – er ist ein reines fetch-Handler-Objekt. */
+function callWorker(payload, env = {}) {
+  const request = new Request('https://worker.test/api/topo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return worker.fetch(request, { AI_KEY: KEY, AI_UPSTREAM: 'https://upstream.test/v1', ...env });
+}
+
+/** Tauscht global.fetch nur für die Dauer eines Worker-Tests aus. */
+async function withMockedFetch(handler, fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => handler(url, init);
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = original;
+  }
 }
 
 const upstream = await startUpstream();
@@ -465,6 +498,29 @@ try {
     assert.deepEqual(body.response_format, { type: 'json_object' });
   });
 
+  await test('schaltet den Denkmodus ab und lässt Raum für lange Topos', async () => {
+    await post(PORT, { image: IMAGE, prompt: 'x' });
+    const body = received.at(-1).body;
+    assert.deepEqual(body.chat_template_kwargs, { enable_thinking: false });
+    assert.equal(body.max_tokens, 8000);
+  });
+
+  await test('wiederholt ohne Denkschalter, wenn der Upstream ihn ablehnt', async () => {
+    const before = received.length;
+    const response = await post(PORT, { image: IMAGE, prompt: 'x', model: 'kein-denkschalter' });
+    assert.equal(response.status, 200);
+    assert.equal(received.length - before, 2, 'genau ein Wiederholungsversuch');
+    assert.ok(received.at(-2).body.chat_template_kwargs, 'erster Versuch mit Denkschalter');
+    assert.equal(received.at(-1).body.chat_template_kwargs, undefined, 'zweiter Versuch ohne');
+    assert.ok(received.at(-1).body.response_format, 'der JSON-Modus bleibt erhalten');
+  });
+
+  await test('meldet ein leergedachtes Modell verständlich', async () => {
+    const response = await post(PORT, { image: IMAGE, prompt: 'x', model: 'denkt-zu-viel' });
+    assert.equal(response.status, 502);
+    assert.match((await response.json()).error, /Nachdenken verbraucht/);
+  });
+
   await test('wiederholt ohne JSON-Modus, wenn der Upstream ihn ablehnt', async () => {
     const before = received.length;
     const response = await post(PORT, { image: IMAGE, prompt: 'x', model: 'kein-json' });
@@ -518,10 +574,62 @@ try {
       assert.equal(body.system, 'Anweisung');
       assert.equal(body.temperature, 0.15);
       assert.equal(body.response_format, undefined, 'Anthropic kennt response_format nicht');
+      assert.equal(
+        body.chat_template_kwargs,
+        undefined,
+        'Anthropic kennt chat_template_kwargs nicht',
+      );
       assert.equal(body.messages[0].content[1].text, 'Aufgabe');
     } finally {
       alt.child.kill();
     }
+  });
+
+  await test('der Worker schaltet den Denkmodus ab und lässt Raum für lange Topos', async () => {
+    const bodies = [];
+    await withMockedFetch(
+      (url, init) => {
+        bodies.push(JSON.parse(init.body));
+        return new Response(JSON.stringify({ choices: [{ message: { content: '{}' } }] }));
+      },
+      () => callWorker({ image: IMAGE, prompt: 'x' }),
+    );
+    assert.deepEqual(bodies[0].chat_template_kwargs, { enable_thinking: false });
+    assert.equal(bodies[0].max_tokens, 8000);
+  });
+
+  await test('der Worker wiederholt ohne Denkschalter, wenn der Upstream ihn ablehnt', async () => {
+    const bodies = [];
+    const response = await withMockedFetch(
+      (url, init) => {
+        bodies.push(JSON.parse(init.body));
+        if (bodies.length === 1) {
+          return new Response(
+            JSON.stringify({ error: { message: 'unknown field chat_template_kwargs' } }),
+            { status: 400 },
+          );
+        }
+        return new Response(JSON.stringify({ choices: [{ message: { content: '{}' } }] }));
+      },
+      () => callWorker({ image: IMAGE, prompt: 'x' }),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(bodies.length, 2, 'genau ein Wiederholungsversuch');
+    assert.equal(bodies[1].chat_template_kwargs, undefined, 'zweiter Versuch ohne Denkschalter');
+  });
+
+  await test('der Worker meldet ein leergedachtes Modell verständlich', async () => {
+    const response = await withMockedFetch(
+      () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ finish_reason: 'length', message: { content: '', reasoning: 'Hmm …' } }],
+          }),
+        ),
+      () => callWorker({ image: IMAGE, prompt: 'x' }),
+    );
+    assert.equal(response.status, 502);
+    assert.match((await response.json()).error, /Nachdenken verbraucht/);
   });
 
 } finally {

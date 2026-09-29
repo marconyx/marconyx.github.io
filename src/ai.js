@@ -704,18 +704,26 @@ export function buildPrompt(hints = {}, options = {}) {
 
 /* ------------------------------------------------------------ Antwort-Parsing */
 
-/** Holt das erste vollständige JSON-Objekt aus einer Modellantwort. */
+/**
+ * Holt das Topo-JSON aus einer Modellantwort.
+ *
+ * Manche Modelle stellen dem eigentlichen Objekt ein leeres voran (`{}{"…"}`)
+ * oder plaudern zwischen zwei Objekten. Darum werden alle vollständigen
+ * Objekte der obersten Ebene gesammelt und das beste gewählt: bevorzugt das
+ * grösste mit einem `segments`-Array.
+ */
 export function extractJsonObject(text) {
   if (typeof text !== 'string') throw new Error('Leere Antwort vom Modell.');
   const cleaned = text.replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '');
 
-  const start = cleaned.indexOf('{');
-  if (start === -1) throw new Error('Die Antwort enthält kein JSON-Objekt.');
+  if (cleaned.indexOf('{') === -1) throw new Error('Die Antwort enthält kein JSON-Objekt.');
 
+  const candidates = [];
+  let start = -1;
   let depth = 0;
   let inString = false;
   let escaped = false;
-  for (let i = start; i < cleaned.length; i += 1) {
+  for (let i = 0; i < cleaned.length; i += 1) {
     const char = cleaned[i];
     if (inString) {
       if (escaped) escaped = false;
@@ -723,16 +731,35 @@ export function extractJsonObject(text) {
       else if (char === '"') inString = false;
       continue;
     }
-    if (char === '"') inString = true;
-    else if (char === '{') depth += 1;
-    else if (char === '}') {
+    if (char === '"') {
+      if (depth > 0) inString = true;
+    } else if (char === '{') {
+      if (depth === 0) start = i;
+      depth += 1;
+    } else if (char === '}' && depth > 0) {
       depth -= 1;
-      if (depth === 0) {
-        return JSON.parse(cleaned.slice(start, i + 1));
-      }
+      if (depth === 0) candidates.push(cleaned.slice(start, i + 1));
     }
   }
-  throw new Error('Die Antwort enthält kein vollständiges JSON-Objekt.');
+  if (candidates.length === 0) {
+    throw new Error('Die Antwort enthält kein vollständiges JSON-Objekt.');
+  }
+
+  const parsed = [];
+  for (const candidate of candidates) {
+    try {
+      parsed.push(JSON.parse(candidate));
+    } catch {
+      /* Ein unbrauchbares Bruchstück darf ein gutes Objekt nicht verdecken. */
+    }
+  }
+  if (parsed.length === 0) return JSON.parse(candidates[0]);
+
+  const withSegments = parsed.filter((value) => value && Array.isArray(value.segments));
+  const pool = withSegments.length ? withSegments : parsed;
+  return pool.reduce((best, value) =>
+    JSON.stringify(value).length > JSON.stringify(best).length ? value : best,
+  );
 }
 
 const SEGMENT_SET = new Set(SEGMENT_TYPES);
@@ -892,6 +919,48 @@ function rejectsJsonMode(status, text) {
   return /response_format|json_object|json mode|json_schema/i.test(text || '');
 }
 
+/**
+ * Erkennt, dass der Upstream `chat_template_kwargs` nicht kennt. Der Parameter
+ * ist eine vLLM-Erweiterung; strengere Gateways lehnen unbekannte Felder ab.
+ */
+function rejectsThinkingSwitch(status, text) {
+  if (status !== 400 && status !== 422) return false;
+  const detail = String(text || '');
+  return (
+    /chat_template_kwargs/i.test(detail) ||
+    /additional\s*propert/i.test(detail) ||
+    /(unrecognized|unknown|unexpected|extra)\b[^.]{0,40}\b(argument|field|parameter|propert)/i.test(
+      detail,
+    )
+  );
+}
+
+/**
+ * Denkmodelle (Qwen3 & Co. auf vLLM) verbrauchen sonst ihr ganzes Token-Budget
+ * für `reasoning`: `content` bleibt leer, finish_reason ist "length".
+ */
+export const NO_THINKING_KWARGS = { enable_thinking: false };
+
+/** Obergrenze der Antwort. Grosszügig, damit lange Topos nicht abreissen. */
+export const AI_MAX_TOKENS = 8000;
+
+/**
+ * Deutet eine leere Antwort. Leerer `content` mit finish_reason "length" oder
+ * vorhandenem `reasoning` heisst: Das Modell hat sich zu Tode gedacht.
+ */
+function emptyAnswerError(choice) {
+  const finish = choice?.finish_reason || choice?.stop_reason;
+  const reasoning = choice?.message?.reasoning || choice?.message?.reasoning_content;
+  if (finish === 'length' || reasoning) {
+    return new Error(
+      'Das Modell hat sein Token-Budget komplett zum Nachdenken verbraucht ' +
+        `(finish_reason=${finish || 'unbekannt'}) – anderes Modell wählen ` +
+        'oder Denkmodus abschalten.',
+    );
+  }
+  return new Error('Das Modell hat keinen Text geliefert.');
+}
+
 async function callOpenAi(image, parts, { signal }) {
   const base = settings.endpoint.replace(/\/+$/, '');
   const messages = [];
@@ -906,7 +975,7 @@ async function callOpenAi(image, parts, { signal }) {
     ],
   });
 
-  const send = (jsonMode) =>
+  const send = ({ jsonMode, noThinking }) =>
     fetch(`${base}/chat/completions`, {
       method: 'POST',
       signal,
@@ -917,24 +986,34 @@ async function callOpenAi(image, parts, { signal }) {
       body: JSON.stringify({
         model: settings.model,
         messages,
-        max_tokens: 4000,
+        max_tokens: AI_MAX_TOKENS,
         temperature: AI_TEMPERATURE,
         ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        ...(noThinking ? { chat_template_kwargs: { ...NO_THINKING_KWARGS } } : {}),
       }),
     });
 
-  let response = await send(true);
-  if (!response.ok) {
-    // Nicht jedes Gateway kennt den JSON-Modus – dann ohne ihn wiederholen.
+  let options = { jsonMode: true, noThinking: true };
+  let response = await send(options);
+  // Nicht jedes Gateway kennt JSON-Modus oder Denkschalter – dann je einmal
+  // ohne den abgelehnten Parameter wiederholen, notfalls ohne beide.
+  while (!response.ok && (options.jsonMode || options.noThinking)) {
     const detail = await response.clone().text();
-    if (rejectsJsonMode(response.status, detail)) response = await send(false);
+    if (options.noThinking && rejectsThinkingSwitch(response.status, detail)) {
+      options = { ...options, noThinking: false };
+    } else if (options.jsonMode && rejectsJsonMode(response.status, detail)) {
+      options = { ...options, jsonMode: false };
+    } else break;
+    response = await send(options);
   }
 
   const data = await readJson(response);
-  const text = data?.choices?.[0]?.message?.content;
+  const choice = data?.choices?.[0];
+  const text = choice?.message?.content;
   if (typeof text !== 'string') {
     throw new Error('Unerwartete Antwortstruktur der OpenAI-kompatiblen API.');
   }
+  if (!text.trim()) throw emptyAnswerError(choice);
   return text;
 }
 
@@ -952,7 +1031,7 @@ async function callAnthropic(image, parts, { signal }) {
     },
     body: JSON.stringify({
       model: settings.model,
-      max_tokens: 4000,
+      max_tokens: AI_MAX_TOKENS,
       temperature: AI_TEMPERATURE,
       // Anthropic kennt kein response_format, dafür ein eigenes system-Feld.
       ...(parts.system ? { system: parts.system } : {}),

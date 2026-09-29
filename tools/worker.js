@@ -39,6 +39,45 @@ function json(payload, status, origin) {
 const TEMPERATURE = 0.15;
 const MAX_PROMPT_CHARS = 32000;
 
+/**
+ * Denkmodelle (Qwen3 & Co. auf vLLM) verbrauchen sonst ihr ganzes Token-Budget
+ * für `reasoning` und liefern einen leeren `content`.
+ */
+const NO_THINKING_KWARGS = { enable_thinking: false };
+
+/** Obergrenze der Antwort. Muss zu AI_MAX_TOKENS in src/ai.js passen. */
+const MAX_TOKENS = 8000;
+
+/** Erkennt, dass der Upstream `chat_template_kwargs` als unbekanntes Feld ablehnt. */
+function rejectsThinkingSwitch(status, text) {
+  if (status !== 400 && status !== 422) return false;
+  const detail = String(text || '');
+  return (
+    /chat_template_kwargs/i.test(detail) ||
+    /additional\s*propert/i.test(detail) ||
+    /(unrecognized|unknown|unexpected|extra)\b[^.]{0,40}\b(argument|field|parameter|propert)/i.test(
+      detail,
+    )
+  );
+}
+
+/**
+ * Deutet eine leere Antwort. Leerer `content` mit finish_reason "length" oder
+ * vorhandenem `reasoning` heisst: Das Modell hat sich zu Tode gedacht.
+ */
+function emptyAnswerMessage(data) {
+  const choice = data?.choices?.[0];
+  const finish = choice?.finish_reason || choice?.stop_reason || data?.stop_reason;
+  const reasoning = choice?.message?.reasoning || choice?.message?.reasoning_content;
+  if (finish === 'length' || reasoning) {
+    return (
+      'Das Modell hat sein Token-Budget komplett zum Nachdenken verbraucht ' +
+      `(finish_reason=${finish || 'unbekannt'}) – anderes Modell wählen oder Denkmodus abschalten.`
+    );
+  }
+  return 'Upstream-Antwort enthielt keinen Text.';
+}
+
 function splitDataUrl(image) {
   const match = /^data:([^;,]+);base64,(.*)$/s.exec(image || '');
   if (!match) throw new Error('image muss eine base64-Data-URL sein.');
@@ -97,13 +136,14 @@ export default {
 
     let url;
     let body;
+    let openAiStyle = false;
     try {
       if (api === 'anthropic') {
         const { mediaType, base64 } = splitDataUrl(image);
         url = `${base}/messages`;
         body = {
           model,
-          max_tokens: 4096,
+          max_tokens: MAX_TOKENS,
           temperature: TEMPERATURE,
           ...(system ? { system } : {}),
           messages: [
@@ -129,10 +169,12 @@ export default {
         });
         body = {
           model,
-          max_tokens: 4096,
+          max_tokens: MAX_TOKENS,
           temperature: TEMPERATURE,
           messages,
+          chat_template_kwargs: { ...NO_THINKING_KWARGS },
         };
+        openAiStyle = true;
       }
     } catch (error) {
       return json({ error: error.message }, 400, origin);
@@ -151,7 +193,17 @@ export default {
       return json({ error: `Upstream nicht erreichbar: ${error.message}` }, 502, origin);
     }
 
-    const raw = await upstream.text();
+    let raw = await upstream.text();
+    if (!upstream.ok && openAiStyle && rejectsThinkingSwitch(upstream.status, raw)) {
+      // Gateways ohne diesen vLLM-Parameter: einmal ohne ihn wiederholen.
+      const { chat_template_kwargs: _drop, ...rest } = body;
+      try {
+        upstream = await fetch(url, { method: 'POST', headers, body: JSON.stringify(rest) });
+        raw = await upstream.text();
+      } catch (error) {
+        return json({ error: `Upstream nicht erreichbar: ${error.message}` }, 502, origin);
+      }
+    }
     if (!upstream.ok) {
       let detail = raw.slice(0, 400);
       try {
@@ -164,12 +216,14 @@ export default {
     }
 
     let text = '';
+    let data;
     try {
-      text = extractText(JSON.parse(raw));
+      data = JSON.parse(raw);
+      text = extractText(data);
     } catch {
       return json({ error: 'Upstream hat kein JSON geliefert.' }, 502, origin);
     }
-    if (!text) return json({ error: 'Upstream-Antwort enthielt keinen Text.' }, 502, origin);
+    if (!text.trim()) return json({ error: emptyAnswerMessage(data) }, 502, origin);
 
     // Nur der Modelltext geht zurück – Sanitizing passiert in src/ai.js.
     return json(text, 200, origin);

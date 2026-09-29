@@ -334,6 +334,21 @@ Der Prompt kommt in allen Wegen aus dem Browser: direkt, über `tools/proxy.mjs`
 und über `tools/worker.js`. Beide Proxys formulieren nichts selbst, sie reichen
 `prompt` und `system` durch (je 32 000 Zeichen Obergrenze).
 
+### Denkmodelle (Qwen3 & Co.)
+
+Modelle mit Denkmodus — etwa `qwen/qwen3.6-35b-a3b` auf vLLM — denken vor der
+Antwort laut. Beim langen Topo-Prompt verbrauchen sie dabei das gesamte
+Token-Budget: `content` bleibt leer, `finish_reason` ist `length`, und die App
+meldete früher nur „Upstream-Antwort enthielt keinen Text“.
+
+Darum schicken App, Proxy und Worker bei OpenAI-kompatiblen Aufrufen
+`chat_template_kwargs: {"enable_thinking": false}` mit. Kennt ein Gateway diesen
+vLLM-Parameter nicht und lehnt ihn ab, wird der Aufruf einmal ohne ihn
+wiederholt — genau wie beim JSON-Modus, und beides ist kombinierbar. Das
+Antwortbudget liegt bei 8000 Tokens, damit auch lange Topos vollständig
+ankommen. Bleibt der Text trotzdem leer, nennt die Fehlermeldung den Grund
+(aufgebrauchtes Token-Budget) statt nur „kein Text“. Anthropic bleibt unverändert.
+
 ### Firmen-Gateways: der mitgelieferte Proxy
 
 Viele Unternehmens-Gateways beantworten den CORS-Preflight des Browsers mit `401`
@@ -456,7 +471,9 @@ Modelltext als JSON-String. Damit verlässt der Key nie den Server.
 Modelle antworten selten sauber. `src/ai.js` fängt das ab:
 
 - JSON wird auch aus Fließtext und Markdown-Codefences herausgeschnitten
-  (klammerzählender Scanner, robust gegen `{` `}` in Strings).
+  (klammerzählender Scanner, robust gegen `{` `}` in Strings). Liefert ein Modell
+  mehrere Objekte hintereinander — manche stellen ein leeres `{}` voran —, gewinnt
+  das grösste mit einem `segments`-Array.
 - Synonyme werden auf gültige Typen abgebildet (`hike` → `WALK`, `anchor` → `BOLT`,
   `swim` → `POOL`, …).
 - Unbekannte Segment- und Elementtypen werden verworfen statt eingebaut; die Anzahl

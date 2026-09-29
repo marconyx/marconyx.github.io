@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+  AI_MAX_TOKENS,
   AI_TEMPERATURE,
   MAX_PROMPT_CHARS,
   PROMPT_TEMPLATES,
@@ -862,6 +863,120 @@ await testAsync('die Vorlage aus den Einstellungen gilt ohne Zutun des Aufrufers
   assert.equal(buildPromptParts({}).template, 'compact');
   useOpenAi();
   assert.equal(buildPromptParts({}).template, 'optimized');
+});
+
+await testAsync('Denkmodelle bekommen chat_template_kwargs mit', async () => {
+  useOpenAi();
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo(IMAGE));
+  assert.deepEqual(calls[0].body.chat_template_kwargs, { enable_thinking: false });
+  assert.equal(calls[0].body.max_tokens, AI_MAX_TOKENS);
+  assert.ok(AI_MAX_TOKENS >= 8000, 'das Budget muss für lange Topos reichen');
+});
+
+await testAsync('ein unbekanntes chat_template_kwargs führt zu einem Versuch ohne', async () => {
+  useOpenAi();
+  const bodies = [];
+  await withFetch(
+    (url, init) => {
+      bodies.push(JSON.parse(init.body));
+      if (bodies.length === 1) {
+        return jsonResponse(
+          { error: { message: 'Unrecognized request argument supplied: chat_template_kwargs' } },
+          400,
+        );
+      }
+      return openAiAnswer();
+    },
+    () => photoToTopo(IMAGE),
+  );
+  assert.equal(bodies.length, 2);
+  assert.ok(bodies[0].chat_template_kwargs, 'erster Versuch mit Denkschalter');
+  assert.equal(bodies[1].chat_template_kwargs, undefined, 'zweiter Versuch ohne');
+  assert.ok(bodies[1].response_format, 'der JSON-Modus bleibt erhalten');
+});
+
+await testAsync('beide Fallbacks greifen nacheinander', async () => {
+  useOpenAi();
+  const bodies = [];
+  await withFetch(
+    (url, init) => {
+      bodies.push(JSON.parse(init.body));
+      if (bodies.length === 1) {
+        return jsonResponse({ error: { message: 'unknown field chat_template_kwargs' } }, 400);
+      }
+      if (bodies.length === 2) {
+        return jsonResponse({ error: { message: 'response_format is not supported' } }, 400);
+      }
+      return openAiAnswer();
+    },
+    () => photoToTopo(IMAGE),
+  );
+  assert.equal(bodies.length, 3);
+  assert.equal(bodies[2].chat_template_kwargs, undefined);
+  assert.equal(bodies[2].response_format, undefined);
+  assert.equal(bodies[2].temperature, AI_TEMPERATURE);
+});
+
+await testAsync('ein echter Fehler löst keinen Denkschalter-Fallback aus', async () => {
+  useOpenAi();
+  let calls = 0;
+  await withFetch(
+    () => {
+      calls += 1;
+      return jsonResponse({ error: { message: 'Bild zu gross' } }, 400);
+    },
+    async () => {
+      await assert.rejects(() => photoToTopo(IMAGE), /Bild zu gross/);
+    },
+  );
+  assert.equal(calls, 1, 'ohne Hinweis auf einen Parameter wird nicht wiederholt');
+});
+
+await testAsync('ein leergedachter content wird klar gemeldet', async () => {
+  useOpenAi();
+  await withFetch(
+    () =>
+      jsonResponse({
+        choices: [{ finish_reason: 'length', message: { content: '', reasoning: 'Hmm …' } }],
+      }),
+    async () => {
+      await assert.rejects(() => photoToTopo(IMAGE), /Nachdenken verbraucht/);
+    },
+  );
+});
+
+await testAsync('ein leerer content ohne Denkspur meldet schlicht keinen Text', async () => {
+  useOpenAi();
+  await withFetch(
+    () => jsonResponse({ choices: [{ finish_reason: 'stop', message: { content: '  ' } }] }),
+    async () => {
+      await assert.rejects(() => photoToTopo(IMAGE), /keinen Text/);
+    },
+  );
+});
+
+await testAsync('ein vorangestelltes leeres Objekt stört das Parsen nicht', async () => {
+  useOpenAi();
+  const topo = await withFetch(
+    () => jsonResponse({ choices: [{ message: { content: `{}${ANSWER}` } }] }),
+    () => photoToTopo(IMAGE),
+  );
+  assert.equal(topo.canyon_name, 'Test');
+  assert.equal(topo.segments.length, 1);
+});
+
+test('von mehreren Objekten gewinnt das mit segments', () => {
+  const parsed = extractJsonObject(`{"farbe":"blau"}\n${ANSWER}`);
+  assert.equal(parsed.canyon_name, 'Test');
+  assert.equal(parsed.segments.length, 1);
+});
+
+test('gibt es mehrere Topos, gewinnt das grössere', () => {
+  const small = '{"segments":[{"type":"WALK"}]}';
+  const big = '{"segments":[{"type":"WALK"},{"type":"RAPPEL","height":12}]}';
+  assert.equal(extractJsonObject(`${small}${big}`).segments.length, 2);
+  assert.equal(extractJsonObject(`${big}${small}`).segments.length, 2);
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);
