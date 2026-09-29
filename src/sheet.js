@@ -58,20 +58,55 @@ function trimmed(value) {
 }
 
 /**
- * Kopfdaten der Legende: Author und Dauer, jeweils nur wenn gefüllt.
- * Leere Felder dürfen keine leere Beschriftungszeile erzeugen.
+ * Datum lesbar machen: ein ISO-Datum wird zu TT.MM.JJJJ, jede andere Eingabe
+ * bleibt unverändert stehen (das Feld ist ein freies Textfeld).
  */
-export function legendMetaLinesFor(topo) {
+export function formatLegendDate(value) {
+  const raw = trimmed(value);
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  return iso ? `${iso[3]}.${iso[2]}.${iso[1]}` : raw;
+}
+
+/**
+ * Kopfdaten der Legende: direkt unter dem Titel. Nur die Dauer – Author und
+ * Datum stehen bewusst am Ende der Legende, unter den Abkürzungen.
+ */
+export function legendHeadLinesFor(topo) {
   const lines = [];
-  const author = trimmed(topo?.author);
-  if (author) lines.push({ key: 'author', label: 'Author', value: author });
   const duration = trimmed(topo?.duration);
   if (duration) lines.push({ key: 'duration', label: 'Dauer', value: duration });
   return lines;
 }
 
+/**
+ * Fusszeilen der Legende, nach dem letzten Legendeneintrag: erst Author, dann
+ * Datum. Leere Felder dürfen keine leere Beschriftungszeile erzeugen.
+ */
+export function legendFooterLinesFor(topo) {
+  const lines = [];
+  const author = trimmed(topo?.author);
+  if (author) lines.push({ key: 'author', label: 'Author', value: author });
+  const date = formatLegendDate(topo?.date);
+  if (date) lines.push({ key: 'date', label: 'Datum', value: date });
+  return lines;
+}
+
+/** Author und Dauer als beschriftete Zeilen – unabhängig von ihrer Position. */
+export function legendMetaLinesFor(topo) {
+  return [
+    ...legendHeadLinesFor(topo),
+    ...legendFooterLinesFor(topo).filter((line) => line.key !== 'date'),
+  ];
+}
+
 export function legendMetaTextsFor(topo) {
   return legendMetaLinesFor(topo).map((line) => `${line.label}: ${line.value}`);
+}
+
+function legendLineTexts(topo) {
+  return [...legendHeadLinesFor(topo), ...legendFooterLinesFor(topo)].map(
+    (line) => `${line.label}: ${line.value}`,
+  );
 }
 
 export function legendTitleWidthMeters(topo) {
@@ -79,15 +114,11 @@ export function legendTitleWidthMeters(topo) {
 }
 
 /**
- * Breite des Legendenkastens. Wächst mit dem längsten Text, damit Author und
- * Dauer nicht über den Rand oder ins Topo hinauslaufen.
+ * Breite des Legendenkastens. Wächst mit dem längsten Text, damit Author,
+ * Dauer und Datum nicht über den Rand oder ins Topo hinauslaufen.
  */
 export function legendPanelWidthMeters(topo) {
-  const texts = [
-    ...legendEntriesFor(topo),
-    ...legendMetaTextsFor(topo),
-    String(topo?.date ?? ''),
-  ];
+  const texts = [...legendEntriesFor(topo), ...legendLineTexts(topo)];
   const longest = texts.reduce(
     (max, text) => Math.max(max, LEGEND_ENTRY_CHAR_METERS * text.length + 1.5),
     0,
@@ -104,6 +135,27 @@ export function legendReservedWidthMeters(topo) {
   return legendPanelWidthMeters(topo) + LEGEND_GAP_METERS;
 }
 
+/** Zeilenhöhe innerhalb der Legende (Renderer und Blattmass teilen sie sich). */
+export const LEGEND_LINE_HEIGHT_METERS = 1.4;
+
+/**
+ * Höhe des Legendenkastens. Kopfzeilen (Dauer), Abkürzungen und Fusszeilen
+ * (Author, Datum) zählen gleichermassen – sonst würden die unteren Zeilen aus
+ * dem Kasten laufen.
+ */
+export function legendPanelHeightMeters(topo) {
+  const lines =
+    legendHeadLinesFor(topo).length +
+    legendEntriesFor(topo).length +
+    legendFooterLinesFor(topo).length;
+  return 6.5 + lines * LEGEND_LINE_HEIGHT_METERS + 3;
+}
+
+/** Oberkante des Legendenkastens in Blattkoordinaten. */
+export function legendPanelTopMeters(topo) {
+  return -MARGIN_METERS + 1 + (topo?.legend_offset_top || 0) - 0.5;
+}
+
 /** Rechte Zeichenkante des Topos ohne Legende (Linear hat keine Zeilengrenze). */
 export function drawingRightEdge(layout) {
   return Number.isFinite(layout.rowWidthLimit)
@@ -113,12 +165,16 @@ export function drawingRightEdge(layout) {
 
 /** Aussenmasse des Blatts in Metern, inkl. Rand und Legendenspalte. */
 export function contentBoundsFor(topo, layout) {
+  // Die Legende kann bei kurzen Topos tiefer reichen als die Zeichnung – dann
+  // wächst das Blatt nach unten mit, statt die unteren Zeilen abzuschneiden.
+  const legendBottom =
+    legendPanelTopMeters(topo) + legendPanelHeightMeters(topo) + 1;
   return {
     minX: layout.minX - MARGIN_METERS,
     maxX:
       drawingRightEdge(layout) + MARGIN_METERS + legendReservedWidthMeters(topo),
     minY: -MARGIN_METERS,
-    maxY: layout.height + MARGIN_METERS,
+    maxY: Math.max(layout.height + MARGIN_METERS, legendBottom),
   };
 }
 

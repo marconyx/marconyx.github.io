@@ -24,6 +24,8 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
 - **Speichern**: JSON (kompatibel zum Canyon-Explore-Format) und XML (mit XSD)
 - **Export**: SVG, PNG, Druck/PDF über den Browser-Druckdialog
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
+- **Zufall**: Knopf *Zufall* erzeugt per Klick ein vollständiges Demo-Topo — mit
+  jedem Segmenttyp und jedem Symbol der Palette mindestens einmal
 
 ## Schnellstart
 
@@ -36,7 +38,7 @@ python3 -m http.server 8080
 Tests (ohne Abhängigkeiten):
 
 ```bash
-npm test          # Round-Trip, Rendering und AI-Antwortverarbeitung
+npm test          # Round-Trip, Layout, Zufalls-Topo, UI, AI und Proxy
 ```
 
 ## Repository
@@ -165,12 +167,37 @@ Im Layout **Serpentine** verteilt der Generator die Segmente selbständig auf Ze
 Das Layout **Linear** stellt weiterhin alle Segmente in eine einzige Zeile und ignoriert
 Format und Umbruch-Flags.
 
+### Zufalls-Topo
+
+Der Knopf **Zufall** neben *Beispiel* erzeugt bei jedem Klick ein neues, zufälliges
+Topo. Es enthält garantiert jeden Segmenttyp aus `SEGMENT_TYPES` und jede Variante der
+Symbolpalette (inklusive Sonderformen wie *abgestorbener Baum*) mindestens einmal —
+beide Listen leitet `src/random-topo.js` aus den bestehenden Katalogen ab, neue Typen
+kommen also automatisch mit. Zufällig variieren Reihenfolge, Längen, Winkel (inklusive
+Überhängen > 90° beim Abseilen), Wanddistanz, Symbolpositionen und Umbruch-Flags;
+Erzwingen und Verhindern treffen dabei nie am selben Übergang zusammen. Laden,
+Undo-Schritt und Autosave verhalten sich wie beim Beispiel-Topo.
+
+Die Zufallsquelle ist injizierbar, damit Tests deterministisch bleiben:
+
+```js
+import { createRandomTopo } from './src/random-topo.js';
+
+createRandomTopo({ seed: 42 });        // reproduzierbar
+createRandomTopo({ rng: Math.random }) // eigene Quelle
+createRandomTopo();                    // wie der Knopf
+```
+
 ### Legende
 
-Die Legende zeigt Titel, optional `author` und `duration`, die Abkürzungen der
-verwendeten Segmenttypen sowie das Datum. Leere Werte erzeugen keine Zeile; der
-Legendenkasten und die Blattbreite wachsen mit dem längsten Text, damit nichts überlappt.
-Änderungen an Name, Author und Dauer erscheinen sofort beim Tippen im Topo.
+Die Legende zeigt oben den Titel und — sofern gefüllt — die `duration`, darunter die
+Abkürzungen der verwendeten Segmenttypen. **`author` und das Datum schliessen die
+Legende ab**, in dieser Reihenfolge, nach dem letzten Legendeneintrag. Das Datum wird
+lesbar als `TT.MM.JJJJ` ausgegeben (ein Nicht-ISO-Wert bleibt unverändert stehen).
+Leere Werte erzeugen keine Zeile; Legendenkasten, Blattbreite und Blatthöhe wachsen mit
+dem Inhalt, damit nichts überlappt oder abgeschnitten wird — in jedem Format, in Farbe
+wie in Schwarz/Weiss und damit auch in jedem Export. Änderungen an Name, Author, Dauer
+und Datum erscheinen sofort beim Tippen im Topo.
 
 Auch `author` und `duration` sind optionale Erweiterungen. Leere Werte werden
 weder im JSON noch im XML geschrieben, damit ältere Dateien beim Round-Trip
@@ -430,6 +457,7 @@ src/io-xml.js         XML-Import/-Export
 src/layout.js         Geometrie, Zeilenumbruch, Walk-Stauchung
 src/sheet.js          Formatvorgaben, Legenden- und Blattmasse
 src/symbols.js        SVG-Symbolbibliothek
+src/random-topo.js    Zufalls-Topo mit allen Segmenttypen und Symbolen
 src/renderer.js       SVG-Renderer inkl. Terrain und Legende
 src/exporters.js      SVG-/PNG-/Druck-Export
 src/ai.js             Foto/PDF → Topo per Vision-Modell (+ Antwort-Sanitizing)
@@ -438,7 +466,7 @@ src/app.js            Editor-Logik und UI-Bindings
 tools/proxy.mjs       Lokaler AI-Proxy (löst CORS) + serviert die App
 tools/worker.js       Derselbe Proxy als Cloudflare Worker
 tools/autostart.sh    Proxy ab Login mitlaufen lassen (LaunchAgent/systemd)
-test/                 Round-Trip-, Rendering- und AI-Tests
+test/                 Round-Trip-, Layout-, Zufalls-, UI- und AI-Tests
 examples/             Beispiel-Topo (JSON + XML)
 vendor/pdfjs/         pdf.js (Apache-2.0), lokal eingebunden
 topo.xsd              XML-Schema

@@ -16,6 +16,7 @@ import {
   validateTopo,
 } from './model.js';
 import { topoFromJson, topoToJson } from './io-json.js';
+import { createRandomTopo } from './random-topo.js';
 import { topoFromXml, topoToXml } from './io-xml.js';
 import { layoutTopo, worldToLocal } from './layout.js';
 import { renderTopoSvg } from './renderer.js';
@@ -916,6 +917,12 @@ function bindToolbar() {
     setStatus('Neues Topo.');
   });
   $('btn-example').addEventListener('click', loadExample);
+  $('btn-random').addEventListener('click', () => {
+    pushHistory();
+    replaceTopo(createRandomTopo());
+    fitZoom();
+    setStatus(`Zufalls-Topo „${state.topo.canyon_name}“ erzeugt.`);
+  });
   $('file-open').addEventListener('change', async (event) => {
     const [file] = event.target.files;
     if (file) await openFile(file);

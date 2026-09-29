@@ -11,7 +11,7 @@
     "autostart:install": "bash tools/autostart.sh install",
     "autostart:uninstall": "bash tools/autostart.sh uninstall",
     "autostart:status": "bash tools/autostart.sh status",
-    "test": "node test/roundtrip.test.mjs && node test/layout.test.mjs && node test/ui.test.mjs && node test/ai.test.mjs && node test/proxy.test.mjs"
+    "test": "node test/roundtrip.test.mjs && node test/layout.test.mjs && node test/random.test.mjs && node test/ui.test.mjs && node test/ai.test.mjs && node test/proxy.test.mjs"
   },
   "license": "MIT"
 }

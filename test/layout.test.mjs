@@ -16,6 +16,8 @@ import {
   contentBoundsFor,
   fitBoundsToPaper,
   legendMetaTextsFor,
+  legendPanelHeightMeters,
+  legendPanelTopMeters,
   paperAspectRatio,
   PAPER_PRESETS,
 } from '../src/sheet.js';
@@ -523,14 +525,112 @@ test('leere Metadaten erzeugen keine leeren Legendenzeilen', () => {
   const svg = renderTopoSvg(topo, layoutTopo(topo));
   assert.ok(!svg.includes('Author:'));
   assert.ok(!svg.includes('Dauer:'));
-  assert.ok(!svg.includes('data-meta='));
+  assert.ok(!svg.includes('data-meta="author"'));
+  assert.ok(!svg.includes('data-meta="duration"'));
 });
 
-test('nur ein gefülltes Feld ergibt genau eine Zusatzzeile', () => {
+test('ein leeres Datum erzeugt keine Datumszeile', () => {
+  const topo = normalizeTopo({ ...example, date: '' });
+  topo.date = '';
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  assert.ok(!svg.includes('data-meta="date"'));
+  assert.ok(!svg.includes('Datum:'));
+});
+
+test('nur ein gefülltes Feld ergibt genau eine Zusatzzeile neben dem Datum', () => {
   const topo = normalizeTopo({ ...example, author: 'Solo', duration: '' });
   const svg = renderTopoSvg(topo, layoutTopo(topo));
-  assert.equal((svg.match(/data-meta="/g) || []).length, 1);
+  assert.equal((svg.match(/data-meta="/g) || []).length, 2);
   assert.ok(svg.includes('data-meta="author"'));
+  assert.ok(svg.includes('data-meta="date"'));
+  assert.ok(!svg.includes('data-meta="duration"'));
+});
+
+/* ------------------------------------------- Author und Datum am Ende */
+
+/** y-Koordinate einer Legenden-Metazeile. */
+function metaY(svg, key) {
+  const match = new RegExp(`data-meta="${key}" x="[-\\d.]+" y="([-\\d.]+)"`).exec(svg);
+  assert.ok(match, `Legendenzeile ${key} fehlt`);
+  return Number(match[1]);
+}
+
+/** y-Koordinate des letzten regulären Legendeneintrags. */
+function lastEntryY(svg) {
+  const match = /<text x="[-\d.]+" y="([-\d.]+)"[^>]*>\(le\) = left<\/text>/.exec(svg);
+  assert.ok(match, 'letzter Legendeneintrag fehlt');
+  return Number(match[1]);
+}
+
+test('Author und Datum stehen nach dem letzten Legendeneintrag', () => {
+  const topo = normalizeTopo({
+    ...example,
+    author: 'Marco',
+    duration: '4 h',
+    date: '2024-03-07',
+  });
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  const entryY = lastEntryY(svg);
+  const authorY = metaY(svg, 'author');
+  const dateY = metaY(svg, 'date');
+  assert.ok(authorY > entryY, `Author (${authorY}) steht nicht unter dem Eintrag (${entryY})`);
+  assert.ok(dateY > authorY, `Datum (${dateY}) muss unter dem Author (${authorY}) stehen`);
+  // Die Dauer bleibt oben zwischen Titel und "Legend:".
+  assert.ok(metaY(svg, 'duration') < entryY);
+});
+
+test('das Datum erscheint als TT.MM.JJJJ', () => {
+  const topo = normalizeTopo({ ...example, date: '2024-03-07' });
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  assert.ok(svg.includes('07.03.2024'), 'lesbares Datum fehlt');
+  assert.ok(/data-meta="date"[^>]*>[\s\S]*?07\.03\.2024/.test(svg));
+});
+
+test('der Legendenkasten umschliesst Author und Datum in allen Formaten', () => {
+  const topo = normalizeTopo({
+    ...example,
+    author: 'Eine lange Autorenangabe mit Team',
+    duration: '5-6 h',
+    date: '2024-12-24',
+  });
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const layout = layoutTopo(topo, { paper });
+    const svg = renderTopoSvg(topo, layout, { paper });
+    const panel = /<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*opacity="0.92"/.exec(
+      svg,
+    );
+    assert.ok(panel, `${paper}: Legendenkasten fehlt`);
+    const panelBottom = Number(panel[2]) + Number(panel[4]);
+    const dateY = metaY(svg, 'date');
+    assert.ok(
+      dateY < panelBottom,
+      `${paper}: Datum (${dateY}) läuft aus dem Kasten (${panelBottom})`,
+    );
+    const bounds = fitBoundsToPaper(contentBoundsFor(topo, layout), paper);
+    assert.ok(
+      panelBottom <= bounds.maxY,
+      `${paper}: Kasten (${panelBottom}) ragt über das Blatt (${bounds.maxY})`,
+    );
+    assert.equal(
+      legendPanelTopMeters(topo) + legendPanelHeightMeters(topo) <= bounds.maxY,
+      true,
+    );
+  }
+});
+
+test('ein kurzes Topo wächst für die Legende nach unten mit', () => {
+  const topo = normalizeTopo({
+    canyon_name: 'Kurz',
+    author: 'A',
+    date: '2024-01-02',
+    segments: [{ type: 'POOL', length_in_meters: 5, angle_in_degrees: 0 }],
+  });
+  const layout = layoutTopo(topo);
+  const bounds = contentBoundsFor(topo, layout);
+  assert.ok(
+    bounds.maxY >= legendPanelTopMeters(topo) + legendPanelHeightMeters(topo),
+    'das Blatt schneidet die Legende ab',
+  );
 });
 
 test('lange Metadaten verbreitern die Legende, statt sich zu überlappen', () => {

@@ -173,6 +173,9 @@ globalThis.FileReader = class {
   readAsDataURL() {}
 };
 
+import { SEGMENT_TYPES, validateTopo } from '../src/model.js';
+import { symbolOptions } from '../src/symbols.js';
+
 const app = await import('../src/app.js');
 const { state } = app;
 
@@ -203,6 +206,43 @@ function type(id, text, { commit = false } = {}) {
 }
 
 console.log('UI-Tests (DOM)');
+
+test('der Zufall-Knopf erzeugt ein neues, vollständiges Topo', () => {
+  const before = JSON.stringify(state.topo);
+  elementById('btn-random').dispatch('click');
+  const topo = state.topo;
+  assert.notEqual(JSON.stringify(topo), before, 'das Topo hat sich nicht geändert');
+  const segmentTypes = new Set(topo.segments.map((segment) => segment.type));
+  for (const type of SEGMENT_TYPES) {
+    assert.ok(segmentTypes.has(type), `Segmenttyp ${type} fehlt`);
+  }
+  const variants = new Set(
+    topo.segments.flatMap((segment) =>
+      segment.elements.map((element) => `${element.type}${element.dead ? ':dead' : ''}`),
+    ),
+  );
+  for (const category of symbolOptions()) {
+    for (const symbol of category.symbols) {
+      assert.ok(
+        variants.has(`${symbol.type}${symbol.dead ? ':dead' : ''}`),
+        `Symbolvariante ${symbol.type} fehlt`,
+      );
+    }
+  }
+  assert.ok(svg().startsWith('<svg'), 'kein SVG gerendert');
+  assert.ok(svg().includes(topo.canyon_name), 'Name fehlt im Rendering');
+  assert.deepEqual(validateTopo(topo), [], 'Zufalls-Topo ist nicht valide');
+
+  // Zwei Klicks ergeben zwei verschiedene Topos.
+  const first = JSON.stringify(topo);
+  elementById('btn-random').dispatch('click');
+  assert.notEqual(JSON.stringify(state.topo), first);
+
+  // Rückgängig führt zurück – wie beim Beispiel-Knopf.
+  elementById('btn-undo').dispatch('click');
+  assert.equal(JSON.stringify(state.topo), first);
+  elementById('btn-undo').dispatch('click');
+});
 
 test('die App startet und rendert ein SVG', () => {
   assert.ok(svg().startsWith('<svg'), 'kein SVG gerendert');
@@ -242,7 +282,36 @@ test('Name, Author und Dauer sind an denselben Ereignissen gebunden', () => {
 test('leeren der Felder entfernt die Legendenzeilen wieder', () => {
   type('topo-author', '');
   type('topo-duration', '');
-  assert.ok(!svg().includes('data-meta='), 'leere Werte dürfen keine Zeile zeigen');
+  assert.ok(
+    !svg().includes('data-meta="author"'),
+    'leere Werte dürfen keine Zeile zeigen',
+  );
+  assert.ok(!svg().includes('data-meta="duration"'));
+});
+
+test('Author und Datum stehen am Ende der Legende', () => {
+  type('topo-author', 'Marco');
+  const yOf = (key) =>
+    Number(new RegExp(`data-meta="${key}" x="[-\\d.]+" y="([-\\d.]+)"`).exec(svg())[1]);
+  const lastEntry = Number(
+    /<text x="[-\d.]+" y="([-\d.]+)"[^>]*>\(le\) = left<\/text>/.exec(svg())[1],
+  );
+  assert.ok(yOf('author') > lastEntry, 'Author steht nicht am Legendenende');
+  assert.ok(yOf('date') > yOf('author'), 'Datum steht nicht nach dem Author');
+  type('topo-author', '');
+});
+
+test('das Datum aktualisiert die Legende sofort beim Ändern', () => {
+  const input = elementById('topo-date');
+  input.value = '2024-03-07';
+  input.dispatch('input');
+  assert.equal(state.topo.date, '2024-03-07');
+  assert.ok(svg().includes('07.03.2024'), 'lesbares Datum fehlt im SVG');
+
+  input.value = '2025-11-30';
+  input.dispatch('input');
+  assert.ok(svg().includes('30.11.2025'), 'Datum aktualisiert sich nicht live');
+  assert.ok(!svg().includes('07.03.2024'), 'altes Datum bleibt stehen');
 });
 
 test('eine Eingabe ergibt genau einen Undo-Schritt', () => {

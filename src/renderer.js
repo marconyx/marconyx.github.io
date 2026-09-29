@@ -7,8 +7,11 @@ import {
   PAPER_PRESETS,
   contentBoundsFor,
   fitBoundsToPaper,
+  LEGEND_LINE_HEIGHT_METERS,
   legendEntriesFor,
-  legendMetaLinesFor,
+  legendFooterLinesFor,
+  legendHeadLinesFor,
+  legendPanelHeightMeters,
   legendPanelWidthMeters,
   legendTitleWidthMeters,
   paperPreset,
@@ -45,7 +48,7 @@ export const THEMES = {
   },
 };
 
-const LEGEND_LINE_HEIGHT = 1.4;
+const LEGEND_LINE_HEIGHT = LEGEND_LINE_HEIGHT_METERS;
 
 const POOL_DEPTH_METERS = 2.2;
 const TERRAIN_DEPTH_METERS = 14;
@@ -194,15 +197,19 @@ function continuationMarkers(row, layout, theme) {
   return markers.join('');
 }
 
+function metaLineSvg(line, right, y, theme) {
+  return `<text class="topo-legend-meta" data-meta="${line.key}" x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}"><tspan font-weight="700">${esc(line.label)}:</tspan> ${esc(line.value)}</text>`;
+}
+
 function renderLegend(topo, layout, theme, bounds) {
   const entries = legendEntriesFor(topo);
-  const metaLines = legendMetaLinesFor(topo);
+  const headLines = legendHeadLinesFor(topo);
+  const footerLines = legendFooterLinesFor(topo);
   const right = bounds.maxX - 2;
   const top = bounds.minY + 1 + (topo.legend_offset_top || 0);
   const titleWidth = legendTitleWidthMeters(topo);
   const panelWidth = legendPanelWidthMeters(topo);
-  const panelHeight =
-    6.5 + (entries.length + metaLines.length) * LEGEND_LINE_HEIGHT + 3;
+  const panelHeight = legendPanelHeightMeters(topo);
 
   const parts = [
     `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" opacity="0.92"/>`,
@@ -214,15 +221,13 @@ function renderLegend(topo, layout, theme, bounds) {
     </g>`,
   ];
   let y = top + 5;
-  // Author und Dauer stehen direkt unter dem Titel – nur wenn gefüllt, sonst
-  // bliebe eine leere Beschriftungszeile stehen.
-  for (const line of metaLines) {
-    parts.push(
-      `<text class="topo-legend-meta" data-meta="${line.key}" x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}"><tspan font-weight="700">${esc(line.label)}:</tspan> ${esc(line.value)}</text>`,
-    );
+  // Die Dauer steht direkt unter dem Titel – nur wenn gefüllt, sonst bliebe
+  // eine leere Beschriftungszeile stehen.
+  for (const line of headLines) {
+    parts.push(metaLineSvg(line, right, y, theme));
     y += LEGEND_LINE_HEIGHT;
   }
-  if (metaLines.length) y += 0.4;
+  if (headLines.length) y += 0.4;
   parts.push(
     `<text x="${right}" y="${y}" font-size="1.1" font-weight="700" text-anchor="end" fill="${theme.text}">Legend:</text>`,
   );
@@ -237,10 +242,12 @@ function renderLegend(topo, layout, theme, bounds) {
     );
     y += LEGEND_LINE_HEIGHT;
   }
-  y += LEGEND_LINE_HEIGHT;
-  parts.push(
-    `<text x="${right}" y="${y}" font-size="1" text-anchor="end" fill="${theme.text}">${esc(topo.date)}</text>`,
-  );
+  // Author und Datum schliessen die Legende ab – nach dem letzten Eintrag.
+  if (footerLines.length) y += LEGEND_LINE_HEIGHT - 0.4;
+  for (const line of footerLines) {
+    parts.push(metaLineSvg(line, right, y, theme));
+    y += LEGEND_LINE_HEIGHT;
+  }
   return parts.join('');
 }
 
