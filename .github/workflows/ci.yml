@@ -28,5 +28,6 @@ jobs:
             index.html
             styles.css
             src
+            vendor
             examples
             topo.xsd

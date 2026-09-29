@@ -12,8 +12,9 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
   per Klick einfügen und im Topo frei verschieben
 - **Layout**: Serpentine (automatischer Zeilenumbruch) oder Linear, Farbe oder Schwarz/Weiß,
   Bildschirm / A4 quer / A4 hoch
-- **Foto-Referenz**: Foto als halbtransparenten Hintergrund einblenden und das Topo darüber
-  nachzeichnen (Deckkraft, Größe, Position regelbar)
+- **Foto-/PDF-Referenz**: Bild **oder PDF** als halbtransparenten Hintergrund einblenden und
+  das Topo darüber nachzeichnen (Deckkraft, Größe, Position regelbar). Bei mehrseitigen PDFs
+  lässt sich die Seite auswählen.
 - **Speichern**: JSON (kompatibel zum Canyon-Explore-Format) und XML (mit XSD)
 - **Export**: SVG, PNG, Druck/PDF über den Browser-Druckdialog
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
@@ -157,7 +158,25 @@ registerTopoProvider(async (image, options) => {
 
 Sobald ein Provider registriert ist, aktiviert die UI den Button
 **„Aus Foto erzeugen (AI)“**. Das Ergebnis wird über `normalizeTopo()` validiert.
+Der Provider bekommt immer eine PNG-Data-URL — bei PDFs die gerade angezeigte,
+bereits gerenderte Seite. Er muss PDFs also nicht selbst verstehen.
 API-Keys gehören in `localStorage` oder hinter einen Proxy — **niemals ins Repository**.
+
+## PDF-Referenz
+
+Viele Topos liegen als PDF vor. Beim Auswählen einer PDF-Datei rendert die App die
+gewünschte Seite über [pdf.js](https://mozilla.github.io/pdf.js/) in ein Canvas und
+benutzt das Ergebnis als Referenzbild — ab da ist der Ablauf identisch zu einem Foto.
+
+- pdf.js liegt unter `vendor/pdfjs/` **im Repository** (Apache-2.0, Lizenz beiliegend),
+  damit die App ohne CDN und ohne Netzzugriff funktioniert.
+- Das Modul wird per dynamischem `import()` erst beim ersten PDF geladen. Wer nur Bilder
+  benutzt, lädt die 1,6 MB nie.
+- Seiten werden auf maximal 2200 px längste Kante gerendert und auf weißem Grund
+  gezeichnet, damit transparente PDFs auch im dunklen Theme lesbar bleiben.
+- Gespeichert wird in `localStorage` nur das gerenderte Bild. Nach einem Reload ist die
+  Seite weiterhin sichtbar, zum Blättern muss die Datei erneut gewählt werden.
+- Alles läuft lokal im Browser; die PDF-Datei wird nicht hochgeladen.
 
 ## Projektstruktur
 
@@ -172,16 +191,19 @@ src/symbols.js        SVG-Symbolbibliothek
 src/renderer.js       SVG-Renderer inkl. Terrain und Legende
 src/exporters.js      SVG-/PNG-/Druck-Export
 src/ai.js             Schnittstelle für spätere AI-Erkennung
+src/pdf.js            PDF-Seiten als Referenzbild rendern (pdf.js)
 src/app.js            Editor-Logik und UI-Bindings
 test/                 Round-Trip- und Rendering-Tests
 examples/             Beispiel-Topo (JSON + XML)
+vendor/pdfjs/         pdf.js (Apache-2.0), lokal eingebunden
 topo.xsd              XML-Schema
 ```
 
 ## Hinweise
 
 - Alle Symbole sind eigens gezeichnet; es werden keine fremden Assets verwendet.
+  Einzige Fremdbibliothek ist pdf.js unter `vendor/pdfjs/` (Apache-2.0).
 - Die Layout-Regeln der Referenz-App sind nicht dokumentiert und wurden aus Beispieldatei
   und gerendertem Topo rekonstruiert — Abweichungen im Detail sind möglich, die Daten
   bleiben aber vollständig kompatibel.
-- Es werden keine Daten an Server gesendet; Foto und Topo verlassen den Browser nicht.
+- Es werden keine Daten an Server gesendet; Foto, PDF und Topo verlassen den Browser nicht.

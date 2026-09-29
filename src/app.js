@@ -26,6 +26,7 @@ import {
   svgToPngBlob,
 } from './exporters.js';
 import { isTopoProviderAvailable, photoToTopo } from './ai.js';
+import { isPdfFile, openPdf } from './pdf.js';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -33,8 +34,12 @@ const state = {
   topo: createEmptyTopo(),
   selection: null,
   view: { layout: 'serpentine', theme: 'color', paper: 'screen', zoom: 1 },
-  photo: { src: null, opacity: 45, scale: 100, x: 0, y: 0 },
+  photo: { src: null, opacity: 45, scale: 100, x: 0, y: 0, page: 1, pageCount: 0 },
 };
+
+// Das geöffnete PDF-Dokument lebt nur im Speicher: In localStorage landet
+// ausschließlich die gerenderte Seite als Data-URL.
+let pdfDoc = null;
 
 let history = { past: [], future: [] };
 let currentLayout = null;
@@ -89,6 +94,10 @@ function restore() {
     state.topo = normalizeTopo(saved.topo);
     Object.assign(state.view, saved.view || {});
     Object.assign(state.photo, saved.photo || {});
+    // Das PDF-Dokument selbst überlebt den Reload nicht, nur das gerenderte
+    // Bild. Ohne Dokument gibt es nichts zu blättern.
+    state.photo.pageCount = 0;
+    state.photo.page = 1;
     return true;
   } catch {
     return false;
@@ -632,6 +641,7 @@ function fitZoom() {
 
 function applyPhoto() {
   const photo = $('photo-layer');
+  syncPhotoPageControls();
   if (!state.photo.src) {
     photo.hidden = true;
     return;
@@ -640,6 +650,80 @@ function applyPhoto() {
   photo.src = state.photo.src;
   photo.style.opacity = String(state.photo.opacity / 100);
   photo.style.transform = `translate(${state.photo.x * 4}px, ${state.photo.y * 4}px) scale(${state.photo.scale / 100})`;
+}
+
+function syncPhotoPageControls() {
+  const row = $('photo-page-row');
+  const multiPage = state.photo.pageCount > 1;
+  row.hidden = !multiPage;
+  if (!multiPage) return;
+  const input = $('photo-page');
+  input.max = String(state.photo.pageCount);
+  input.value = String(state.photo.page);
+  $('photo-page-info').textContent = `von ${state.photo.pageCount}`;
+  $('btn-photo-page-prev').disabled = state.photo.page <= 1;
+  $('btn-photo-page-next').disabled = state.photo.page >= state.photo.pageCount;
+}
+
+async function showPdfPage(pageNumber) {
+  if (!pdfDoc) return;
+  const target = Math.min(Math.max(1, pageNumber), pdfDoc.pageCount);
+  setStatus(`Rendere PDF-Seite ${target}…`);
+  try {
+    state.photo.src = await pdfDoc.renderPage(target);
+    state.photo.page = target;
+    applyPhoto();
+    persist();
+    setStatus(`PDF-Seite ${target} von ${pdfDoc.pageCount} als Referenzlayer geladen.`);
+  } catch (error) {
+    setStatus(`PDF-Seite konnte nicht gerendert werden: ${error.message}`);
+  }
+}
+
+function clearPhoto() {
+  if (pdfDoc) {
+    pdfDoc.destroy();
+    pdfDoc = null;
+  }
+  state.photo.src = null;
+  state.photo.page = 1;
+  state.photo.pageCount = 0;
+  applyPhoto();
+  persist();
+}
+
+async function loadReferenceFile(file) {
+  if (isPdfFile(file)) {
+    setStatus('PDF wird geöffnet…');
+    try {
+      if (pdfDoc) pdfDoc.destroy();
+      pdfDoc = await openPdf(file);
+      state.photo.pageCount = pdfDoc.pageCount;
+      await showPdfPage(1);
+    } catch (error) {
+      pdfDoc = null;
+      state.photo.pageCount = 0;
+      syncPhotoPageControls();
+      setStatus(`PDF konnte nicht gelesen werden: ${error.message}`);
+    }
+    return;
+  }
+
+  if (pdfDoc) {
+    pdfDoc.destroy();
+    pdfDoc = null;
+  }
+  state.photo.pageCount = 0;
+  state.photo.page = 1;
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.photo.src = reader.result;
+    applyPhoto();
+    persist();
+    setStatus('Foto als Referenzlayer geladen.');
+  };
+  reader.onerror = () => setStatus('Foto konnte nicht gelesen werden.');
+  reader.readAsDataURL(file);
 }
 
 /* --------------------------------------------------------------- Dateien */
@@ -805,16 +889,8 @@ function bindToolbar() {
 function bindPhoto() {
   $('file-photo').addEventListener('change', (event) => {
     const [file] = event.target.files;
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      state.photo.src = reader.result;
-      applyPhoto();
-      persist();
-      setStatus('Foto als Referenzlayer geladen.');
-    };
-    reader.readAsDataURL(file);
     event.target.value = '';
+    if (file) loadReferenceFile(file);
   });
   for (const [id, key] of [
     ['photo-opacity', 'opacity'],
@@ -828,11 +904,12 @@ function bindPhoto() {
       applyPhoto();
     });
   }
-  $('btn-photo-clear').addEventListener('click', () => {
-    state.photo.src = null;
-    applyPhoto();
-    persist();
+  $('photo-page').addEventListener('change', (event) => {
+    showPdfPage(Number(event.target.value) || 1);
   });
+  $('btn-photo-page-prev').addEventListener('click', () => showPdfPage(state.photo.page - 1));
+  $('btn-photo-page-next').addEventListener('click', () => showPdfPage(state.photo.page + 1));
+  $('btn-photo-clear').addEventListener('click', clearPhoto);
 
   const aiButton = $('btn-photo-ai');
   aiButton.disabled = !isTopoProviderAvailable();

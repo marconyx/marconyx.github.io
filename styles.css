@@ -146,6 +146,27 @@ input[type='date'] {
   line-height: 1.4;
 }
 
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.row input[type='number'] {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.row button {
+  flex: 0 0 auto;
+  padding-inline: 0.5rem;
+}
+
+#photo-page-row[hidden] {
+  display: none;
+}
+
 .segment-add {
   display: flex;
   gap: 0.35rem;

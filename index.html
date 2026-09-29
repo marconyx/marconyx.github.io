@@ -79,14 +79,28 @@
 
         <section class="panel__section">
           <h2>Foto-Referenz</h2>
-          <p class="hint">Foto als Hintergrund einblenden und Topo darüber nachzeichnen.</p>
-          <label class="button" for="file-photo">Foto wählen…</label>
-          <input type="file" id="file-photo" accept="image/*" hidden />
+          <p class="hint">Foto oder PDF als Hintergrund einblenden und Topo darüber nachzeichnen.</p>
+          <label class="button" for="file-photo">Foto oder PDF wählen…</label>
+          <input
+            type="file"
+            id="file-photo"
+            accept="image/*,application/pdf,.pdf"
+            hidden
+          />
+          <label id="photo-page-row" hidden>
+            PDF-Seite
+            <span class="row">
+              <button type="button" id="btn-photo-page-prev" title="Vorherige Seite">◀</button>
+              <input type="number" id="photo-page" min="1" value="1" />
+              <button type="button" id="btn-photo-page-next" title="Nächste Seite">▶</button>
+            </span>
+            <span class="hint" id="photo-page-info"></span>
+          </label>
           <label>Deckkraft <input type="range" id="photo-opacity" min="0" max="100" value="45" /></label>
           <label>Größe <input type="range" id="photo-scale" min="20" max="300" value="100" /></label>
           <label>Horizontal <input type="range" id="photo-x" min="-100" max="100" value="0" /></label>
           <label>Vertikal <input type="range" id="photo-y" min="-100" max="100" value="0" /></label>
-          <button type="button" id="btn-photo-clear">Foto entfernen</button>
+          <button type="button" id="btn-photo-clear">Referenz entfernen</button>
           <button type="button" id="btn-photo-ai" disabled title="Noch kein AI-Provider registriert">
             Aus Foto erzeugen (AI)
           </button>
