@@ -32,14 +32,37 @@ Tests (ohne Abhängigkeiten):
 node test/roundtrip.test.mjs
 ```
 
+## Repository
+
+<https://github.com/marco-wahler_Swisscom/canyoning-topo-generator> (privat)
+
 ## Deployment auf GitHub Pages
 
-1. Repository anlegen und den Inhalt dieses Ordners committen.
-2. In den Repository-Einstellungen unter *Pages* → *Source* **GitHub Actions** wählen.
-3. Der mitgelieferte Workflow `.github/workflows/deploy.yml` veröffentlicht das Repository
-   bei jedem Push auf `main`. Ein Build ist nicht nötig, die Dateien werden 1:1 ausgeliefert.
+Das Repository ist **privat**, weil der Enterprise-Account keine öffentlichen Repos
+erlaubt. GitHub Pages steht für private Repos in diesem Plan nicht zur Verfügung —
+der Deploy-Workflow ist deshalb auf `workflow_dispatch` gestellt und läuft nicht
+automatisch.
 
-Die Datei `.nojekyll` verhindert, dass GitHub Pages den Ordner durch Jekyll verarbeitet.
+Sobald Pages verfügbar ist (Repo öffentlich schalten oder in einen Account mit
+Pages-Unterstützung übertragen):
+
+1. In den Repository-Einstellungen unter *Pages* → *Source* **GitHub Actions** wählen.
+2. Den Workflow `.github/workflows/deploy.yml` starten (Actions → *Deploy to GitHub
+   Pages* → *Run workflow*) oder den `on:`-Block wieder auf `push: branches: [main]`
+   umstellen.
+
+Ein Build ist nicht nötig, die Dateien werden 1:1 ausgeliefert. Die Datei `.nojekyll`
+verhindert, dass GitHub Pages den Ordner durch Jekyll verarbeitet.
+
+`.github/workflows/ci.yml` läuft dagegen bei jedem Push: Tests, XSD-Validierung und
+Upload der App als Build-Artefakt.
+
+## Lokal starten
+
+```bash
+python3 -m http.server 8080
+# danach http://127.0.0.1:8080 öffnen
+```
 
 ## Datenformat
 

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Round-Trip- und Rendering-Tests
+        run: node test/roundtrip.test.mjs
+      - name: XML gegen Schema validieren
+        run: xmllint --noout --schema topo.xsd examples/my-canyon-inferiore.xml
+      - name: App als Artefakt bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: topo-generator
+          path: |
+            index.html
+            styles.css
+            src
+            examples
+            topo.xsd

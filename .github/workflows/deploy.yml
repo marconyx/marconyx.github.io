@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
+# Läuft bewusst nur manuell: GitHub Pages ist für private Repos in diesem Plan
+# nicht verfügbar. Sobald das Repo öffentlich ist (oder der Plan Pages erlaubt),
+# unter Settings > Pages "GitHub Actions" wählen und diesen Workflow starten.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
