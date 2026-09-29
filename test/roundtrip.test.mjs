@@ -157,4 +157,50 @@ test('Tote Bäume werden anders gezeichnet als lebende', () => {
   assert.notEqual(dead, deadConifer, 'toter Laub- und Nadelbaum dürfen nicht gleich aussehen');
 });
 
+test('Beim Ziehen bleibt das Bild stehen und schrumpft nicht', () => {
+  // Elementpositionen gehen in die Zeilengrenzen ein. Ohne Rahmen verschiebt
+  // jede Mausbewegung das ganze Topo – es läuft dem Zeiger davon.
+  const topo = normalizeTopo(original);
+  const frame = layoutTopo(topo);
+  // Was sich nicht bewegen darf: Zeilenversatz und linker Rand. Nur daran
+  // hängt, ob gezeichnete Inhalte ihre Position behalten.
+  const anchors = (l) => ({ minX: l.minX, offsets: l.rows.map((r) => r.offsetY) });
+  const fixed = anchors(frame);
+
+  const element = topo.segments[0].elements[0];
+  for (const [across, along] of [[10, 5], [40, 5], [0, 140], [-25, 60]]) {
+    element.vertical_start_rel_to_segment_start = across;
+    element.horizontal_start_rel_to_segment_start = along;
+    const dragged = layoutTopo(topo, { frame });
+    assert.deepEqual(
+      anchors(dragged),
+      fixed,
+      `Inhalt darf sich nicht verschieben (quer=${across}, entlang=${along})`,
+    );
+    // Wachsen ist erlaubt (sonst würde das Symbol am Blattrand abgeschnitten),
+    // Schrumpfen nicht – das wäre wieder ein Sprung.
+    assert.ok(dragged.width >= frame.width, 'Blatt darf nicht schmaler werden');
+    assert.ok(dragged.height >= frame.height, 'Blatt darf nicht flacher werden');
+  }
+
+  // Gegenprobe: ohne Rahmen verschiebt sich der Inhalt wirklich – sonst
+  // bestünde der Test auch dann, wenn es gar nichts einzufrieren gäbe.
+  element.vertical_start_rel_to_segment_start = 40;
+  element.horizontal_start_rel_to_segment_start = 5;
+  assert.notDeepEqual(anchors(layoutTopo(topo)), fixed);
+});
+
+test('Ein Rahmen aus demselben Stand ändert nichts', () => {
+  const topo = normalizeTopo(original);
+  for (const mode of ['serpentine', 'linear']) {
+    const plain = layoutTopo(topo, { layout: mode });
+    const framed = layoutTopo(topo, { layout: mode, frame: plain });
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(framed)),
+      JSON.parse(JSON.stringify(plain)),
+      `${mode}: Rahmen darf kein anderes Layout erzeugen`,
+    );
+  }
+});
+
 console.log(`\n${passed} Test(s) bestanden.`);

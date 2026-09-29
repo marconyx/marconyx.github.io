@@ -9,7 +9,9 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
 
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen
 - **Symbole**: 24 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Leiter, Fluchtwege, Warnungen …)
-  per Klick einfügen und im Topo frei verschieben
+  per Klick einfügen und im Topo frei verschieben. Ist bereits ein Symbol ausgewählt,
+  entsteht das neue an derselben Stelle und direkt dahinter in der Reihenfolge —
+  sonst in der Segmentmitte und am Ende.
 - **Layout**: Serpentine (automatischer Zeilenumbruch) oder Linear, Farbe oder Schwarz/Weiß,
   Bildschirm / A4 quer / A4 hoch
 - **Foto-/PDF-Referenz**: Bild **oder PDF** als halbtransparenten Hintergrund einblenden und

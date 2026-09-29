@@ -82,10 +82,16 @@ export function worldToLocal(placement, point) {
 
 /**
  * @param {object} topo normalisiertes Topo
- * @param {object} [options] `{ layout: 'serpentine' | 'linear' }`
+ * @param {object} [options] `{ layout: 'serpentine' | 'linear', frame }`
+ *
+ * `frame` ist ein früheres Layout, dessen Zeilenversatz und Aussenmasse
+ * übernommen werden. Nötig beim Ziehen eines Symbols: Elementpositionen gehen
+ * sonst in die Zeilengrenzen ein, das Bild würde bei jedem Mausschritt neu
+ * skaliert und verschöbe sich unter dem Zeiger weg.
  */
 export function layoutTopo(topo, options = {}) {
   const mode = options.layout || 'serpentine';
+  const frame = options.frame || null;
   const maxWalk = topo.maximum_walk_length > 0 ? topo.maximum_walk_length : 30;
   const rowWidthLimit =
     mode === 'linear'
@@ -189,9 +195,12 @@ export function layoutTopo(topo, options = {}) {
   let minX = 0;
   let maxX = 0;
   for (const row of rows) {
-    row.offsetY = offsetY - row.minY + ROW_PADDING_METERS;
     row.height = row.maxY - row.minY + 2 * ROW_PADDING_METERS;
-    offsetY += row.height + ROW_GAP_METERS;
+    const frozen = frame?.rows?.[row.index]?.offsetY;
+    row.offsetY =
+      frozen == null ? offsetY - row.minY + ROW_PADDING_METERS : frozen;
+    // Oberkante des Zeilenkastens – daraus wächst der Versatz der nächsten Zeile.
+    offsetY = row.offsetY + row.minY - ROW_PADDING_METERS + row.height + ROW_GAP_METERS;
 
     for (const placement of row.placements) {
       placement.start.y += row.offsetY;
@@ -207,8 +216,21 @@ export function layoutTopo(topo, options = {}) {
     maxX = Math.max(maxX, row.maxX);
   }
 
-  const height = Math.max(offsetY - ROW_GAP_METERS, 1);
-  const width = Math.max(maxX - minX, rowWidthLimit === Infinity ? maxX : rowWidthLimit);
+  if (frame) {
+    minX = frame.minX;
+    maxX = Math.max(frame.maxX, maxX);
+  }
+  // Das Blatt darf während des Ziehens wachsen, aber nie schrumpfen: Die
+  // Skalierung ist konstant (Pixel je Meter), Wachstum nach rechts/unten
+  // verschiebt also nichts, verhindert aber, dass ein weit gezogenes Symbol
+  // am Blattrand abgeschnitten wird und kurz verschwindet.
+  const plainHeight = Math.max(offsetY - ROW_GAP_METERS, 1);
+  const plainWidth = Math.max(
+    maxX - minX,
+    rowWidthLimit === Infinity ? maxX : rowWidthLimit,
+  );
+  const height = frame ? Math.max(frame.height, plainHeight) : plainHeight;
+  const width = frame ? Math.max(frame.width, plainWidth) : plainWidth;
 
   return {
     rows,

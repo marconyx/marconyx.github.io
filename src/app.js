@@ -133,7 +133,12 @@ function setStatus(message) {
 /* ------------------------------------------------------------------ Render */
 
 function render() {
-  currentLayout = layoutTopo(state.topo, { layout: state.view.layout });
+  // Während des Ziehens bleibt der Rahmen des vorigen Layouts stehen, sonst
+  // würde das Bild dem Zeiger davonlaufen (siehe layoutTopo, Option `frame`).
+  currentLayout = layoutTopo(state.topo, {
+    layout: state.view.layout,
+    frame: drag ? drag.frame : null,
+  });
   currentSvgText = renderTopoSvg(state.topo, currentLayout, {
     theme: state.view.theme,
     paper: state.view.paper,
@@ -492,22 +497,37 @@ function addSymbol(type, { dead = false } = {}) {
     return;
   }
   const segment = state.topo.segments[index];
+
+  // Ist ein Symbol ausgewählt, entsteht das neue an derselben Stelle und direkt
+  // dahinter in der Reihenfolge – sonst hinten und in der Segmentmitte.
+  const anchorIndex =
+    state.selection?.kind === 'element' && state.selection.segmentIndex === index
+      ? state.selection.elementIndex
+      : -1;
+  const anchor = anchorIndex >= 0 ? segment.elements[anchorIndex] : null;
+  const insertAt = anchor ? anchorIndex + 1 : segment.elements.length;
+
   pushHistory();
   const element = createElement(type, {
-    horizontal_start_rel_to_segment_start: segment.length_in_meters / 2,
-    vertical_start_rel_to_segment_start: 0,
+    horizontal_start_rel_to_segment_start: anchor
+      ? anchor.horizontal_start_rel_to_segment_start
+      : segment.length_in_meters / 2,
+    vertical_start_rel_to_segment_start: anchor
+      ? anchor.vertical_start_rel_to_segment_start
+      : 0,
     dead,
   });
   if (SYMBOLS[type]?.range) {
     element.horizontal_end_rel_to_segment_start =
       element.horizontal_start_rel_to_segment_start + 5;
-    element.vertical_end_rel_to_segment_start = 0;
+    element.vertical_end_rel_to_segment_start =
+      element.vertical_start_rel_to_segment_start;
   }
-  segment.elements.push(element);
+  segment.elements.splice(insertAt, 0, element);
   state.selection = {
     kind: 'element',
     segmentIndex: index,
-    elementIndex: segment.elements.length - 1,
+    elementIndex: insertAt,
   };
   render();
   setStatus(
@@ -588,6 +608,9 @@ function onPointerDown(event) {
         elementIndex,
         element,
         placement,
+        // Eingefrorenes Layout: hält Zeilenversatz und Bildmasse still, solange
+        // gezogen wird. Ohne das verschiebt jede Mausbewegung das ganze Topo.
+        frame: currentLayout,
         offset: {
           horizontal:
             element.horizontal_start_rel_to_segment_start - local.horizontal,
@@ -654,7 +677,11 @@ function round(value) {
 }
 
 function onPointerUp() {
+  if (!drag) return;
+  const moved = drag.moved;
   drag = null;
+  // Erst jetzt darf sich das Layout wieder an den neuen Stand anpassen.
+  if (moved) render();
 }
 
 /* ------------------------------------------------------------------- Ansicht */
