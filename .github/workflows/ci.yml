@@ -20,6 +20,8 @@ jobs:
         run: node test/roundtrip.test.mjs
       - name: Tests der AI-Antwortverarbeitung
         run: node test/ai.test.mjs
+      - name: Proxy-Tests
+        run: node test/proxy.test.mjs
       - name: XML gegen Schema validieren
         run: xmllint --noout --schema topo.xsd examples/my-canyon-inferiore.xml
       - name: App als Artefakt bereitstellen
@@ -32,4 +34,5 @@ jobs:
             src
             vendor
             examples
+            tools
             topo.xsd

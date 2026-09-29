@@ -47,10 +47,10 @@ export const AI_PROVIDERS = [
   {
     id: 'proxy',
     label: 'Eigener Proxy (ohne Key im Browser)',
-    defaultEndpoint: '',
+    defaultEndpoint: 'http://127.0.0.1:8787/api/topo',
     defaultModel: '',
     needsKey: false,
-    hint: 'POST mit { image, prompt, hints }; Antwort ist das Topo-JSON. Empfohlen für geteilte Deployments.',
+    hint: 'Nötig für Gateways ohne CORS (z. B. api.swisscom.com). Proxy starten: AI_KEY=… node tools/proxy.mjs',
   },
 ];
 
@@ -429,8 +429,13 @@ async function readJson(response) {
   }
   if (!response.ok) {
     const detail =
-      parsed?.error?.message || parsed?.message || text.slice(0, 200) || response.statusText;
-    throw new Error(`API-Fehler ${response.status}: ${detail}`);
+      parsed?.error?.message ||
+      (typeof parsed?.error === 'string' ? parsed.error : '') ||
+      parsed?.message ||
+      text.slice(0, 200) ||
+      response.statusText;
+    const hint = parsed?.hint ? ` (${parsed.hint})` : '';
+    throw new Error(`API-Fehler ${response.status}: ${detail}${hint}`);
   }
   if (parsed === null) throw new Error('Die API hat kein JSON zurückgegeben.');
   return parsed;
@@ -476,8 +481,14 @@ export async function photoToTopo(image, options = {}) {
     if (error?.name === 'AbortError') throw error;
     // fetch wirft bei CORS und Netzproblemen denselben nichtssagenden TypeError.
     if (error instanceof TypeError) {
+      const viaProxy = settings.providerId === 'proxy';
       throw new Error(
-        `Der Endpoint ist aus dem Browser nicht erreichbar (CORS oder Netzwerk): ${settings.endpoint}. Ein eigener Proxy löst das zuverlässig.`,
+        viaProxy
+          ? `Der Proxy unter ${settings.endpoint} antwortet nicht. Läuft er? Starten mit: AI_KEY=… node tools/proxy.mjs`
+          : `Der Endpoint ist aus dem Browser nicht erreichbar (CORS oder Netzwerk): ${settings.endpoint}. `
+            + 'Firmen-Gateways blockieren den Preflight – dagegen hilft nur ein Proxy: '
+            + 'AI_KEY=… AI_UPSTREAM=' + settings.endpoint + ' node tools/proxy.mjs, '
+            + 'danach Anbieter "Eigener Proxy" wählen.',
       );
     }
     throw error;

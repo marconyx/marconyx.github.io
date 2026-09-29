@@ -160,23 +160,91 @@ Browsers und wird nie ins Repository übertragen.
 |---|---|---|
 | **OpenAI-kompatibel** | OpenAI, Azure OpenAI, OpenRouter, Groq, LM Studio, Ollama (`/v1`) | ja |
 | **Anthropic (Claude)** | Claude Messages API | ja |
-| **Eigener Proxy** | Worker/Lambda, der den Key serverseitig hält | nein |
+| **Eigener Proxy** | Firmen-Gateways ohne CORS, geteilte Deployments — `tools/proxy.mjs` liegt bei | nein |
 
 Einstellen unter *AI-Erkennung → Einstellungen*. Der Button bleibt gesperrt, solange
 etwas fehlt, und nennt im Tooltip den Grund.
 
-### Empfehlung für geteilte Deployments
+### Firmen-Gateways: der mitgelieferte Proxy
 
-Ein im Browser hinterlegter Key ist für den Eigengebrauch in Ordnung, für eine
-öffentlich erreichbare Instanz aber nicht. Dort den Modus **Eigener Proxy** wählen.
-Der Proxy bekommt:
+Viele Unternehmens-Gateways beantworten den CORS-Preflight des Browsers mit `401`
+und **ohne** `Access-Control-Allow-Origin`. Der Browser bricht den Aufruf dann ab,
+bevor er überhaupt stattfindet — sichtbar nur als nichtssagender Netzwerkfehler.
+Beispiel (nachgeprüft):
+
+```bash
+curl -i -X OPTIONS https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1/chat/completions \
+  -H "Origin: http://localhost:8080" -H "Access-Control-Request-Method: POST"
+# HTTP/1.1 401 — kein Access-Control-Allow-Origin
+```
+
+Daran lässt sich clientseitig nichts ändern. `tools/proxy.mjs` löst es: Zwischen
+Servern gelten keine CORS-Regeln. Der Proxy **serviert zusätzlich die App selbst**,
+damit laufen App und API auf demselben Origin und CORS entfällt vollständig.
+
+```bash
+AI_KEY=dein-key \
+AI_UPSTREAM=https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1 \
+AI_MODEL=gpt-4o \
+npm run proxy
+```
+
+Dann **http://127.0.0.1:8787/** öffnen (nicht den anderen Server) und unter
+*AI-Erkennung → Einstellungen* den Anbieter **Eigener Proxy** wählen — der Endpoint
+`http://127.0.0.1:8787/api/topo` ist bereits vorausgefüllt. Ein Key gehört dort
+**nicht** hin; er bleibt im Proxy.
+
+Nur Node ≥ 18 nötig, keine Abhängigkeiten. `GET /api/health` zeigt die aktive
+Konfiguration (ohne den Key).
+
+#### Auth-Schema anpassen
+
+Vorgabe ist `Authorization: Bearer <key>`. Erwartet dein Gateway etwas anderes:
+
+```bash
+# roher Key in eigenem Header
+AI_AUTH_HEADER=X-Api-Key AI_AUTH_SCHEME= AI_KEY=... npm run proxy
+
+# Anthropic-Format statt OpenAI
+AI_API=anthropic AI_AUTH_HEADER=x-api-key AI_AUTH_SCHEME= AI_KEY=... npm run proxy
+```
+
+| Variable | Vorgabe | Zweck |
+|---|---|---|
+| `AI_KEY` | — | Pflicht. Verlässt den Proxy nie. |
+| `AI_UPSTREAM` | Swisscom-Endpoint | Basis-URL **ohne** `/chat/completions` |
+| `AI_MODEL` | `gpt-4o` | Vorgabe, falls die App kein Modell schickt |
+| `AI_AUTH_HEADER` | `Authorization` | Header-Name für den Key |
+| `AI_AUTH_SCHEME` | `Bearer ` | Präfix; leer setzen für rohe Keys |
+| `AI_API` | `openai` | oder `anthropic` |
+| `PORT` | `8787` | |
+
+Bei `401`/`403` nennt der Proxy den Klartext des Gateways und weist auf die
+Auth-Variablen hin — im Browser wäre diese Information nicht sichtbar gewesen.
+
+### Dauerbetrieb: Cloudflare Worker
+
+Der lokale Proxy läuft nur auf dem eigenen Rechner. Ist die App gehostet, deploy
+`tools/worker.js` — gleiche Variablen, gleicher Vertrag:
+
+```bash
+npx wrangler deploy tools/worker.js --name canyon-topo-proxy --compatibility-date 2025-01-01
+npx wrangler secret put AI_KEY
+```
+
+`ALLOWED_ORIGIN` unbedingt auf den eigenen Origin setzen, sonst kann jeder den
+Worker — und damit deinen Key — benutzen.
+
+### Eigener Proxy von Hand
+
+Jeder Endpoint, der diesen Vertrag erfüllt, funktioniert. Er bekommt:
 
 ```json
 { "image": "data:image/png;base64,…", "prompt": "…", "hints": { "canyonName": "…", "notes": "…" } }
 ```
 
 und antwortet entweder direkt mit dem Topo-JSON oder mit dem durchgereichten
-Modelltext. Damit verlässt der Key nie den Server.
+Modelltext als JSON-String. Damit verlässt der Key nie den Server.
 
 ### Was die App aus der Antwort macht
 
@@ -246,6 +314,8 @@ src/exporters.js      SVG-/PNG-/Druck-Export
 src/ai.js             Foto/PDF → Topo per Vision-Modell (+ Antwort-Sanitizing)
 src/pdf.js            PDF-Seiten als Referenzbild rendern (pdf.js)
 src/app.js            Editor-Logik und UI-Bindings
+tools/proxy.mjs       Lokaler AI-Proxy (löst CORS) + serviert die App
+tools/worker.js       Derselbe Proxy als Cloudflare Worker
 test/                 Round-Trip-, Rendering- und AI-Tests
 examples/             Beispiel-Topo (JSON + XML)
 vendor/pdfjs/         pdf.js (Apache-2.0), lokal eingebunden
