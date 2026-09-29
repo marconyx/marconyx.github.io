@@ -35,6 +35,10 @@ export function topoToJsonObject(topo) {
             size: element.size,
             text: element.text ?? '',
           };
+          // Erweiterung gegenüber Canyon-Explore: nur schreiben, wenn gesetzt.
+          // Sonst trüge jede exportierte Datei ein Feld, das das Originalformat
+          // nicht kennt – und bestehende Topos wären nicht mehr byte-identisch.
+          if (element.dead) elementOut.dead = true;
           return Object.assign(elementOut, element._extra || {});
         }),
       };

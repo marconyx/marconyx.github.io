@@ -118,6 +118,39 @@ test('unbekannte Typen werden verworfen und gemeldet', () => {
   assert.equal(report.length, 2);
 });
 
+test('Tote Bäume werden aus Typnamen und aus dem Feld erkannt', () => {
+  const topo = sanitizeTopoCandidate({
+    segments: [
+      {
+        type: 'WALK',
+        elements: [
+          { type: 'DEAD_TREE' },
+          { type: 'SNAG' },
+          { type: 'DEAD_CONIFER' },
+          { type: 'LEAF_TREE', dead: true },
+          { type: 'LEAF_TREE' },
+        ],
+      },
+    ],
+  });
+  const elements = topo.segments[0].elements;
+  assert.deepEqual(
+    elements.map((el) => el.type),
+    ['LEAF_TREE', 'LEAF_TREE', 'CONIFER_TREE', 'LEAF_TREE', 'LEAF_TREE'],
+  );
+  assert.deepEqual(
+    elements.map((el) => el.dead),
+    [true, true, true, true, false],
+  );
+});
+
+test('Der Zustand "abgestorben" wird bei Nicht-Bäumen verworfen', () => {
+  const topo = sanitizeTopoCandidate({
+    segments: [{ type: 'WALK', elements: [{ type: 'STONE', dead: true }] }],
+  });
+  assert.equal(topo.segments[0].elements[0].dead, false);
+});
+
 test('Punktelemente bekommen keine Endkoordinaten', () => {
   const topo = sanitizeTopoCandidate({
     segments: [

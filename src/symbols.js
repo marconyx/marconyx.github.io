@@ -7,6 +7,7 @@
  *
  * Neue Symbole lassen sich allein durch einen Eintrag in SYMBOLS ergänzen.
  */
+import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js';
 
 const esc = (value) =>
   String(value ?? '')
@@ -32,7 +33,8 @@ function bolt(side, text) {
     ${label(text, 0, -0.5)}`;
 }
 
-function tree(kind, text) {
+function tree(kind, text, dead = false) {
+  if (dead) return deadTree(kind, text);
   const crown =
     kind === 'conifer'
       ? `<path d="M0,-2.2 L0.75,-1.1 L0.3,-1.1 L0.95,-0.2 L-0.95,-0.2 L-0.3,-1.1 L-0.75,-1.1 Z" fill="#1f7a34" ${stroke}/>`
@@ -40,6 +42,44 @@ function tree(kind, text) {
   return `
     <path d="M-0.12,0 L-0.12,-1 L0.12,-1 L0.12,0 Z" fill="#6b3f1d" ${stroke}/>
     ${crown}
+    ${label(text, 0, -2.6)}`;
+}
+
+/**
+ * Abgestorbener Baum: kahl, graubraun, kein Blattwerk.
+ *
+ * Die Silhouette bleibt bewusst typgetreu – der Nadelbaum behält die schmale
+ * Form mit kurzen, hängenden Ästen, der Laubbaum die breite Gabelung. Sonst
+ * sähen beide tot gleich aus, und im Topo geht es genau darum, den Baum
+ * wiederzuerkennen. Ein toter Baum ist ein Verankerungshinweis: er sieht aus
+ * wie ein Baum, trägt aber nicht.
+ */
+function deadTree(kind, text) {
+  const wood = 'stroke="#7a6a58" stroke-width="0.14" stroke-linecap="round" fill="none"';
+  const branches =
+    kind === 'conifer'
+      ? `<g ${wood}>
+        <line x1="0" y1="-0.35" x2="-0.8" y2="-0.05"/>
+        <line x1="0" y1="-0.35" x2="0.8" y2="-0.05"/>
+        <line x1="0" y1="-0.95" x2="-0.62" y2="-0.7"/>
+        <line x1="0" y1="-0.95" x2="0.62" y2="-0.7"/>
+        <line x1="0" y1="-1.5" x2="-0.45" y2="-1.3"/>
+        <line x1="0" y1="-1.5" x2="0.45" y2="-1.3"/>
+        <line x1="0" y1="-1.95" x2="-0.28" y2="-1.8"/>
+        <line x1="0" y1="-1.95" x2="0.28" y2="-1.8"/>
+      </g>`
+      : `<g ${wood}>
+        <path d="M0,-1.15 L-0.75,-1.75 L-1.0,-2.15"/>
+        <path d="M-0.75,-1.75 L-0.95,-1.45"/>
+        <path d="M0,-1.15 L0.7,-1.7 L0.95,-2.1"/>
+        <path d="M0.7,-1.7 L0.9,-1.4"/>
+        <path d="M0,-1.6 L-0.3,-2.25"/>
+        <path d="M0,-1.6 L0.35,-2.2"/>
+      </g>`;
+  const trunkTop = kind === 'conifer' ? -2.25 : -1.7;
+  return `
+    <path d="M-0.12,0 L-0.12,${trunkTop} L0.12,${trunkTop} L0.12,0 Z" fill="#8a7864" ${stroke}/>
+    ${branches}
     ${label(text, 0, -2.6)}`;
 }
 
@@ -165,12 +205,12 @@ export const SYMBOLS = {
   LEAF_TREE: {
     label: 'Laubbaum',
     category: 'nature',
-    render: (element) => tree('leaf', element.text),
+    render: (element) => tree('leaf', element.text, element.dead),
   },
   CONIFER_TREE: {
     label: 'Nadelbaum',
     category: 'nature',
-    render: (element) => tree('conifer', element.text),
+    render: (element) => tree('conifer', element.text, element.dead),
   },
   CAVE: {
     label: 'Höhle',
@@ -300,6 +340,12 @@ export function symbolOptions() {
     ...category,
     symbols: Object.entries(SYMBOLS)
       .filter(([, symbol]) => symbol.category === category.id)
-      .map(([type, symbol]) => ({ type, label: symbol.label, range: !!symbol.range })),
+      .flatMap(([type, symbol]) => {
+        const base = { type, label: symbol.label, range: !!symbol.range, dead: false };
+        // Varianten direkt in der Palette: Wer einen toten Baum sucht, findet ihn
+        // dort – statt erst einen lebenden zu setzen und ein Kästchen zu suchen.
+        if (!DEAD_CAPABLE_ELEMENT_TYPES.has(type)) return [base];
+        return [base, { ...base, label: `${symbol.label} (abgestorben)`, dead: true }];
+      }),
   }));
 }

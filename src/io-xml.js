@@ -87,6 +87,8 @@ export function topoToXml(topo) {
           ['type', element.type],
           ...ELEMENT_NUMBER_FIELDS.map((field) => [field, element[field]]),
           ['text', element.text],
+          // Wie im JSON nur bei true, damit bestehende Dateien unverändert bleiben.
+          ['dead', element.dead ? 'true' : null],
           ...extraAttr(element),
         ])}/>`,
       );
@@ -176,6 +178,7 @@ export function topoFromXml(xml) {
       const element = {
         type: tag.attributes.type,
         text: tag.attributes.text ?? '',
+        dead: tag.attributes.dead === 'true',
       };
       for (const field of ELEMENT_NUMBER_FIELDS) {
         element[field] =

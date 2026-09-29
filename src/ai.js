@@ -269,7 +269,8 @@ Schema:
           "horizontal_end_rel_to_segment_start": number|null,
           "vertical_end_rel_to_segment_start": number|null,
           "size": number,               // 1 = normal
-          "text": string                // "" wenn ohne Beschriftung
+          "text": string,               // "" wenn ohne Beschriftung
+          "dead": boolean               // nur bei LEAF_TREE/CONIFER_TREE, true = abgestorben
         }
       ]
     }
@@ -301,6 +302,8 @@ Regeln:
 - Lieber weniger, dafür plausible Segmente als geratene Details.
 - Wenn im Bild Höhenangaben stehen (z. B. "R 25m", "S6"), übernimm die Zahl als length_in_meters.
 - Beschriftungen aus dem Bild gehören als CUSTOM_TEXT-Element mit "text" ins passende Segment.
+- Ein kahler, toter Baum (kein Laub, keine Nadeln) ist LEAF_TREE bzw. CONIFER_TREE
+  mit "dead": true – wichtig, weil er als Verankerung nicht taugt.
 - Ist gar kein Topo erkennbar, gib ein leeres "segments"-Array zurück.
 
 ${hints.canyonName ? `Der Canyon heißt "${hints.canyonName}".` : ''}
@@ -372,6 +375,8 @@ export function sanitizeTopoCandidate(raw, report = []) {
       elements.push({
         ...element,
         type: elementType,
+        // normalizeElement verwirft das Feld bei allem, was kein Baum ist.
+        dead: element?.dead === true || deadFromTypeName(element?.type),
         // Punktelemente dürfen keine Endkoordinaten haben, sonst zeichnet der
         // Renderer eine Strecke ins Nichts.
         horizontal_end_rel_to_segment_start: isRange
@@ -438,6 +443,12 @@ function mapElementType(value) {
     EDGE: 'SHARP_EDGE',
     TREE: 'LEAF_TREE',
     PINE: 'CONIFER_TREE',
+    DEAD_TREE: 'LEAF_TREE',
+    DEAD_LEAF_TREE: 'LEAF_TREE',
+    SNAG: 'LEAF_TREE',
+    DEAD_CONIFER: 'CONIFER_TREE',
+    DEAD_CONIFER_TREE: 'CONIFER_TREE',
+    DEAD_PINE: 'CONIFER_TREE',
     LOG: 'TRUNK',
     BRIDGE: 'STONE_BRIDGE',
     HOUSE: 'STONE_HOUSE',
@@ -453,6 +464,16 @@ function mapElementType(value) {
     NUMBER: 'ELEMENT_NUMBER',
   };
   return aliases[key] || null;
+}
+
+/**
+ * Manche Modelle stecken den Zustand in den Typnamen ("DEAD_TREE") statt in das
+ * Feld. Das darf nicht verloren gehen – ein toter Baum trägt keine Verankerung.
+ */
+function deadFromTypeName(value) {
+  return /(^|_)(DEAD|SNAG|TOT|ABGESTORBEN)(_|$)/.test(
+    String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '_'),
+  );
 }
 
 /* ------------------------------------------------------------------- Aufrufe */

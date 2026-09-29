@@ -2,6 +2,7 @@
  * Editor-Anwendung: Zustand, UI-Bindings, Interaktion.
  */
 import {
+  DEAD_CAPABLE_ELEMENT_TYPES,
   SEGMENT_TYPES,
   cloneTopo,
   createEmptyTopo,
@@ -411,6 +412,17 @@ function renderInspector() {
     ),
   );
 
+  if (DEAD_CAPABLE_ELEMENT_TYPES.has(element.type)) {
+    grid.append(
+      field(
+        'Abgestorben',
+        checkboxInput(element.dead, (value) => {
+          element.dead = value;
+        }),
+      ),
+    );
+  }
+
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.textContent = 'Symbol löschen';
@@ -458,7 +470,7 @@ function renderPalette() {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = symbol.label;
-      button.addEventListener('click', () => addSymbol(symbol.type));
+      button.addEventListener('click', () => addSymbol(symbol.type, { dead: symbol.dead }));
       items.appendChild(button);
     }
     wrapper.append(title, items);
@@ -473,7 +485,7 @@ function selectedSegmentIndex() {
   return state.topo.segments.length ? state.topo.segments.length - 1 : -1;
 }
 
-function addSymbol(type) {
+function addSymbol(type, { dead = false } = {}) {
   const index = selectedSegmentIndex();
   if (index < 0) {
     setStatus('Zuerst ein Segment anlegen.');
@@ -484,6 +496,7 @@ function addSymbol(type) {
   const element = createElement(type, {
     horizontal_start_rel_to_segment_start: segment.length_in_meters / 2,
     vertical_start_rel_to_segment_start: 0,
+    dead,
   });
   if (SYMBOLS[type]?.range) {
     element.horizontal_end_rel_to_segment_start =
@@ -497,7 +510,9 @@ function addSymbol(type) {
     elementIndex: segment.elements.length - 1,
   };
   render();
-  setStatus(`${SYMBOLS[type]?.label || type} hinzugefügt.`);
+  setStatus(
+    `${SYMBOLS[type]?.label || type}${dead ? ' (abgestorben)' : ''} hinzugefügt.`,
+  );
 }
 
 function addSegment(type) {

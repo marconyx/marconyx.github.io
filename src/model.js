@@ -61,6 +61,12 @@ export const RANGE_ELEMENT_TYPES = new Set([
   'ROPE_RAILING_RIGHT',
 ]);
 
+/**
+ * Elemente, die den Zustand "abgestorben" kennen. Bei allen anderen wäre das
+ * Feld bedeutungslos und landete nur als toter Ballast in der Datei.
+ */
+export const DEAD_CAPABLE_ELEMENT_TYPES = new Set(['LEAF_TREE', 'CONIFER_TREE']);
+
 /** Segmenttypen, die Wasser am Grund zeigen. */
 export const WATER_SEGMENT_TYPES = new Set(['POOL', 'WEIR']);
 
@@ -91,6 +97,7 @@ const ELEMENT_KNOWN_KEYS = new Set([
   'vertical_end_rel_to_segment_start',
   'size',
   'text',
+  'dead',
 ]);
 
 function collectExtra(obj, knownKeys) {
@@ -132,8 +139,9 @@ export function createElement(type, overrides = {}) {
 }
 
 export function normalizeElement(raw) {
+  const type = String(raw?.type ?? 'STONE');
   const element = {
-    type: String(raw?.type ?? 'STONE'),
+    type,
     horizontal_start_rel_to_segment_start: num(
       raw?.horizontal_start_rel_to_segment_start,
       0,
@@ -150,6 +158,9 @@ export function normalizeElement(raw) {
     ),
     size: num(raw?.size, 1),
     text: raw?.text == null ? '' : String(raw.text),
+    // Abgestorbener Baum – eine Erweiterung gegenüber dem Canyon-Explore-Format.
+    // Nur bei Bäumen zulässig und nur geschrieben, wenn gesetzt (siehe io-json.js).
+    dead: DEAD_CAPABLE_ELEMENT_TYPES.has(type) && bool(raw?.dead),
   };
   const extra = collectExtra(raw, ELEMENT_KNOWN_KEYS);
   if (extra) element._extra = extra;

@@ -119,11 +119,21 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | --- | --- |
 | Verankerung | `BOLT`, `BOLT_LEFT`, `BOLT_RIGHT` |
 | Gefahren | `SHARP_EDGE`, `TRAPPED_STONE`, `BACKWATER`, `WARNING_AND_TEXT` |
-| Natur | `STONE`, `TRUNK`, `LEAF_TREE`, `CONIFER_TREE`, `CAVE`, `INLET_LEFT`, `INLET_RIGHT` |
+| Natur | `STONE`, `TRUNK`, `LEAF_TREE`, `CONIFER_TREE` (beide auch abgestorben), `CAVE`, `INLET_LEFT`, `INLET_RIGHT` |
 | Infrastruktur | `LADDER`, `STONE_BRIDGE`, `WOODEN_BRIDGE`, `STONE_HOUSE`, `ROPE_RAILING_LEFT`, `ROPE_RAILING_RIGHT` |
 | Beschriftung | `ELEMENT_NUMBER`, `CUSTOM_TEXT`, `ESCAPE_EXIT_LEFT`, `ESCAPE_EXIT_RIGHT` |
 
 Streckenelemente (`ROPE_RAILING_*`) benötigen zusätzlich die `*_end_*`-Koordinaten.
+
+`LEAF_TREE` und `CONIFER_TREE` kennen zusätzlich `dead` (Boolean): Ein abgestorbener
+Baum wird kahl und graubraun gezeichnet. Die Palette bietet beide Varianten direkt
+an, im Inspektor lässt sich der Zustand über die Checkbox „Abgestorben" umschalten.
+
+> **Hinweis zur Kompatibilität:** `dead` ist eine Erweiterung gegenüber dem
+> Canyon-Explore-Format. Das Feld wird deshalb nur geschrieben, wenn es gesetzt
+> ist — ein Topo ohne abgestorbene Bäume exportiert unverändert und bleibt dort
+> einlesbar. Umgekehrt ignoriert Canyon-Explore ein `dead="true"` schlicht, der
+> Baum erscheint dann wieder lebend.
 
 ### XML
 

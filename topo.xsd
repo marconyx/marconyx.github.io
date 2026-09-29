@@ -37,6 +37,7 @@
     <xs:attribute name="vertical_end_rel_to_segment_start" type="xs:decimal"/>
     <xs:attribute name="size" type="xs:decimal" default="1"/>
     <xs:attribute name="text" type="xs:string" default=""/>
+    <xs:attribute name="dead" type="xs:boolean" default="false"/>
     <xs:attribute name="extra" type="xs:string"/>
   </xs:complexType>
 

@@ -85,4 +85,76 @@ test('Renderer liefert valides SVG mit Titel und Legende', () => {
   assert.ok(svg.includes('Legend'));
 });
 
+test('Abgestorbene Bäume überleben den JSON- und XML-Roundtrip', () => {
+  const topo = normalizeTopo({
+    ...original,
+    segments: [
+      {
+        ...original.segments[0],
+        elements: [
+          { type: 'LEAF_TREE', dead: true, offsetX: 1, offsetY: 2 },
+          { type: 'CONIFER_TREE', dead: true, offsetX: -1, offsetY: 3 },
+          { type: 'LEAF_TREE', offsetX: 2, offsetY: 4 },
+        ],
+      },
+    ],
+  });
+
+  const viaJson = topoFromJson(JSON.stringify(topoToJsonObject(topo)));
+  assert.deepEqual(
+    viaJson.segments[0].elements.map((el) => el.dead),
+    [true, true, false],
+  );
+
+  const viaXml = topoFromXml(topoToXml(topo));
+  assert.deepEqual(
+    viaXml.segments[0].elements.map((el) => el.dead),
+    [true, true, false],
+  );
+});
+
+test('Der Zustand ist nur bei Bäumen zulässig', () => {
+  const topo = normalizeTopo({
+    ...original,
+    segments: [
+      {
+        ...original.segments[0],
+        elements: [{ type: 'STONE', dead: true, offsetX: 0, offsetY: 0 }],
+      },
+    ],
+  });
+  assert.equal(topo.segments[0].elements[0].dead, false);
+  const json = topoToJsonObject(topo);
+  assert.ok(!('dead' in json.segments[0].elements[0]));
+});
+
+test('Ohne tote Bäume bleibt der Export zum Canyon-Explore-Format identisch', () => {
+  // Die Eigenschaft ist eine Erweiterung. Sie darf bestehende Dateien nicht
+  // verändern, sonst wäre der Austausch mit Canyon-Explore gebrochen.
+  const exported = topoToJsonObject(normalizeTopo(original));
+  const stray = JSON.stringify(exported).includes('"dead"');
+  assert.equal(stray, false, 'kein dead-Feld in einem Topo ohne tote Bäume');
+
+  const xml = topoToXml(normalizeTopo(original));
+  assert.equal(xml.includes('dead='), false, 'kein dead-Attribut im XML');
+});
+
+test('Tote Bäume werden anders gezeichnet als lebende', () => {
+  const base = { ...original, segments: [{ ...original.segments[0], elements: [] }] };
+  const svgOf = (elements) => {
+    const topo = normalizeTopo({
+      ...base,
+      segments: [{ ...base.segments[0], elements }],
+    });
+    return renderTopoSvg(topo, layoutTopo(topo));
+  };
+
+  const alive = svgOf([{ type: 'LEAF_TREE', offsetX: 1, offsetY: 2 }]);
+  const dead = svgOf([{ type: 'LEAF_TREE', dead: true, offsetX: 1, offsetY: 2 }]);
+  assert.notEqual(alive, dead, 'das tote Symbol muss sich vom lebenden unterscheiden');
+
+  const deadConifer = svgOf([{ type: 'CONIFER_TREE', dead: true, offsetX: 1, offsetY: 2 }]);
+  assert.notEqual(dead, deadConifer, 'toter Laub- und Nadelbaum dürfen nicht gleich aussehen');
+});
+
 console.log(`\n${passed} Test(s) bestanden.`);
