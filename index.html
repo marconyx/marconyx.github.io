@@ -126,10 +126,22 @@
                 Endpoint
                 <input type="text" id="ai-endpoint" spellcheck="false" placeholder="https://api.openai.com/v1" />
               </label>
-              <label id="ai-model-row">
-                Modell
-                <input type="text" id="ai-model" spellcheck="false" placeholder="gpt-4o" />
-              </label>
+              <div id="ai-model-row">
+                <label for="ai-model">Modell</label>
+                <div class="field-with-button">
+                  <input
+                    type="text"
+                    id="ai-model"
+                    spellcheck="false"
+                    placeholder="gpt-4o"
+                    list="ai-model-options"
+                    autocomplete="off"
+                  />
+                  <button type="button" id="btn-ai-models">Modelle laden</button>
+                </div>
+                <datalist id="ai-model-options"></datalist>
+                <p class="hint" id="ai-model-hint"></p>
+              </div>
               <label id="ai-key-row">
                 API-Key
                 <input type="password" id="ai-key" spellcheck="false" autocomplete="off" placeholder="sk-…" />

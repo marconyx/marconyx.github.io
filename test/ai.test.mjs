@@ -11,7 +11,10 @@ import assert from 'node:assert/strict';
 import {
   buildPrompt,
   extractJsonObject,
+  listModels,
+  pickModelIds,
   sanitizeTopoCandidate,
+  saveAiSettings,
 } from '../src/ai.js';
 import { validateTopo } from '../src/model.js';
 import { layoutTopo } from '../src/layout.js';
@@ -27,6 +30,37 @@ function test(name, fn) {
     console.error(`  FAIL ${name}\n       ${error.message}`);
     process.exitCode = 1;
   }
+}
+
+async function testAsync(name, fn) {
+  try {
+    await fn();
+    passed += 1;
+    console.log(`  ok  ${name}`);
+  } catch (error) {
+    console.error(`  FAIL ${name}\n       ${error.message}`);
+    process.exitCode = 1;
+  }
+}
+
+/** Tauscht global.fetch nur für die Dauer eines Tests aus. */
+async function withFetch(handler, fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => handler(url, init);
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+function jsonResponse(payload, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => payload,
+    text: async () => JSON.stringify(payload),
+  };
 }
 
 console.log('AI-Antwortverarbeitung');
@@ -170,6 +204,92 @@ test('der Prompt nennt alle gültigen Typen und das Koordinatensystem', () => {
   assert.ok(prompt.includes('Boggera'), 'Hinweis auf den Canyon-Namen fehlt');
   assert.ok(prompt.includes('Skizze aus dem Führer'), 'Nutzer-Zusatzinfo fehlt');
   assert.ok(prompt.includes('links der Laufrichtung'), 'Koordinatenregel fehlt');
+});
+
+test('pickModelIds versteht alle gängigen Antwortformen', () => {
+  assert.deepEqual(pickModelIds({ data: [{ id: 'b' }, { id: 'a' }] }), ['a', 'b']);
+  assert.deepEqual(pickModelIds({ models: ['x'] }), ['x']);
+  assert.deepEqual(pickModelIds(['n']), ['n']);
+  assert.deepEqual(pickModelIds({ data: [{ name: 'per-name' }] }), ['per-name']);
+  assert.deepEqual(pickModelIds({ data: [{ id: 'd' }, { id: 'd' }] }), ['d'], 'Doppelte raus');
+  assert.deepEqual(pickModelIds({ unbekannt: 1 }), []);
+  assert.deepEqual(pickModelIds(null), []);
+});
+
+await testAsync('listModels fragt den Endpoint direkt ab', async () => {
+  saveAiSettings({ providerId: 'openai', endpoint: 'https://beispiel.test/v1', apiKey: 'k' });
+  const seen = [];
+  const result = await withFetch(
+    (url, init) => {
+      seen.push({ url, method: init.method });
+      return jsonResponse({ data: [{ id: 'gpt-4o' }] });
+    },
+    () => listModels(),
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.models, ['gpt-4o']);
+  assert.equal(result.viaProxy, false);
+  assert.equal(seen[0].url, 'https://beispiel.test/v1/models');
+  assert.equal(seen[0].method, 'GET');
+});
+
+await testAsync('listModels weicht bei CORS auf den lokalen Proxy aus', async () => {
+  saveAiSettings({ providerId: 'openai', endpoint: 'https://gateway.test/v1', apiKey: 'k' });
+  const calls = [];
+  const result = await withFetch(
+    (url) => {
+      calls.push(String(url));
+      // So meldet der Browser eine am Preflight gescheiterte Anfrage.
+      if (String(url).startsWith('https://')) throw new TypeError('Failed to fetch');
+      if (String(url).endsWith('/api/health')) {
+        return jsonResponse({ ok: true, canListModels: true });
+      }
+      return jsonResponse({ models: ['gateway-modell'] });
+    },
+    () => listModels(),
+  );
+  assert.equal(result.ok, true, `unerwartet: ${result.reason}`);
+  assert.equal(result.viaProxy, true);
+  assert.deepEqual(result.models, ['gateway-modell']);
+  assert.ok(
+    calls.some((url) => url.endsWith('/api/models')),
+    'der Proxy hätte gefragt werden müssen',
+  );
+});
+
+await testAsync('ohne Proxy erklärt listModels das CORS-Problem statt zu werfen', async () => {
+  saveAiSettings({ providerId: 'openai', endpoint: 'https://gateway.test/v1', apiKey: 'k' });
+  const result = await withFetch(
+    () => {
+      throw new TypeError('Failed to fetch');
+    },
+    () => listModels(),
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /CORS/);
+  assert.match(result.reason, /npm start/);
+});
+
+await testAsync('listModels meldet einen unbrauchbaren Key, ohne das Netz zu belasten', async () => {
+  saveAiSettings({ providerId: 'openai', endpoint: 'https://beispiel.test/v1', apiKey: 'AI_KEY=…' });
+  let called = false;
+  const result = await withFetch(
+    () => {
+      called = true;
+      return jsonResponse({});
+    },
+    () => listModels(),
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /unzulässiges Zeichen/);
+  assert.equal(called, false);
+});
+
+await testAsync('im Proxy-Modus gibt es nichts aufzulisten', async () => {
+  saveAiSettings({ providerId: 'proxy' });
+  const result = await listModels();
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /Proxy/);
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);

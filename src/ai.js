@@ -99,6 +99,110 @@ export function registerTopoProvider(fn) {
   customProvider = typeof fn === 'function' ? fn : null;
 }
 
+/**
+ * Holt die Liste verfügbarer Modelle. Versucht zuerst direkt, fällt bei
+ * CORS-Blockade still auf den lokalen Proxy zurück – genau wie die Topo-Erkennung.
+ * Gibt immer ein Ergebnisobjekt zurück statt zu werfen, weil der Aufrufer hier
+ * nur eine Auswahlliste füllt und ein Fehlschlag folgenlos bleiben soll.
+ */
+export async function listModels({ signal } = {}) {
+  const spec = providerById(settings.providerId);
+  if (spec.id === 'proxy') {
+    return { ok: false, reason: 'Im Proxy-Modus bestimmt der Proxy das Modell.' };
+  }
+  if (!settings.endpoint) return { ok: false, reason: 'Kein Endpoint hinterlegt.' };
+  if (!settings.apiKey) return { ok: false, reason: 'Kein API-Key hinterlegt.' };
+  const bad = badKeyCharacter(settings.apiKey);
+  if (bad) return { ok: false, reason: `Der Key enthält ein unzulässiges Zeichen ("${bad}").` };
+
+  const base = settings.endpoint.trim().replace(/\/+$/, '');
+  const headers =
+    spec.id === 'anthropic'
+      ? { 'x-api-key': settings.apiKey, 'anthropic-version': '2023-06-01' }
+      : { Authorization: `Bearer ${settings.apiKey}` };
+
+  try {
+    const response = await fetch(`${base}/models`, { method: 'GET', headers, signal });
+    if (!response.ok) {
+      return { ok: false, reason: await modelErrorText(response) };
+    }
+    const models = pickModelIds(await response.json());
+    if (!models.length) return { ok: false, reason: 'Keine Modell-Liste erkennbar.' };
+    return { ok: true, models, viaProxy: false };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    if (!(error instanceof TypeError)) {
+      return { ok: false, reason: error.message };
+    }
+    // Vermutlich CORS – derselbe Weg wie bei der Topo-Erkennung.
+    return listModelsViaProxy({ signal });
+  }
+}
+
+async function listModelsViaProxy({ signal } = {}) {
+  const proxy = await detectLocalProxy({ force: true });
+  if (!proxy) {
+    return {
+      ok: false,
+      reason:
+        'Der Endpoint ist aus dem Browser nicht erreichbar (CORS). ' +
+        `Proxy starten mit "npm start" und http://127.0.0.1:${LOCAL_PROXY_PORT}/ öffnen.`,
+    };
+  }
+  if (!proxy.canListModels) {
+    return { ok: false, reason: 'Dieser Proxy ist zu alt und kennt /api/models noch nicht.' };
+  }
+  try {
+    const response = await fetch(`${proxy.base}/api/models`, {
+      method: 'POST',
+      signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpoint: settings.endpoint,
+        apiKey: settings.apiKey || undefined,
+        api: settings.providerId === 'anthropic' ? 'anthropic' : 'openai',
+      }),
+    });
+    const data = await readJson(response);
+    const models = pickModelIds(data);
+    if (!models.length) return { ok: false, reason: 'Keine Modell-Liste erkennbar.' };
+    return { ok: true, models, viaProxy: true };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    return { ok: false, reason: error.message };
+  }
+}
+
+async function modelErrorText(response) {
+  let detail = '';
+  try {
+    const data = await response.json();
+    detail = data?.error?.message || data?.message || '';
+  } catch {
+    /* Viele Gateways antworten mit HTML. */
+  }
+  if (response.status === 404) {
+    return 'Dieser Endpoint kennt keine Modell-Liste – Modellname von Hand eintragen.';
+  }
+  return `Fehler ${response.status}${detail ? `: ${detail}` : ''}`;
+}
+
+/** Akzeptiert alle gängigen Formen: {data:[{id}]}, {models:[…]} oder ein nacktes Array. */
+export function pickModelIds(data) {
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.models)
+        ? data.models
+        : [];
+  const ids = list
+    .map((entry) => (typeof entry === 'string' ? entry : entry?.id || entry?.name || ''))
+    .map((id) => String(id).trim())
+    .filter(Boolean);
+  return [...new Set(ids)].sort();
+}
+
 /** True, sobald ein Aufruf sinnvoll möglich ist (konfiguriert oder eigener Provider). */
 export function isTopoProviderAvailable() {
   if (customProvider) return true;

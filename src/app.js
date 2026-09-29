@@ -31,6 +31,7 @@ import {
   detectLocalProxy,
   getAiSettings,
   isTopoProviderAvailable,
+  listModels,
   loadAiSettings,
   photoToTopo,
   providerById,
@@ -938,9 +939,91 @@ function syncAiControls() {
   $('ai-provider-hint').textContent = spec.hint;
   $('ai-key-row').hidden = !spec.needsKey;
   $('ai-model-row').hidden = spec.id === 'proxy';
+  $('btn-ai-models').disabled = modelsState.busy || spec.id === 'proxy';
   // Die Einstellungen von Anfang an aufklappen, solange noch etwas fehlt.
   if (!ready) $('ai-settings').open = true;
   refreshProxyState();
+  scheduleModelLoad();
+}
+
+/**
+ * Modell-Liste: identisch konfigurierte Aufrufe sollen sich nicht wiederholen,
+ * deshalb merken wir uns, wofür zuletzt geladen wurde. Endpoint und Key werden
+ * getippt – ohne Verzögerung entstünde pro Tastenanschlag ein API-Aufruf.
+ */
+let modelsState = { identity: '', busy: false };
+let modelsTimer = null;
+
+function modelsIdentity() {
+  const s = getAiSettings();
+  return `${s.providerId}|${s.endpoint}|${s.apiKey}`;
+}
+
+function scheduleModelLoad() {
+  const s = getAiSettings();
+  // Bewusst NICHT isTopoProviderAvailable(): das verlangt ein eingetragenes
+  // Modell – genau das, was hier erst gefunden werden soll. Endpoint und Key
+  // reichen.
+  if (s.providerId === 'proxy' || !s.endpoint || !s.apiKey) return;
+  if (modelsState.busy || modelsIdentity() === modelsState.identity) return;
+  clearTimeout(modelsTimer);
+  modelsTimer = setTimeout(() => loadModelOptions(), 900);
+}
+
+/**
+ * Füllt die Vorschlagsliste. Bewusst ein datalist und kein select: Neue Modelle
+ * erscheinen oft, bevor eine Liste sie kennt – ein freier Name muss möglich
+ * bleiben. Fehlschläge sind folgenlos, sie stehen nur als Hinweis darunter.
+ */
+async function loadModelOptions({ manual = false } = {}) {
+  const spec = providerById(getAiSettings().providerId);
+  if (spec.id === 'proxy') return;
+  const identity = modelsIdentity();
+  if (!manual && identity === modelsState.identity) return;
+
+  modelsState = { identity, busy: true };
+  syncAiControls();
+  setModelHint('Modelle werden geladen …');
+
+  let result;
+  try {
+    result = await listModels();
+  } catch (error) {
+    result = { ok: false, reason: error.message };
+  }
+
+  modelsState = { identity, busy: false };
+  const list = $('ai-model-options');
+  list.replaceChildren();
+
+  if (!result.ok) {
+    // identity bewusst gesetzt lassen: eine kaputte Konfiguration soll nicht
+    // im Sekundentakt erneut versucht werden. Ändert der Nutzer etwas, ändert
+    // sich die identity von selbst; "Modelle laden" erzwingt es jederzeit.
+    setModelHint(result.reason, manual);
+    syncAiControls();
+    return;
+  }
+
+  for (const id of result.models) {
+    const option = document.createElement('option');
+    option.value = id;
+    list.appendChild(option);
+  }
+
+  const current = getAiSettings().model;
+  const known = result.models.includes(current);
+  setModelHint(
+    `${result.models.length} Modell(e) gefunden${result.viaProxy ? ' (über den lokalen Proxy)' : ''}.` +
+      (current && !known ? ` "${current}" ist nicht darunter – trotzdem nutzbar.` : ''),
+  );
+  syncAiControls();
+}
+
+function setModelHint(text, isError = false) {
+  const el = $('ai-model-hint');
+  el.textContent = text;
+  el.style.color = isError ? 'var(--danger, #e2554c)' : '';
 }
 
 /**
@@ -999,6 +1082,9 @@ function bindAi() {
     };
     $('ai-endpoint').value = patch.endpoint;
     $('ai-model').value = patch.model;
+    // Die alte Liste gehört zum alten Anbieter – sie hier stehen zu lassen wäre irreführend.
+    $('ai-model-options').replaceChildren();
+    setModelHint('');
     saveAiSettings(patch);
     syncAiControls();
   });
@@ -1015,8 +1101,9 @@ function bindAi() {
     });
   }
 
-  $('btn-ai-forget').addEventListener('click', () => {
-    saveAiSettings({ apiKey: '' });
+  $('btn-ai-models').addEventListener('click', () => loadModelOptions({ manual: true }));
+
+  $('btn-ai-forget').addEventListener('click', () => {    saveAiSettings({ apiKey: '' });
     $('ai-key').value = '';
     syncAiControls();
     setAiStatus('API-Key gelöscht.');

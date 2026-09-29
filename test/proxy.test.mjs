@@ -49,6 +49,19 @@ function startUpstream() {
         res.end(out);
       };
 
+      if (req.url === '/v1/models') {
+        reply(200, { data: [{ id: 'zeta-vision' }, { id: 'alpha-vision' }, { id: 'zeta-vision' }] });
+        return;
+      }
+      if (req.url === '/v1/leer/models') {
+        reply(200, { data: [] });
+        return;
+      }
+      if (req.url === '/v1/weg/models') {
+        reply(404, { error: { message: 'not found' } });
+        return;
+      }
+
       if (body.model === 'boom') {
         reply(403, { error: { message: 'kein Zugriff auf dieses Modell' } });
         return;
@@ -100,7 +113,11 @@ function startProxy(port, env) {
 }
 
 function post(port, payload) {
-  return fetch(`http://127.0.0.1:${port}/api/topo`, {
+  return postTo(port, '/api/topo', payload);
+}
+
+function postTo(port, path, payload) {
+  return fetch(`http://127.0.0.1:${port}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -360,6 +377,37 @@ try {
       alt.child.kill();
     }
   });
+  await test('listet Modelle, entdoppelt und sortiert sie', async () => {
+    const res = await postTo(PORT, '/api/models', { apiKey: 'k' });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.models, ['alpha-vision', 'zeta-vision']);
+  });
+
+  await test('die Modell-Liste folgt dem Endpoint aus der Anfrage', async () => {
+    const res = await postTo(PORT, '/api/models', {
+      apiKey: 'k',
+      endpoint: `http://127.0.0.1:${upstreamPort}/v1/weg`,
+    });
+    assert.equal(res.status, 404);
+    const body = await res.json();
+    assert.match(body.hint, /von Hand/);
+  });
+
+  await test('eine leere Modell-Liste gilt als Fehlschlag', async () => {
+    const res = await postTo(PORT, '/api/models', {
+      apiKey: 'k',
+      endpoint: `http://127.0.0.1:${upstreamPort}/v1/leer`,
+    });
+    assert.equal(res.status, 502);
+    assert.match((await res.json()).error, /keine erkennbare Modell-Liste/);
+  });
+
+  await test('health meldet, dass der Proxy Modelle auflisten kann', async () => {
+    const health = await (await fetch(`http://127.0.0.1:${PORT}/api/health`)).json();
+    assert.equal(health.canListModels, true);
+  });
+
   await test('weist einen Key mit Nicht-ASCII-Zeichen verständlich ab', async () => {
     const before = received.length;
     const res = await post(PORT, {

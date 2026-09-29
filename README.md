@@ -165,6 +165,22 @@ Browsers und wird nie ins Repository übertragen.
 Einstellen unter *AI-Erkennung → Einstellungen*. Der Button bleibt gesperrt, solange
 etwas fehlt, und nennt im Tooltip den Grund.
 
+### Modelle werden selbst gefunden
+
+Sobald Endpoint und Key stehen, fragt die App `GET <endpoint>/models` ab und füllt
+damit die Vorschlagsliste am Modellfeld — ohne Knopfdruck. Blockiert das Gateway
+den Aufruf, läuft er automatisch über den lokalen Proxy (siehe unten); die Liste
+sagt dann „(über den lokalen Proxy)".
+
+Bewusst eine Vorschlagsliste und **kein** Auswahlfeld: Neue Modelle erscheinen oft,
+bevor eine Liste sie kennt, und manche Gateways kennen gar kein `/models`. Ein frei
+getippter Name bleibt deshalb immer möglich — steht er nicht in der Liste, weist
+die App nur darauf hin, statt ihn zu verhindern.
+
+Ein Fehlschlag wird nicht wiederholt, sonst entstünde bei falscher Konfiguration
+ein Dauerfeuer auf die API. Nach einer Korrektur läuft es von selbst wieder, und
+*Modelle laden* erzwingt es jederzeit.
+
 ### Firmen-Gateways: der mitgelieferte Proxy
 
 Viele Unternehmens-Gateways beantworten den CORS-Preflight des Browsers mit `401`
@@ -224,8 +240,10 @@ npm start
 Mit `AI_ALLOW_CLIENT_CONFIG=false` ignoriert der Proxy Angaben aus dem Browser
 vollständig.
 
-Nur Node ≥ 18 nötig, keine Abhängigkeiten. `GET /api/health` zeigt die aktive
-Konfiguration (ohne den Key) und ob Angaben aus der App akzeptiert werden.
+Nur Node ≥ 18 nötig, keine Abhängigkeiten. Der Proxy bietet drei Wege an:
+`POST /api/topo` (Foto → Topo), `POST /api/models` (Modell-Liste) und
+`GET /api/health` (aktive Konfiguration ohne den Key, plus ob Angaben aus der App
+akzeptiert werden).
 
 #### Auth-Schema anpassen
 

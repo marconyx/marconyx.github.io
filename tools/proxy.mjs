@@ -179,6 +179,26 @@ function resolveRequestConfig(payload) {
   };
 }
 
+/**
+ * Baut die Auth-Header und wirft, wenn der Key nicht in einen HTTP-Header passt.
+ * HTTP-Header dürfen nur Latin-1 enthalten. Ein versehentlich kopiertes "…" oder
+ * ein Umlaut liesse fetch sonst mit einer kryptischen ByteString-Meldung
+ * scheitern – die dem Nutzer gar nichts sagt.
+ */
+function authHeaders(cfg) {
+  const value = `${cfg.authScheme}${cfg.key}`;
+  const offending = [...value].find((char) => char.charCodeAt(0) > 255);
+  if (offending) {
+    throw new Error(
+      `Der API-Key enthält ein unzulässiges Zeichen ("${offending}"). ` +
+        'Sieht nach einem Kopierfehler aus – bitte den Key erneut einfügen.',
+    );
+  }
+  const headers = { 'Content-Type': 'application/json', [cfg.authHeader]: value };
+  if (cfg.api === 'anthropic') headers['anthropic-version'] = '2023-06-01';
+  return headers;
+}
+
 /** Holt den reinen Text aus der Antwort – beide API-Formen sehen anders aus. */
 function extractText(data) {
   if (typeof data === 'string') return data;
@@ -235,22 +255,11 @@ async function handleTopo(req, res) {
     return;
   }
 
-  const headers = {
-    'Content-Type': 'application/json',
-    [cfg.authHeader]: `${cfg.authScheme}${cfg.key}`,
-  };
-  if (cfg.api === 'anthropic') headers['anthropic-version'] = '2023-06-01';
-
-  // HTTP-Header dürfen nur Latin-1 enthalten. Ein versehentlich kopiertes "…"
-  // oder ein Umlaut im Key liesse fetch sonst mit einer kryptischen
-  // ByteString-Meldung scheitern – die dem Nutzer gar nichts sagt.
-  const offending = [...`${cfg.authScheme}${cfg.key}`].find((char) => char.charCodeAt(0) > 255);
-  if (offending) {
-    sendJson(res, 400, {
-      error:
-        `Der API-Key enthält ein unzulässiges Zeichen ("${offending}"). ` +
-        'Sieht nach einem Kopierfehler aus – bitte den Key erneut einfügen.',
-    });
+  let headers;
+  try {
+    headers = authHeaders(cfg);
+  } catch (error) {
+    sendJson(res, 400, { error: error.message });
     return;
   }
 
@@ -310,6 +319,102 @@ async function handleTopo(req, res) {
   res.end(JSON.stringify(text));
 }
 
+/**
+ * Fragt die Modellliste beim Upstream ab. Dasselbe CORS-Problem wie beim Topo:
+ * `GET /models` scheitert im Browser am Gateway, hier nicht.
+ * OpenAI und Anthropic nutzen beide `/models`, aber unterschiedliche Felder.
+ */
+async function handleModels(req, res) {
+  let payload;
+  try {
+    payload = await readBody(req);
+  } catch (error) {
+    sendJson(res, 400, { error: error.message });
+    return;
+  }
+
+  const cfg = resolveRequestConfig(payload);
+  if (!cfg.key) {
+    sendJson(res, 400, { error: 'Kein API-Key vorhanden.' });
+    return;
+  }
+  if (!cfg.base) {
+    sendJson(res, 400, { error: 'Kein Endpoint konfiguriert.' });
+    return;
+  }
+
+  let headers;
+  try {
+    headers = authHeaders(cfg);
+  } catch (error) {
+    sendJson(res, 400, { error: error.message });
+    return;
+  }
+
+  const url = `${cfg.base}/models`;
+  let upstream;
+  try {
+    upstream = await fetch(url, { method: 'GET', headers });
+  } catch (error) {
+    sendJson(res, 502, { error: `Upstream nicht erreichbar: ${error.message}`, upstream: url });
+    return;
+  }
+
+  const raw = await upstream.text();
+  if (!upstream.ok) {
+    let detail = raw.slice(0, 300);
+    try {
+      const parsed = JSON.parse(raw);
+      detail = parsed?.error?.message || parsed?.message || detail;
+    } catch {
+      /* Gateways antworten gern mit HTML. */
+    }
+    sendJson(res, upstream.status, {
+      error: `Upstream-Fehler ${upstream.status}: ${detail}`,
+      hint:
+        upstream.status === 404
+          ? 'Dieser Endpoint kennt keine Modell-Liste. Modellname von Hand eintragen.'
+          : undefined,
+    });
+    return;
+  }
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    sendJson(res, 502, { error: 'Upstream hat kein JSON geliefert.' });
+    return;
+  }
+
+  const models = extractModels(data);
+  if (!models.length) {
+    sendJson(res, 502, { error: 'Upstream lieferte keine erkennbare Modell-Liste.' });
+    return;
+  }
+  console.log(`[proxy] ${models.length} Modell(e) von ${url}`);
+  sendJson(res, 200, { models });
+}
+
+/**
+ * Zieht die Modell-IDs aus der Antwort. OpenAI liefert `{data:[{id}]}`,
+ * Anthropic ebenso, manche Gateways nur ein nacktes Array oder `{models:[…]}`.
+ */
+function extractModels(data) {
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.models)
+        ? data.models
+        : [];
+  const ids = list
+    .map((entry) => (typeof entry === 'string' ? entry : entry?.id || entry?.name || ''))
+    .map((id) => String(id).trim())
+    .filter(Boolean);
+  return [...new Set(ids)].sort();
+}
+
 async function serveStatic(req, res) {
   const url = new URL(req.url, 'http://localhost');
   let pathname = decodeURIComponent(url.pathname);
@@ -356,6 +461,18 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (path === '/api/models') {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, { error: 'Nur POST.' });
+      return;
+    }
+    handleModels(req, res).catch((error) => {
+      console.error('[proxy] Unerwarteter Fehler:', error.message);
+      if (!res.headersSent) sendJson(res, 500, { error: error.message });
+    });
+    return;
+  }
+
   if (path === '/api/health') {
     sendJson(res, 200, {
       ok: true,
@@ -366,6 +483,7 @@ const server = createServer((req, res) => {
       keyConfigured: Boolean(config.key),
       // Die App erkennt daran, dass sie Endpoint/Key selbst mitschicken darf.
       acceptsClientConfig: config.allowClientConfig,
+      canListModels: true,
     });
     return;
   }

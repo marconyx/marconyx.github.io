@@ -392,3 +392,28 @@ input[type='date'] {
     display: none;
   }
 }
+
+/* Modellfeld: Eingabe und "Modelle laden" nebeneinander, Hinweis darunter. */
+#ai-model-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.field-with-button {
+  display: flex;
+  gap: 0.3rem;
+  align-items: stretch;
+}
+
+.field-with-button input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-with-button button {
+  white-space: nowrap;
+  flex: none;
+}
