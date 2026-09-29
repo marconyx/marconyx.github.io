@@ -102,6 +102,32 @@ test('bekannte Synonyme werden auf gültige Typen abgebildet', () => {
   assert.equal(topo.segments[1].elements[0].type, 'BOLT');
 });
 
+test('neue Infrastrukturtypen und deutsche/englische Aliase überleben die AI-Normalisierung', () => {
+  const types = [
+    'RADIO_MAST', 'Funkmast', 'radio tower',
+    'LIFT_MAST', 'Liftmast', 'ski lift tower',
+    'SQUARE_CONCRETE_BASE', 'Betonsockel eckig', 'concrete base',
+    'STEEL_BEAM', 'Stahlträger', 'I-beam',
+  ];
+  const report = [];
+  const topo = sanitizeTopoCandidate({
+    segments: [{ type: 'WALK', elements: types.map((type) => ({ type })) }],
+  }, report);
+  assert.deepEqual(topo.segments[0].elements.map((element) => element.type), [
+    'RADIO_MAST', 'RADIO_MAST', 'RADIO_MAST',
+    'LIFT_MAST', 'LIFT_MAST', 'LIFT_MAST',
+    'SQUARE_CONCRETE_BASE', 'SQUARE_CONCRETE_BASE', 'SQUARE_CONCRETE_BASE',
+    'STEEL_BEAM', 'STEEL_BEAM', 'STEEL_BEAM',
+  ]);
+  assert.deepEqual(report, []);
+  for (const element of topo.segments[0].elements) {
+    assert.equal(element.horizontal_end_rel_to_segment_start, null);
+  }
+  for (const type of ['RADIO_MAST', 'LIFT_MAST', 'SQUARE_CONCRETE_BASE', 'STEEL_BEAM']) {
+    assert.ok(buildPrompt().includes(type), `${type} fehlt im Prompt`);
+  }
+});
+
 test('unbekannte Typen werden verworfen und gemeldet', () => {
   const report = [];
   const topo = sanitizeTopoCandidate(

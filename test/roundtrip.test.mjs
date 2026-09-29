@@ -7,15 +7,23 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import assert from 'node:assert/strict';
 
-import { normalizeTopo, validateTopo } from '../src/model.js';
+import { ELEMENT_TYPES, RANGE_ELEMENT_TYPES, normalizeTopo, validateTopo } from '../src/model.js';
 import { topoFromJson, topoToJsonObject } from '../src/io-json.js';
 import { topoToXml, topoFromXml } from '../src/io-xml.js';
 import { layoutTopo } from '../src/layout.js';
 import { renderTopoSvg } from '../src/renderer.js';
+import { SYMBOLS, symbolOptions } from '../src/symbols.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const examplePath = join(here, '..', 'examples', 'my-canyon-inferiore.json');
 const original = JSON.parse(readFileSync(examplePath, 'utf8'));
+const infrastructure = {
+  RADIO_MAST: 'Funkmast',
+  LIFT_MAST: 'Liftmast',
+  SQUARE_CONCRETE_BASE: 'Betonsockel eckig',
+  STEEL_BEAM: 'Stahlträger',
+};
+const infrastructureTypes = Object.keys(infrastructure);
 
 let passed = 0;
 function test(name, fn) {
@@ -83,6 +91,68 @@ test('Renderer liefert valides SVG mit Titel und Legende', () => {
   assert.ok(svg.includes('</svg>'));
   assert.ok(svg.includes('My Canyon - Inferiore'));
   assert.ok(svg.includes('Legend'));
+});
+
+test('alle vier Infrastrukturtypen sind im Modell und mit deutschen Labels in der Palette', () => {
+  assert.equal(ELEMENT_TYPES.length, 28);
+  assert.deepEqual(new Set(Object.keys(SYMBOLS)), new Set(ELEMENT_TYPES));
+  const group = symbolOptions().find((category) => category.id === 'infrastructure');
+  for (const [type, name] of Object.entries(infrastructure)) {
+    assert.ok(ELEMENT_TYPES.includes(type));
+    assert.equal(SYMBOLS[type].category, 'infrastructure');
+    assert.equal(group.symbols.find((symbol) => symbol.type === type)?.label, name);
+    assert.equal(RANGE_ELEMENT_TYPES.has(type), false);
+  }
+});
+
+test('neue Infrastrukturtypen bleiben mit Koordinaten, Größe und Text im JSON/XML erhalten', () => {
+  const elements = infrastructureTypes.map((type, index) => ({
+    type,
+    horizontal_start_rel_to_segment_start: index * 4 + 2,
+    vertical_start_rel_to_segment_start: index + 1,
+    horizontal_end_rel_to_segment_start: null,
+    vertical_end_rel_to_segment_start: null,
+    size: 1.2,
+    text: `Punkt ${index + 1}`,
+  }));
+  const input = { ...original, segments: [{ ...original.segments[0], elements }] };
+  const topo = topoFromJson(input);
+  assert.deepEqual(validateTopo(topo), []);
+  assert.deepEqual(topoToJsonObject(topo).segments[0].elements, elements);
+  assert.deepEqual(topoToJsonObject(topoFromJson(JSON.stringify(topoToJsonObject(topo)))), input);
+  const xml = topoToXml(topo);
+  for (const type of infrastructureTypes) assert.ok(xml.includes(`type="${type}"`));
+  assert.deepEqual(topoToJsonObject(topoFromXml(xml)), input);
+});
+
+test('neue SVG-Silhouetten sind einzeln unterscheidbar und in Farbe sowie S/W lesbar', () => {
+  const elements = infrastructureTypes.map((type, index) => ({
+    type,
+    horizontal_start_rel_to_segment_start: index * 5 + 2,
+    vertical_start_rel_to_segment_start: 3,
+    text: '',
+  }));
+  const topo = normalizeTopo({
+    ...original,
+    segments: [{ ...original.segments[0], elements }],
+  });
+  for (const mode of ['color', 'bw']) {
+    const svg = renderTopoSvg(topo, layoutTopo(topo), { theme: mode, interactive: true });
+    assert.ok(svg.startsWith('<svg') && svg.includes('</svg>'));
+    const drawings = infrastructureTypes.map((type) => SYMBOLS[type].render({ text: '' }, mode));
+    assert.equal((svg.match(/class="topo-element"/g) || []).length, 4);
+    assert.equal(new Set(drawings).size, 4);
+    for (const drawing of drawings) {
+      assert.ok(svg.includes(drawing), `${mode}: Symbolzeichnung fehlt im SVG`);
+      assert.match(drawing, /<path/);
+      assert.match(drawing, /stroke="#111"/);
+    }
+    if (mode === 'bw') {
+      assert.ok(!drawings.some((drawing) => /#c52b24|#768898|#52687a|#d7d4c9|#aab9c6/i.test(drawing)));
+    } else {
+      assert.ok(drawings.some((drawing) => drawing.includes('#c52b24')));
+    }
+  }
 });
 
 test('Abgestorbene Bäume überleben den JSON- und XML-Roundtrip', () => {

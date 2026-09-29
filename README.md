@@ -8,7 +8,7 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
 ## Funktionen
 
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen
-- **Symbole**: 24 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Leiter, Fluchtwege, Warnungen …)
+- **Symbole**: 28 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Funk- und Liftmasten, Fluchtwege, Warnungen …)
   per Klick einfügen und im Topo frei verschieben. Ist bereits ein Symbol ausgewählt,
   entsteht das neue an derselben Stelle und direkt dahinter in der Reihenfolge —
   sonst in der Segmentmitte und am Ende.
@@ -122,7 +122,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | Verankerung | `BOLT`, `BOLT_LEFT`, `BOLT_RIGHT` |
 | Gefahren | `SHARP_EDGE`, `TRAPPED_STONE`, `BACKWATER`, `WARNING_AND_TEXT` |
 | Natur | `STONE`, `TRUNK`, `LEAF_TREE`, `CONIFER_TREE` (beide auch abgestorben), `CAVE`, `INLET_LEFT`, `INLET_RIGHT` |
-| Infrastruktur | `LADDER`, `STONE_BRIDGE`, `WOODEN_BRIDGE`, `STONE_HOUSE`, `ROPE_RAILING_LEFT`, `ROPE_RAILING_RIGHT` |
+| Infrastruktur | `LADDER`, `STONE_BRIDGE`, `WOODEN_BRIDGE`, `STONE_HOUSE`, `RADIO_MAST` (Funkmast), `LIFT_MAST` (Liftmast), `SQUARE_CONCRETE_BASE` (Betonsockel eckig), `STEEL_BEAM` (Stahlträger), `ROPE_RAILING_LEFT`, `ROPE_RAILING_RIGHT` |
 | Beschriftung | `ELEMENT_NUMBER`, `CUSTOM_TEXT`, `ESCAPE_EXIT_LEFT`, `ESCAPE_EXIT_RIGHT` |
 
 Streckenelemente (`ROPE_RAILING_*`) benötigen zusätzlich die `*_end_*`-Koordinaten.

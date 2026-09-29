@@ -264,6 +264,73 @@ export const SYMBOLS = {
       <rect x="-0.25" y="-0.6" width="0.5" height="0.7" fill="#6b3f1d" ${thin}/>
       ${label(element.text, 0, -2.4)}`,
   },
+  RADIO_MAST: {
+    label: 'Funkmast',
+    category: 'infrastructure',
+    render: (element, theme) => `
+      <path d="M-0.65,0 L0,-2.45 L0.65,0 Z" fill="none" ${stroke}/>
+      <g ${thin} fill="none">
+        <path d="M-0.48,-0.65 L0.3,-1.3 L-0.3,-1.3 L0.48,-0.65 Z"/>
+        <path d="M-0.3,-1.3 L0.15,-1.88 L-0.15,-1.88 L0.3,-1.3 Z"/>
+        <line x1="-0.72" y1="-0.65" x2="0.72" y2="-0.65"/>
+      </g>
+      <line x1="0" y1="-2.45" x2="0" y2="-2.8" ${stroke}/>
+      <circle cx="0" cy="-2.85" r="0.11" fill="${theme === 'bw' ? '#555' : '#c52b24'}"/>
+      <g fill="none" stroke="${theme === 'bw' ? '#555' : '#c52b24'}" stroke-width="0.09" stroke-linecap="round">
+        <path d="M-0.24,-2.95 Q-0.55,-2.85 -0.24,-2.55"/>
+        <path d="M0.24,-2.95 Q0.55,-2.85 0.24,-2.55"/>
+        <path d="M-0.43,-3.12 Q-0.92,-2.85 -0.43,-2.38"/>
+        <path d="M0.43,-3.12 Q0.92,-2.85 0.43,-2.38"/>
+      </g>${label(element.text, 0, -3.4)}`,
+  },
+  LIFT_MAST: {
+    label: 'Liftmast',
+    category: 'infrastructure',
+    render: (element, theme) => `
+      <path d="M-0.16,0 L-0.16,-2.05 L0.16,-2.05 L0.16,0 Z" fill="${theme === 'bw' ? '#aaa' : '#768898'}" ${stroke}/>
+      <path d="M-1.3,-2.05 L1.3,-2.05 L1.3,-1.88 L-1.3,-1.88 Z" fill="${theme === 'bw' ? '#777' : '#52687a'}" ${stroke}/>
+      <g fill="#fff" ${thin}>
+        <circle cx="-1.05" cy="-2.12" r="0.11"/>
+        <circle cx="1.05" cy="-2.12" r="0.11"/>
+      </g>
+      <path d="M-1.7,-2.27 L1.7,-2.27" fill="none" ${stroke}/>
+      <g fill="none" ${thin}>
+        <path d="M0.85,-2.27 L0.85,-1.45"/>
+        <path d="M0.4,-1.45 L1.3,-1.45 L1.15,-1.1 L0.55,-1.1 Z"/>
+      </g>${label(element.text, 0, -2.65)}`,
+  },
+  SQUARE_CONCRETE_BASE: {
+    label: 'Betonsockel eckig',
+    category: 'infrastructure',
+    render: (element, theme) => `
+      <path d="M-0.95,-0.85 L0.65,-0.85 L1.05,-1.15 L-0.55,-1.15 Z"
+            fill="${theme === 'bw' ? '#eee' : '#d7d4c9'}" ${stroke}/>
+      <path d="M0.65,-0.85 L1.05,-1.15 L1.05,-0.3 L0.65,0 Z"
+            fill="${theme === 'bw' ? '#777' : '#92918a'}" ${stroke}/>
+      <path d="M-0.95,-0.85 L0.65,-0.85 L0.65,0 L-0.95,0 Z"
+            fill="${theme === 'bw' ? '#bbb' : '#bcbab1'}" ${stroke}/>
+      <g fill="#111">
+        <circle cx="-0.5" cy="-0.98" r="0.06"/>
+        <circle cx="0.47" cy="-0.98" r="0.06"/>
+      </g>${label(element.text, 0, -1.45)}`,
+  },
+  STEEL_BEAM: {
+    label: 'Stahlträger',
+    category: 'infrastructure',
+    render: (element, theme) => `
+      <path d="M-1.4,-1.1 L1.2,-1.1 L1.4,-0.92 L-1.2,-0.92 Z"
+            fill="${theme === 'bw' ? '#ddd' : '#aab9c6'}" ${stroke}/>
+      <path d="M-1.2,-0.92 L1.4,-0.92 L1.4,-0.72 L-1.2,-0.72 Z"
+            fill="${theme === 'bw' ? '#888' : '#71889a'}" ${stroke}/>
+      <path d="M-1.05,-0.72 L1.05,-0.72 L1.05,-0.23 L-1.05,-0.23 Z"
+            fill="${theme === 'bw' ? '#bbb' : '#899eae'}" ${stroke}/>
+      <path d="M-1.2,-0.23 L1.4,-0.23 L1.4,-0.03 L-1.2,-0.03 Z"
+            fill="${theme === 'bw' ? '#888' : '#71889a'}" ${stroke}/>
+      <g fill="#111">
+        <circle cx="-0.65" cy="-0.47" r="0.06"/>
+        <circle cx="0.55" cy="-0.47" r="0.06"/>
+      </g>${label(element.text, 0, -1.4)}`,
+  },
   INLET_LEFT: {
     label: 'Zufluss links',
     category: 'nature',

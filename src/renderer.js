@@ -141,7 +141,9 @@ function renderElement(placed, theme, options = {}) {
     if (!endPoint) return '';
     return `<g${hooks} fill="${theme.text}" stroke-linejoin="round">${symbol.render(point, endPoint, { size })}</g>`;
   }
-  const body = symbol ? symbol.render(element) : renderUnknownSymbol(element);
+  const body = symbol
+    ? symbol.render(element, options.theme === 'bw' ? 'bw' : 'color')
+    : renderUnknownSymbol(element);
   const halo = selected
     ? `<circle cx="0" cy="0" r="${1.6}" fill="none" stroke="#1668dc" stroke-width="0.22"/>`
     : '';
