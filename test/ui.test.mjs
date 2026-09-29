@@ -173,6 +173,9 @@ globalThis.FileReader = class {
   readAsDataURL() {}
 };
 
+import { readFileSync } from 'node:fs';
+
+import { PROMPT_TEMPLATES, getAiSettings } from '../src/ai.js';
 import { SEGMENT_TYPES, validateTopo } from '../src/model.js';
 import { symbolOptions } from '../src/symbols.js';
 
@@ -480,6 +483,43 @@ test('ein Typwechsel weg vom Abseilen räumt die Wanddistanz auf', () => {
   typeSelect.dispatch('change');
   assert.equal(state.topo.segments[0].wall_distance_in_meters, 0);
   assert.equal(inspectorHas('segment-wall-distance'), false);
+});
+
+
+test('das Auswahlfeld für die Prompt-Vorlage kennt alle Vorlagen', () => {
+  const markup = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(markup, /id="ai-prompt-template"/, 'Auswahlfeld fehlt in index.html');
+  assert.match(markup, /id="ai-prompt-custom"/, 'Textfeld fehlt in index.html');
+
+  const select = elementById('ai-prompt-template');
+  assert.deepEqual(
+    select.options.map((option) => option.value),
+    PROMPT_TEMPLATES.map((entry) => entry.id),
+  );
+  assert.equal(select.value, 'optimized', 'Standard ist die optimierte Vorlage');
+  assert.equal(elementById('ai-prompt-custom-row').hidden, true, 'Textfeld erst bei "custom"');
+  assert.ok(elementById('ai-prompt-hint').textContent.length > 0);
+});
+
+test('"Eigener Prompt" zeigt das Textfeld, vorbelegt und gespeichert', () => {
+  const select = elementById('ai-prompt-template');
+  try {
+    select.value = 'custom';
+    select.dispatch('change');
+    assert.equal(getAiSettings().promptTemplate, 'custom');
+    assert.equal(elementById('ai-prompt-custom-row').hidden, false);
+    const prefilled = elementById('ai-prompt-custom').value;
+    assert.match(prefilled, /Canyoning-Topo-Experte/, 'Vorbelegung fehlt');
+    assert.equal(getAiSettings().customPrompt, prefilled, 'Vorbelegung muss gespeichert sein');
+
+    type('ai-prompt-custom', 'Nur JSON.');
+    assert.equal(getAiSettings().customPrompt, 'Nur JSON.');
+  } finally {
+    select.value = 'optimized';
+    select.dispatch('change');
+  }
+  assert.equal(getAiSettings().promptTemplate, 'optimized');
+  assert.equal(elementById('ai-prompt-custom-row').hidden, true);
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);

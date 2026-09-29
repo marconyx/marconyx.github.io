@@ -35,6 +35,10 @@ function json(payload, status, origin) {
   });
 }
 
+/** Muss zu TEMPERATURE in tools/proxy.mjs und AI_TEMPERATURE in src/ai.js passen. */
+const TEMPERATURE = 0.15;
+const MAX_PROMPT_CHARS = 32000;
+
 function splitDataUrl(image) {
   const match = /^data:([^;,]+);base64,(.*)$/s.exec(image || '');
   if (!match) throw new Error('image muss eine base64-Data-URL sein.');
@@ -71,6 +75,18 @@ export default {
 
     const { image, prompt } = payload;
     if (!image || !prompt) return json({ error: 'image und prompt sind erforderlich.' }, 400, origin);
+    if (typeof prompt !== 'string' || (payload.system != null && typeof payload.system !== 'string')) {
+      return json({ error: 'prompt und system müssen Text sein.' }, 400, origin);
+    }
+    // Der Browser bestimmt den Prompt – begrenzt, damit niemand den Worker sprengt.
+    const system = payload.system ? String(payload.system) : '';
+    if (prompt.length > MAX_PROMPT_CHARS || system.length > MAX_PROMPT_CHARS) {
+      return json(
+        { error: `Prompt zu lang – erlaubt sind ${MAX_PROMPT_CHARS} Zeichen je Teil.` },
+        400,
+        origin,
+      );
+    }
 
     const api = (env.AI_API || 'openai').toLowerCase();
     const base = (env.AI_UPSTREAM || 'https://api.openai.com/v1').replace(/\/+$/, '');
@@ -85,6 +101,8 @@ export default {
         body = {
           model,
           max_tokens: 4096,
+          temperature: TEMPERATURE,
+          ...(system ? { system } : {}),
           messages: [
             {
               role: 'user',
@@ -97,18 +115,20 @@ export default {
         };
       } else {
         url = `${base}/chat/completions`;
+        const messages = [];
+        if (system) messages.push({ role: 'system', content: system });
+        messages.push({
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: image } },
+            { type: 'text', text: prompt },
+          ],
+        });
         body = {
           model,
           max_tokens: 4096,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url: image } },
-                { type: 'text', text: prompt },
-              ],
-            },
-          ],
+          temperature: TEMPERATURE,
+          messages,
         };
       }
     } catch (error) {

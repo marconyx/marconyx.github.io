@@ -20,7 +20,7 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
   das Topo darüber nachzeichnen (Deckkraft, Größe, Position regelbar). Bei mehrseitigen PDFs
   lässt sich die Seite auswählen.
 - **AI-Erkennung**: Foto oder PDF-Seite per Vision-Modell in ein Topo umwandeln
-  (OpenAI-kompatibel, Anthropic oder eigener Proxy) — siehe unten
+  (OpenAI-kompatibel, Anthropic oder eigener Proxy), mit wählbarer Prompt-Vorlage — siehe unten
 - **Speichern**: JSON (kompatibel zum Canyon-Explore-Format) und XML (mit XSD)
 - **Export**: SVG, PNG, Druck/PDF über den Browser-Druckdialog
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
@@ -276,6 +276,38 @@ Ein Fehlschlag wird nicht wiederholt, sonst entstünde bei falscher Konfiguratio
 ein Dauerfeuer auf die API. Nach einer Korrektur läuft es von selbst wieder, und
 *Modelle laden* erzwingt es jederzeit.
 
+### Prompt-Vorlagen
+
+Der Prompt entscheidet über die Erkennungsqualität mehr als das Modell. Unter
+*AI-Erkennung → Einstellungen → Prompt-Vorlage* lässt er sich deshalb auswählen:
+
+| Vorlage | Wofür |
+|---|---|
+| **Optimiert (empfohlen)** | Standard. Rolle, Schritt-für-Schritt-Vorgehen, vollständiger Typkatalog mit Erkennungsmerkmalen, Einheiten und Wertebereiche, Regeln bei Unsicherheit, Beispiel-JSON. |
+| **Kompakt** | Kurzfassung für kleine Modelle oder enges Kontextfenster. |
+| **Bisheriger Prompt** | Der Prompt vor der Überarbeitung — zum Vergleichen. |
+| **Eigener Prompt** | Freitext, vorbelegt mit der optimierten Vorlage. |
+
+Die Listen der gültigen Segment- und Symboltypen erzeugt `src/ai.js` aus
+`src/model.js` und `src/symbols.js`. Neue Typen stehen damit automatisch im
+Prompt — nichts ist doppelt gepflegt.
+
+Auswahl und eigener Text liegen wie Endpoint und Modell im `localStorage`. Ein
+leerer eigener Prompt wird abgelehnt, statt einen nutzlosen Aufruf abzusetzen.
+
+Bei „Optimiert“ und „Kompakt“ geht die Anweisung als **System-Nachricht** raus
+(Anthropic: `system`-Feld), Bild und kurze Aufgabe als User-Nachricht — Modelle
+befolgen die Vorgaben so zuverlässiger. Dazu kommt `temperature: 0.15` und, wo
+unterstützt, `response_format: {"type": "json_object"}`; lehnt ein Gateway den
+JSON-Modus ab, wiederholen App und Proxy den Aufruf automatisch ohne ihn.
+„Bisheriger Prompt“ und „Eigener Prompt“ bleiben bewusst eine einzige
+User-Nachricht — der eine ist byte-identisch zum alten Aufruf, der andere geht
+unverändert so raus, wie er eingetippt wurde.
+
+Der Prompt kommt in allen Wegen aus dem Browser: direkt, über `tools/proxy.mjs`
+und über `tools/worker.js`. Beide Proxys formulieren nichts selbst, sie reichen
+`prompt` und `system` durch (je 32 000 Zeichen Obergrenze).
+
 ### Firmen-Gateways: der mitgelieferte Proxy
 
 Viele Unternehmens-Gateways beantworten den CORS-Preflight des Browsers mit `401`
@@ -466,7 +498,7 @@ src/app.js            Editor-Logik und UI-Bindings
 tools/proxy.mjs       Lokaler AI-Proxy (löst CORS) + serviert die App
 tools/worker.js       Derselbe Proxy als Cloudflare Worker
 tools/autostart.sh    Proxy ab Login mitlaufen lassen (LaunchAgent/systemd)
-test/                 Round-Trip-, Layout-, Zufalls-, UI- und AI-Tests
+test/                 Round-Trip-, Layout-, Zufalls-, UI-, AI- und Proxy-Tests
 examples/             Beispiel-Topo (JSON + XML)
 vendor/pdfjs/         pdf.js (Apache-2.0), lokal eingebunden
 topo.xsd              XML-Schema

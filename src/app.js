@@ -31,12 +31,15 @@ import {
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
+  PROMPT_TEMPLATES,
+  buildOptimizedInstructions,
   detectLocalProxy,
   getAiSettings,
   isTopoProviderAvailable,
   listModels,
   loadAiSettings,
   photoToTopo,
+  promptTemplateById,
   providerById,
   providerStatusText,
   saveAiSettings,
@@ -1054,6 +1057,9 @@ function syncAiControls() {
   $('ai-provider-hint').textContent = spec.hint;
   $('ai-key-row').hidden = !spec.needsKey;
   $('ai-model-row').hidden = spec.id === 'proxy';
+  const template = promptTemplateById(getAiSettings().promptTemplate);
+  $('ai-prompt-hint').textContent = template.hint;
+  $('ai-prompt-custom-row').hidden = template.id !== 'custom';
   $('btn-ai-models').disabled = modelsState.busy || spec.id === 'proxy';
   // Die Einstellungen von Anfang an aufklappen, solange noch etwas fehlt.
   if (!ready) $('ai-settings').open = true;
@@ -1181,6 +1187,35 @@ function bindAi() {
     providerSelect.appendChild(option);
   }
   providerSelect.value = saved.providerId;
+
+  const promptSelect = $('ai-prompt-template');
+  for (const entry of PROMPT_TEMPLATES) {
+    const option = document.createElement('option');
+    option.value = entry.id;
+    option.textContent = entry.label;
+    promptSelect.appendChild(option);
+  }
+  promptSelect.value = promptTemplateById(saved.promptTemplate).id;
+  // Ein leeres Feld wäre eine Sackgasse – die optimierte Vorlage ist der Startpunkt.
+  $('ai-prompt-custom').value = saved.customPrompt || buildOptimizedInstructions();
+
+  promptSelect.addEventListener('change', () => {
+    const patch = { promptTemplate: promptTemplateById(promptSelect.value).id };
+    // Das Textfeld zeigt die Vorlage – dann muss sie auch gespeichert sein,
+    // sonst liefe "Eigener Prompt" trotz sichtbarem Text ins Leere.
+    if (!getAiSettings().customPrompt) {
+      patch.customPrompt = buildOptimizedInstructions();
+      $('ai-prompt-custom').value = patch.customPrompt;
+    }
+    saveAiSettings(patch);
+    syncAiControls();
+  });
+
+  $('ai-prompt-custom').addEventListener('input', (event) => {
+    saveAiSettings({ customPrompt: event.target.value });
+    syncAiControls();
+  });
+
   $('ai-endpoint').value = saved.endpoint;
   $('ai-model').value = saved.model;
   $('ai-key').value = saved.apiKey;

@@ -18,12 +18,15 @@
  * für eigene Implementierungen.
  */
 import {
+  DEAD_CAPABLE_ELEMENT_TYPES,
   ELEMENT_TYPES,
   RANGE_ELEMENT_TYPES,
+  SEGMENT_LABELS,
   SEGMENT_TYPES,
   normalizeTopo,
   todayIso,
 } from './model.js';
+import { SYMBOLS } from './symbols.js';
 
 const SETTINGS_KEY = 'canyon-topo-generator/ai/v1';
 
@@ -60,6 +63,9 @@ const DEFAULT_SETTINGS = {
   model: 'gpt-4o',
   apiKey: '',
   notes: '',
+  // Prompt-Vorlage und eigener Text werden wie Endpoint und Modell gemerkt.
+  promptTemplate: 'optimized',
+  customPrompt: '',
 };
 
 let customProvider = null;
@@ -239,9 +245,54 @@ export function badKeyCharacter(key) {
 
 /* -------------------------------------------------------------------- Prompt */
 
+/**
+ * Wählbare Prompt-Vorlagen.
+ *
+ * Der Prompt entscheidet über die Qualität der Erkennung mehr als das Modell.
+ * Deshalb ist er wählbar: Die optimierte Vorlage erklärt Rolle, Vorgehen,
+ * Typkatalog und Ausgabeformat ausführlich, die kompakte spart Kontext für
+ * kleine Modelle, "legacy" bleibt als Vergleichsmassstab wortgleich erhalten
+ * und "custom" gibt die Kontrolle ganz ab.
+ */
+export const PROMPT_TEMPLATES = [
+  {
+    id: 'optimized',
+    label: 'Optimiert (empfohlen)',
+    hint: 'Ausführliche Anleitung mit Typkatalog, Vorgehen und Beispiel.',
+  },
+  {
+    id: 'compact',
+    label: 'Kompakt',
+    hint: 'Kurzfassung für kleine Modelle oder enges Kontextfenster.',
+  },
+  {
+    id: 'legacy',
+    label: 'Bisheriger Prompt',
+    hint: 'Der Prompt vor der Überarbeitung – zum Vergleichen.',
+  },
+  {
+    id: 'custom',
+    label: 'Eigener Prompt',
+    hint: 'Frei editierbar, vorbelegt mit der optimierten Vorlage.',
+  },
+];
+
+export const DEFAULT_PROMPT_TEMPLATE = 'optimized';
+
+/** Obergrenze für einen eigenen Prompt – schützt Proxy und Upstream. */
+export const MAX_PROMPT_CHARS = 32000;
+
+export function promptTemplateById(id) {
+  return (
+    PROMPT_TEMPLATES.find((entry) => entry.id === id) ||
+    PROMPT_TEMPLATES.find((entry) => entry.id === DEFAULT_PROMPT_TEMPLATE)
+  );
+}
+
+
 const POINT_ELEMENTS = ELEMENT_TYPES.filter((t) => !RANGE_ELEMENT_TYPES.has(t));
 
-export function buildPrompt(hints = {}) {
+export function buildLegacyPrompt(hints = {}) {
   return `Du analysierst ein Bild eines Canyoning-Topos (Schluchten-Abstiegsskizze) oder ein Foto einer Schlucht und erzeugst daraus ein strukturiertes Topo.
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, ohne Fließtext und ohne Markdown-Codefence.
@@ -311,6 +362,272 @@ Regeln:
 
 ${hints.canyonName ? `Der Canyon heißt "${hints.canyonName}".` : ''}
 ${hints.notes ? `Zusatzinfo vom Nutzer: ${hints.notes}` : ''}`.trim();
+}
+
+
+/* ------------------------------------------------- Typkatalog für den Prompt */
+
+/**
+ * Bedeutung und Erkennungsmerkmale je Typ. Die *Liste* der Typen kommt immer
+ * aus dem Modell bzw. der Symbolbibliothek – hier stehen nur die Erklärungen.
+ * Fehlt zu einem neuen Typ eine Erklärung, erscheint er trotzdem im Prompt,
+ * dann mit dem Label aus der Symbolpalette.
+ */
+const SEGMENT_DESCRIPTIONS = {
+  WALK: 'Gehstrecke/Zustieg – flacher Bachlauf, Pfad, Geröll; oft mit Zeitangabe in Minuten.',
+  POOL: 'Gumpen/Schwimmstelle – stehendes Wasser, Schwimmpfeil, blaue Fläche.',
+  RAPPEL: 'Abseilstelle ohne nähere Angabe – Seillinie an einer Wandstufe, Label "R".',
+  RAPPEL_DRY: 'Trockenes Abseilen neben dem Wasser – Label "R_d", Seil abseits des Strahls.',
+  RAPPEL_WET: 'Abseilen im Wasserfall – Label "R_w", Seil mitten im Strahl.',
+  JUMP: 'Sprung – Label "J", Pfeil senkrecht nach unten in eine Gumpe.',
+  SLIDE: 'Rutsche – Label "S", schräge glatte Rampe ins Wasser.',
+  CLIMB: 'Kletterstelle/Abklettern – Label "C", steile Stufe ohne Seillinie.',
+  WEIR: 'Wehr oder Verblockung – Label "W", künstliche Stufe, Betonkante.',
+};
+
+const ELEMENT_DESCRIPTIONS = {
+  BOLT: 'Bohrhaken/Standplatz – kleiner Kreis mit Punkt, am Kopf einer Abseilstelle.',
+  BOLT_LEFT: 'Bohrhaken links (in Abstiegsrichtung), im Bild oft mit "(le)".',
+  BOLT_RIGHT: 'Bohrhaken rechts (in Abstiegsrichtung), im Bild oft mit "(ri)".',
+  STONE: 'Loser Block/Felsbrocken am Grund.',
+  TRAPPED_STONE: 'Klemmblock zwischen zwei Wänden – Block mit Wandbögen links und rechts.',
+  SHARP_EDGE: 'Scharfe Kante – Seilrisiko, meist als Kreuz mit roten Ringen markiert.',
+  LADDER: 'Fixe Leiter – zwei Holme mit Sprossen.',
+  TRUNK: 'Liegender Baumstamm/Totholz, quer im Bachbett.',
+  LEAF_TREE: 'Laubbaum – runde Krone. Als Verankerung nur brauchbar, wenn lebend.',
+  CONIFER_TREE: 'Nadelbaum – spitze Krone.',
+  CAVE: 'Höhle/Unterstand – dunkler Bogen in der Wand.',
+  BACKWATER: 'Rückstrom/Walze – Gefahrenstelle unterhalb einer Stufe, Spiralpfeil.',
+  STONE_BRIDGE: 'Steinbrücke über der Schlucht – Bogen mit Geländer.',
+  WOODEN_BRIDGE: 'Holzbrücke/Steg über der Schlucht.',
+  STONE_HOUSE: 'Gebäude, Hütte oder Stall am Rand der Schlucht.',
+  RADIO_MAST: 'Funkmast – Gittermast mit Antennen, dient als Orientierungspunkt.',
+  LIFT_MAST: 'Liftmast/Seilbahnstütze mit Querträger und Rollen.',
+  SQUARE_CONCRETE_BASE: 'Eckiger Betonsockel – Fundament, oft mit Ankerschrauben.',
+  STEEL_BEAM: 'Stahlträger/Doppel-T-Träger, z. B. als Verankerung einer Brücke.',
+  INLET_LEFT: 'Seitlicher Zufluss von links (Abstiegsrichtung) – blauer Pfeil.',
+  INLET_RIGHT: 'Seitlicher Zufluss von rechts (Abstiegsrichtung) – blauer Pfeil.',
+  ESCAPE_EXIT_LEFT: 'Fluchtweg/Ausstieg nach links – grünes Schild mit Pfeil.',
+  ESCAPE_EXIT_RIGHT: 'Fluchtweg/Ausstieg nach rechts – grünes Schild mit Pfeil.',
+  ROPE_RAILING_LEFT: 'Seilgeländer/Handlauf links – Strecke mit Ringen, braucht Start UND Ende.',
+  ROPE_RAILING_RIGHT: 'Seilgeländer/Handlauf rechts – Strecke mit Ringen, braucht Start UND Ende.',
+  ELEMENT_NUMBER: 'Nummerierter Marker im Kreis – die App nummeriert selbst neu.',
+  CUSTOM_TEXT: 'Freie Beschriftung aus dem Bild; der Text gehört ins Feld "text".',
+  WARNING_AND_TEXT: 'Warndreieck mit Text – Siphon, Steinschlag, Sperre und Ähnliches.',
+};
+
+function symbolLabelFor(type) {
+  return SYMBOLS[type]?.label || type;
+}
+
+/** Zeilen "TYPE = Erklärung" für alle Segmenttypen des Modells. */
+export function segmentTypeCatalogLines() {
+  return SEGMENT_TYPES.map((type) => {
+    const label = SEGMENT_LABELS[type];
+    const short = label ? ` [Kurzlabel ${label.base}${label.sub}]` : '';
+    return `- ${type}${short} = ${SEGMENT_DESCRIPTIONS[type] || 'Abschnitt im Abstieg.'}`;
+  });
+}
+
+/** Zeilen "TYPE (Label) = Erklärung" für alle Elementtypen der Symbolpalette. */
+export function elementTypeCatalogLines() {
+  return ELEMENT_TYPES.map((type) => {
+    const range = RANGE_ELEMENT_TYPES.has(type) ? ' [Strecke: Start UND Ende]' : '';
+    const dead = DEAD_CAPABLE_ELEMENT_TYPES.has(type) ? ' [kennt "dead": true]' : '';
+    const text =
+      ELEMENT_DESCRIPTIONS[type] || `Symbol "${symbolLabelFor(type)}" aus der Palette.`;
+    return `- ${type} (${symbolLabelFor(type)})${range}${dead} = ${text}`;
+  });
+}
+
+const EXAMPLE_JSON = `{
+  "canyon_name": "Rio Barbaira",
+  "author": "",
+  "duration": "3-4 h",
+  "date": "2024-06-15",
+  "maximum_walk_length": 30,
+  "distance_of_single_line": 60,
+  "legend_offset_top": 0,
+  "segments": [
+    { "type": "WALK", "length_in_meters": 40, "angle_in_degrees": 0,
+      "duration_to_walk_in_min": 10, "wall_distance_in_meters": 0,
+      "do_not_cut_row_after_this_segment": false,
+      "force_cut_row_after_this_segment": false, "elements": [] },
+    { "type": "RAPPEL_WET", "length_in_meters": 25, "angle_in_degrees": 95,
+      "duration_to_walk_in_min": null, "wall_distance_in_meters": 3,
+      "do_not_cut_row_after_this_segment": false,
+      "force_cut_row_after_this_segment": false,
+      "elements": [
+        { "type": "BOLT_LEFT", "horizontal_start_rel_to_segment_start": 0.5,
+          "vertical_start_rel_to_segment_start": 1,
+          "horizontal_end_rel_to_segment_start": null,
+          "vertical_end_rel_to_segment_start": null,
+          "size": 1, "text": "2x10", "dead": false }
+      ] }
+  ]
+}`;
+
+const SCHEMA_BLOCK = `{
+  "canyon_name": string,
+  "author": string,                        // "" wenn nicht erkennbar
+  "duration": string,                      // freie Angabe, z. B. "3-4 h"
+  "date": "YYYY-MM-DD",
+  "maximum_walk_length": number,           // gezeichnete Maximallänge von Gehstrecken, üblich 30
+  "distance_of_single_line": number,       // Zeilenbreite vor dem Umbruch, üblich 60
+  "legend_offset_top": number,             // üblich 0
+  "segments": [
+    {
+      "type": string,                      // nur Werte aus der Segmentliste
+      "length_in_meters": number,          // Höhe bei Abseilstellen/Sprüngen, Länge bei Geh-/Wasserstrecken
+      "angle_in_degrees": number,          // 0 = flach, 90 = senkrecht, >90 = überhängend
+      "duration_to_walk_in_min": number|null,  // nur bei WALK sinnvoll
+      "wall_distance_in_meters": number,       // nur bei RAPPEL*, 0 = Seil liegt an der Wand
+      "do_not_cut_row_after_this_segment": boolean,
+      "force_cut_row_after_this_segment": boolean,
+      "elements": [
+        {
+          "type": string,                  // nur Werte aus der Elementliste
+          "horizontal_start_rel_to_segment_start": number,
+          "vertical_start_rel_to_segment_start": number,
+          "horizontal_end_rel_to_segment_start": number|null,
+          "vertical_end_rel_to_segment_start": number|null,
+          "size": number,                  // 1 = normal
+          "text": string,                  // "" wenn ohne Beschriftung
+          "dead": boolean                  // nur bei Bäumen, true = abgestorben
+        }
+      ]
+    }
+  ]
+}`;
+
+/** Die ausführliche Anleitung – als System-Nachricht gedacht. */
+export function buildOptimizedInstructions() {
+  return `Du bist ein erfahrener Canyoning-Topo-Experte und liest Topo-Skizzen sowie Fotos von Schluchten. Deine Aufgabe ist es, daraus ein strukturiertes Topo als JSON zu erzeugen.
+
+VORGEHEN (in dieser Reihenfolge):
+1. Lies das Bild von OBEN (Einstieg) nach UNTEN (Ausstieg). Die Reihenfolge der Segmente ist die Abstiegsreihenfolge.
+2. Zerlege den Abstieg in zusammenhängende Abschnitte – jeder Abschnitt wird ein Segment.
+3. Bestimme für jeden Abschnitt den Typ aus der Segmentliste unten. Kurzlabels wie "R_d10", "J6" oder "S6" verraten Typ UND Höhe.
+4. Schätze Länge/Höhe in Metern und den Winkel. Steht eine Zahl im Bild, übernimm sie unverändert.
+5. Ordne die sichtbaren Symbole dem Segment zu, in dem sie stehen, und setze ihre lokalen Koordinaten.
+6. Lies die Metadaten aus Titel und Legende: Name, Author, Dauer, Datum. Was nicht dasteht, bleibt leer.
+
+AUSGABE:
+- Antworte AUSSCHLIESSLICH mit einem einzigen JSON-Objekt.
+- Kein Fließtext, keine Erklärung, kein Markdown-Codefence.
+- Exakt dieses Schema, alle Felder vorhanden:
+${SCHEMA_BLOCK}
+
+SEGMENTTYPEN (nur diese Werte sind gültig):
+${segmentTypeCatalogLines().join('\n')}
+
+ELEMENTTYPEN (nur diese Werte sind gültig):
+${elementTypeCatalogLines().join('\n')}
+
+Punktelemente (alle Elementtypen ausser den mit [Strecke] markierten) müssen
+"horizontal_end_rel_to_segment_start" und "vertical_end_rel_to_segment_start" auf null setzen.
+Streckenelemente brauchen alle vier Koordinaten als Zahl.
+
+KOORDINATENSYSTEM DER ELEMENTE (wichtig):
+- Lokal pro Segment, Einheit Meter, Ursprung ist der Segmentanfang.
+- "horizontal_*" misst ENTLANG der Segmentrichtung, 0 = Segmentanfang.
+- "vertical_*" misst QUER dazu, positiv = links der Laufrichtung (bei flachem Gelände oberhalb), negativ = rechts/unterhalb.
+- Beispiel: ein Block am Boden einer Gehstrecke liegt bei vertical 0, eine Brücke darüber bei etwa vertical 4, eine Höhle darunter bei etwa -0.5.
+- Bohrhaken am Kopf einer Abseilstelle liegen nahe horizontal 0.
+
+EINHEITEN UND WERTEBEREICHE:
+- length_in_meters: > 0. Abseilstellen typisch 3–120, Sprünge 2–15, Rutschen 3–30, Gehstrecken 5–500.
+- angle_in_degrees: 0 = flach, 90 = senkrecht, >90 = ÜBERHÄNGEND (nur bei RAPPEL* sinnvoll, typisch bis 115).
+- wall_distance_in_meters: nur bei RAPPEL, RAPPEL_DRY, RAPPEL_WET; 0 = Seil liegt an der Wand, sonst typisch 1–10. Bei allen anderen Typen 0.
+- duration_to_walk_in_min: nur bei WALK, sonst null.
+- size: 1 = normal, 0.5–2 sind sinnvolle Abweichungen.
+- do_not_cut_row_after_this_segment / force_cut_row_after_this_segment: Zeilenumbruch des Topos. Im Zweifel beide false und NIE beide zugleich true am selben Segment.
+
+UMGANG MIT UNSICHERHEIT:
+- Lieber ein Detail weglassen als raten. Ein plausibles kurzes Topo ist besser als ein langes erfundenes.
+- Erfinde keine Typen, Werte oder Beschriftungen, die im Bild nicht stehen.
+- Nicht erkennbare Metadaten bleiben leer ("" bzw. das heutige Datum).
+- Ein kahler, toter Baum ohne Laub bzw. Nadeln ist LEAF_TREE oder CONIFER_TREE mit "dead": true – er trägt als Verankerung nicht.
+- Beschriftungen aus dem Bild gehören als CUSTOM_TEXT (bzw. WARNING_AND_TEXT bei Gefahrenhinweisen) ins passende Segment.
+- Ist gar kein Topo erkennbar, gib ein leeres "segments"-Array zurück.
+
+BEISPIEL (Form, nicht Inhalt):
+${EXAMPLE_JSON}`;
+}
+
+/** Kurzfassung für kleine Modelle oder enges Kontextfenster. */
+export function buildCompactInstructions() {
+  return `Du bist Canyoning-Topo-Experte. Lies das Bild von oben (Einstieg) nach unten (Ausstieg) und gib das Topo als JSON zurück.
+
+Antworte NUR mit einem JSON-Objekt, ohne Text und ohne Markdown-Codefence.
+
+Schema: canyon_name, author, duration, date ("YYYY-MM-DD"), maximum_walk_length (30), distance_of_single_line (60), legend_offset_top (0), segments[].
+Segment: type, length_in_meters, angle_in_degrees, duration_to_walk_in_min (nur WALK, sonst null), wall_distance_in_meters (nur RAPPEL*, sonst 0), do_not_cut_row_after_this_segment, force_cut_row_after_this_segment, elements[].
+Element: type, horizontal_start_rel_to_segment_start, vertical_start_rel_to_segment_start, horizontal_end_rel_to_segment_start, vertical_end_rel_to_segment_start, size, text, dead.
+
+Segmenttypen: ${SEGMENT_TYPES.join(', ')}.
+Elementtypen: ${ELEMENT_TYPES.join(', ')}.
+Streckenelemente (alle vier Koordinaten als Zahl): ${[...RANGE_ELEMENT_TYPES].join(', ')}.
+Alle übrigen Elemente setzen beide End-Koordinaten auf null.
+"dead": true nur bei ${[...DEAD_CAPABLE_ELEMENT_TYPES].join(', ')} (kahler, toter Baum).
+
+Regeln: Segmente in Abstiegsreihenfolge. Elementkoordinaten lokal pro Segment in Meter, horizontal entlang, vertical quer (positiv = links der Laufrichtung). angle 0 = flach, 90 = senkrecht, >90 = überhängend. Zahlen aus dem Bild ("R_d10", "J6") übernehmen. Nur Typen aus den Listen, nichts erfinden, im Zweifel weglassen. Kein Topo erkennbar: leeres "segments"-Array.`;
+}
+
+/** Kurze Aufgabenstellung samt Nutzerhinweisen – als User-Nachricht zum Bild. */
+export function buildTaskText(hints = {}) {
+  const lines = ['Erzeuge aus diesem Bild das Topo als JSON nach den Vorgaben.'];
+  if (hints.canyonName) lines.push(`Der Canyon heißt "${hints.canyonName}".`);
+  if (hints.notes) lines.push(`Zusatzinfo vom Nutzer: ${hints.notes}`);
+  return lines.join('\n');
+}
+
+/**
+ * Prompt in System- und User-Teil zerlegt.
+ *
+ * Anweisungen gehören in die System-Nachricht, Bild und Aufgabe in die
+ * User-Nachricht – Modelle befolgen die Vorgaben so deutlich zuverlässiger.
+ * "legacy" und "custom" bleiben bewusst ein einziger User-Text: Der eine soll
+ * byte-identisch zum alten Aufruf bleiben, der andere unverändert so
+ * abgeschickt werden, wie der Nutzer ihn eingetippt hat.
+ */
+export function buildPromptParts(hints = {}, options = {}) {
+  const templateId = promptTemplateById(
+    options.template || settings.promptTemplate || DEFAULT_PROMPT_TEMPLATE,
+  ).id;
+
+  if (templateId === 'custom') {
+    const custom = String(
+      options.customPrompt ?? settings.customPrompt ?? '',
+    ).trim();
+    if (!custom) {
+      throw new Error(
+        'Der eigene Prompt ist leer. Bitte Text eintragen oder eine andere Vorlage wählen.',
+      );
+    }
+    if (custom.length > MAX_PROMPT_CHARS) {
+      throw new Error(
+        `Der eigene Prompt ist zu lang (${custom.length} Zeichen, erlaubt sind ${MAX_PROMPT_CHARS}).`,
+      );
+    }
+    return { template: templateId, system: '', user: custom };
+  }
+
+  if (templateId === 'legacy') {
+    return { template: templateId, system: '', user: buildLegacyPrompt(hints) };
+  }
+
+  const system =
+    templateId === 'compact'
+      ? buildCompactInstructions()
+      : buildOptimizedInstructions();
+  return { template: templateId, system, user: buildTaskText(hints) };
+}
+
+/** Prompt als ein Text – für Wege ohne System-Nachricht und für Tests. */
+export function buildPrompt(hints = {}, options = {}) {
+  const { system, user } = buildPromptParts(hints, options);
+  return [system, user].filter(Boolean).join('\n\n');
 }
 
 /* ------------------------------------------------------------ Antwort-Parsing */
@@ -491,29 +808,56 @@ function deadFromTypeName(value) {
 
 /* ------------------------------------------------------------------- Aufrufe */
 
-async function callOpenAi(image, prompt, { signal }) {
+/**
+ * Niedrige Temperatur: Wir wollen eine möglichst wörtliche Übersetzung des
+ * Bildes in JSON, keine kreative Variante.
+ */
+export const AI_TEMPERATURE = 0.15;
+
+/** Erkennt die Upstream-Absage an `response_format`, damit der Fallback greift. */
+function rejectsJsonMode(status, text) {
+  if (status !== 400 && status !== 404 && status !== 422 && status !== 500) return false;
+  return /response_format|json_object|json mode|json_schema/i.test(text || '');
+}
+
+async function callOpenAi(image, parts, { signal }) {
   const base = settings.endpoint.replace(/\/+$/, '');
-  const response = await fetch(`${base}/chat/completions`, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${settings.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: settings.model,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: image } },
-          ],
-        },
-      ],
-      max_tokens: 4000,
-    }),
+  const messages = [];
+  // Anweisungen als System-Nachricht: Modelle befolgen sie dort zuverlässiger
+  // als mitten im Text neben dem Bild.
+  if (parts.system) messages.push({ role: 'system', content: parts.system });
+  messages.push({
+    role: 'user',
+    content: [
+      { type: 'text', text: parts.user },
+      { type: 'image_url', image_url: { url: image } },
+    ],
   });
+
+  const send = (jsonMode) =>
+    fetch(`${base}/chat/completions`, {
+      method: 'POST',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages,
+        max_tokens: 4000,
+        temperature: AI_TEMPERATURE,
+        ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      }),
+    });
+
+  let response = await send(true);
+  if (!response.ok) {
+    // Nicht jedes Gateway kennt den JSON-Modus – dann ohne ihn wiederholen.
+    const detail = await response.clone().text();
+    if (rejectsJsonMode(response.status, detail)) response = await send(false);
+  }
+
   const data = await readJson(response);
   const text = data?.choices?.[0]?.message?.content;
   if (typeof text !== 'string') {
@@ -522,7 +866,7 @@ async function callOpenAi(image, prompt, { signal }) {
   return text;
 }
 
-async function callAnthropic(image, prompt, { signal }) {
+async function callAnthropic(image, parts, { signal }) {
   const base = settings.endpoint.replace(/\/+$/, '');
   const { mediaType, data: base64 } = splitDataUrl(image);
   const response = await fetch(`${base}/messages`, {
@@ -537,6 +881,9 @@ async function callAnthropic(image, prompt, { signal }) {
     body: JSON.stringify({
       model: settings.model,
       max_tokens: 4000,
+      temperature: AI_TEMPERATURE,
+      // Anthropic kennt kein response_format, dafür ein eigenes system-Feld.
+      ...(parts.system ? { system: parts.system } : {}),
       messages: [
         {
           role: 'user',
@@ -545,7 +892,7 @@ async function callAnthropic(image, prompt, { signal }) {
               type: 'image',
               source: { type: 'base64', media_type: mediaType, data: base64 },
             },
-            { type: 'text', text: prompt },
+            { type: 'text', text: parts.user },
           ],
         },
       ],
@@ -559,12 +906,21 @@ async function callAnthropic(image, prompt, { signal }) {
   return text;
 }
 
-async function callProxy(image, prompt, { signal, hints }) {
+async function callProxy(image, parts, { signal, hints }) {
   const response = await fetch(settings.endpoint, {
     method: 'POST',
     signal,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image, prompt, hints, model: settings.model || undefined }),
+    // "prompt" ist die Aufgabe zum Bild, "system" die Anweisung davor. Ein
+    // Proxy, der system nicht kennt, bekommt weiterhin einen sinnvollen Prompt.
+    body: JSON.stringify({
+      image,
+      prompt: parts.user,
+      system: parts.system || undefined,
+      promptTemplate: parts.template,
+      hints,
+      model: settings.model || undefined,
+    }),
   });
   const data = await readJson(response);
   // Ein Proxy darf entweder direkt das Topo liefern oder den Modelltext durchreichen.
@@ -621,14 +977,16 @@ export async function detectLocalProxy({ force = false } = {}) {
 }
 
 /** Ruft den lokalen Proxy mit den aktuellen App-Einstellungen auf. */
-async function callLocalProxy(image, prompt, { signal, hints }) {
+async function callLocalProxy(image, parts, { signal, hints }) {
   const response = await fetch(`${localProxyBase()}/api/topo`, {
     method: 'POST',
     signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       image,
-      prompt,
+      prompt: parts.user,
+      system: parts.system || undefined,
+      promptTemplate: parts.template,
       hints,
       endpoint: settings.endpoint,
       model: settings.model || undefined,
@@ -690,20 +1048,24 @@ export async function photoToTopo(image, options = {}) {
   }
 
   const hints = options.hints || {};
-  const prompt = buildPrompt(hints);
+  // Wirft bei leerem eigenen Prompt – lieber hier als mit einem Leeraufruf.
+  const parts = buildPromptParts(hints, {
+    template: options.promptTemplate,
+    customPrompt: options.customPrompt,
+  });
   const context = { signal: options.signal, hints };
   const notify = typeof options.onNotice === 'function' ? options.onNotice : () => {};
 
   let text;
   try {
-    if (settings.providerId === 'anthropic') text = await callAnthropic(image, prompt, context);
-    else if (settings.providerId === 'proxy') text = await callProxy(image, prompt, context);
-    else text = await callOpenAi(image, prompt, context);
+    if (settings.providerId === 'anthropic') text = await callAnthropic(image, parts, context);
+    else if (settings.providerId === 'proxy') text = await callProxy(image, parts, context);
+    else text = await callOpenAi(image, parts, context);
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
     // fetch wirft bei CORS und Netzproblemen denselben nichtssagenden TypeError.
     if (error instanceof TypeError) {
-      text = await recoverViaLocalProxy(image, prompt, context, notify);
+      text = await recoverViaLocalProxy(image, parts, context, notify);
     } else {
       throw error;
     }
@@ -718,7 +1080,7 @@ export async function photoToTopo(image, options = {}) {
  * lokale Proxy, wird der Aufruf still über ihn wiederholt. Der Nutzer muss dafür
  * nichts umstellen — das ist der Kern der Automatik.
  */
-async function recoverViaLocalProxy(image, prompt, context, notify) {
+async function recoverViaLocalProxy(image, parts, context, notify) {
   if (settings.providerId === 'proxy') {
     throw new Error(
       `Der Proxy unter ${settings.endpoint} antwortet nicht. Starten mit: npm start`,
@@ -741,5 +1103,5 @@ async function recoverViaLocalProxy(image, prompt, context, notify) {
   }
 
   notify(`Direktaufruf durch CORS blockiert – nutze den lokalen Proxy auf Port ${LOCAL_PROXY_PORT}.`);
-  return callLocalProxy(image, prompt, context);
+  return callLocalProxy(image, parts, context);
 }

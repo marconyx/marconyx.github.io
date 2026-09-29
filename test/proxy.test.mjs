@@ -62,6 +62,10 @@ function startUpstream() {
         return;
       }
 
+      if (body.model === 'kein-json' && body.response_format) {
+        reply(400, { error: { message: 'response_format is not supported by this model' } });
+        return;
+      }
       if (body.model === 'boom') {
         reply(403, { error: { message: 'kein Zugriff auf dieses Modell' } });
         return;
@@ -421,6 +425,90 @@ try {
     assert.match(body.error, /…/, 'das störende Zeichen soll genannt werden');
     assert.equal(received.length, before, 'so ein Key darf den Upstream nie erreichen');
   });
+  await test('übernimmt die System-Anweisung des Browsers unverändert', async () => {
+    const system = 'Du bist Canyoning-Topo-Experte.';
+    await post(PORT, { image: IMAGE, prompt: 'Aufgabe zum Bild', system });
+    const messages = received.at(-1).body.messages;
+    assert.equal(messages.length, 2);
+    assert.equal(messages[0].role, 'system');
+    assert.equal(messages[0].content, system, 'der Proxy darf nichts eigenes formulieren');
+    assert.equal(messages[1].role, 'user');
+    assert.equal(messages[1].content[1].text, 'Aufgabe zum Bild');
+  });
+
+  await test('ohne System-Anweisung bleibt es bei einer einzigen Nachricht', async () => {
+    await post(PORT, { image: IMAGE, prompt: 'nur Prompt' });
+    const messages = received.at(-1).body.messages;
+    assert.equal(messages.length, 1);
+    assert.equal(messages[0].role, 'user');
+  });
+
+  await test('setzt niedrige Temperatur und den JSON-Modus', async () => {
+    await post(PORT, { image: IMAGE, prompt: 'x' });
+    const body = received.at(-1).body;
+    assert.equal(body.temperature, 0.15);
+    assert.deepEqual(body.response_format, { type: 'json_object' });
+  });
+
+  await test('wiederholt ohne JSON-Modus, wenn der Upstream ihn ablehnt', async () => {
+    const before = received.length;
+    const response = await post(PORT, { image: IMAGE, prompt: 'x', model: 'kein-json' });
+    assert.equal(response.status, 200);
+    assert.equal(received.length - before, 2, 'genau ein Wiederholungsversuch');
+    assert.ok(received.at(-2).body.response_format, 'erster Versuch mit JSON-Modus');
+    assert.equal(received.at(-1).body.response_format, undefined, 'zweiter Versuch ohne');
+    assert.equal(received.at(-1).body.temperature, 0.15);
+  });
+
+  await test('weist einen zu langen Prompt ab', async () => {
+    const before = received.length;
+    const response = await post(PORT, { image: IMAGE, prompt: 'x'.repeat(32001) });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /zu lang/);
+    assert.equal(received.length, before, 'so etwas darf den Upstream nie erreichen');
+  });
+
+  await test('weist eine zu lange System-Anweisung ab', async () => {
+    const response = await post(PORT, { image: IMAGE, prompt: 'x', system: 'y'.repeat(32001) });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /zu lang/);
+  });
+
+  await test('weist Prompt und System ab, die kein Text sind', async () => {
+    const wrongPrompt = await post(PORT, { image: IMAGE, prompt: 42 });
+    assert.equal(wrongPrompt.status, 400);
+    assert.match((await wrongPrompt.json()).error, /müssen Text sein/);
+    const wrongSystem = await post(PORT, { image: IMAGE, prompt: 'x', system: { a: 1 } });
+    assert.equal(wrongSystem.status, 400);
+    assert.match((await wrongSystem.json()).error, /müssen Text sein/);
+  });
+
+  await test('health meldet, dass der Proxy eine System-Anweisung annimmt', async () => {
+    const health = await (await fetch(`http://127.0.0.1:${PORT}/api/health`)).json();
+    assert.equal(health.acceptsSystemPrompt, true);
+    assert.equal(health.maxPromptChars, 32000);
+  });
+
+  await test('im Anthropic-Modus wandert die Anweisung ins system-Feld', async () => {
+    const other = 8906;
+    const alt = await startProxy(other, {
+      AI_KEY: KEY,
+      AI_UPSTREAM: `http://127.0.0.1:${upstreamPort}/v1`,
+      AI_API: 'anthropic',
+      AI_MODEL: 'claude-test',
+    });
+    try {
+      await post(other, { image: IMAGE, prompt: 'Aufgabe', system: 'Anweisung' });
+      const body = received.at(-1).body;
+      assert.equal(body.system, 'Anweisung');
+      assert.equal(body.temperature, 0.15);
+      assert.equal(body.response_format, undefined, 'Anthropic kennt response_format nicht');
+      assert.equal(body.messages[0].content[1].text, 'Aufgabe');
+    } finally {
+      alt.child.kill();
+    }
+  });
+
 } finally {
   proxy.child.kill();
   upstream.close();

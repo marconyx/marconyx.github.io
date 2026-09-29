@@ -118,7 +118,21 @@ function splitDataUrl(image) {
   return { mediaType: match[1], base64: match[2] };
 }
 
-function buildUpstreamRequest(image, prompt, { model, base, api }) {
+/**
+ * Niedrige Temperatur, damit das Modell das Bild übersetzt statt zu erfinden.
+ * Muss zu AI_TEMPERATURE in src/ai.js passen.
+ */
+const TEMPERATURE = 0.15;
+
+/** Obergrenze je Prompt-Teil. Der Browser darf den Prompt bestimmen, aber nicht sprengen. */
+const MAX_PROMPT_CHARS = 32000;
+
+/**
+ * Baut die Upstream-Anfrage. Prompt UND System-Anweisung kommen aus dem Browser –
+ * der Proxy formuliert bewusst nichts selbst, sonst weichen die beiden Wege
+ * (direkt und über den Proxy) voneinander ab.
+ */
+function buildUpstreamRequest(image, prompt, { model, base, api, system, jsonMode = true }) {
   if (api === 'anthropic') {
     const { mediaType, base64 } = splitDataUrl(image);
     return {
@@ -126,6 +140,9 @@ function buildUpstreamRequest(image, prompt, { model, base, api }) {
       body: {
         model,
         max_tokens: 4096,
+        temperature: TEMPERATURE,
+        // Anthropic hat ein eigenes system-Feld und kein response_format.
+        ...(system ? { system } : {}),
         messages: [
           {
             role: 'user',
@@ -138,22 +155,31 @@ function buildUpstreamRequest(image, prompt, { model, base, api }) {
       },
     };
   }
+  const messages = [];
+  if (system) messages.push({ role: 'system', content: system });
+  messages.push({
+    role: 'user',
+    content: [
+      { type: 'image_url', image_url: { url: image } },
+      { type: 'text', text: prompt },
+    ],
+  });
   return {
     url: `${base}/chat/completions`,
     body: {
       model,
       max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: image } },
-            { type: 'text', text: prompt },
-          ],
-        },
-      ],
+      temperature: TEMPERATURE,
+      messages,
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
     },
   };
+}
+
+/** Erkennt, dass der Upstream den JSON-Modus nicht kennt – dann ohne ihn erneut. */
+function rejectsJsonMode(status, text) {
+  if (status !== 400 && status !== 404 && status !== 422 && status !== 500) return false;
+  return /response_format|json_object|json mode|json_schema/i.test(text || '');
 }
 
 /**
@@ -231,6 +257,17 @@ async function handleTopo(req, res) {
     sendJson(res, 400, { error: 'image und prompt sind erforderlich.' });
     return;
   }
+  if (typeof prompt !== 'string' || (payload.system != null && typeof payload.system !== 'string')) {
+    sendJson(res, 400, { error: 'prompt und system müssen Text sein.' });
+    return;
+  }
+  const system = payload.system ? String(payload.system) : '';
+  if (prompt.length > MAX_PROMPT_CHARS || system.length > MAX_PROMPT_CHARS) {
+    sendJson(res, 400, {
+      error: `Prompt zu lang – erlaubt sind ${MAX_PROMPT_CHARS} Zeichen je Teil.`,
+    });
+    return;
+  }
 
   const cfg = resolveRequestConfig(payload);
 
@@ -249,7 +286,7 @@ async function handleTopo(req, res) {
 
   let request;
   try {
-    request = buildUpstreamRequest(image, prompt, cfg);
+    request = buildUpstreamRequest(image, prompt, { ...cfg, system });
   } catch (error) {
     sendJson(res, 400, { error: error.message });
     return;
@@ -279,7 +316,25 @@ async function handleTopo(req, res) {
     return;
   }
 
-  const raw = await upstream.text();
+  let raw = await upstream.text();
+  if (!upstream.ok && rejectsJsonMode(upstream.status, raw)) {
+    // Gateways ohne JSON-Modus: einmal ohne response_format wiederholen.
+    const retry = buildUpstreamRequest(image, prompt, { ...cfg, system, jsonMode: false });
+    try {
+      upstream = await fetch(retry.url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(retry.body),
+      });
+      raw = await upstream.text();
+    } catch (error) {
+      sendJson(res, 502, {
+        error: `Upstream nicht erreichbar: ${error.message}`,
+        upstream: retry.url,
+      });
+      return;
+    }
+  }
   if (!upstream.ok) {
     let detail = raw.slice(0, 400);
     try {
@@ -484,6 +539,9 @@ const server = createServer((req, res) => {
       // Die App erkennt daran, dass sie Endpoint/Key selbst mitschicken darf.
       acceptsClientConfig: config.allowClientConfig,
       canListModels: true,
+      // Die App erkennt daran, dass sie System-Anweisung und Prompt trennen darf.
+      acceptsSystemPrompt: true,
+      maxPromptChars: MAX_PROMPT_CHARS,
     });
     return;
   }

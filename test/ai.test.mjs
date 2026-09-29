@@ -8,15 +8,32 @@
  */
 import assert from 'node:assert/strict';
 
+import { readFileSync } from 'node:fs';
+
 import {
+  AI_TEMPERATURE,
+  MAX_PROMPT_CHARS,
+  PROMPT_TEMPLATES,
+  buildOptimizedInstructions,
   buildPrompt,
+  buildPromptParts,
   extractJsonObject,
+  getAiSettings,
   listModels,
+  loadAiSettings,
+  photoToTopo,
   pickModelIds,
+  promptTemplateById,
   sanitizeTopoCandidate,
   saveAiSettings,
 } from '../src/ai.js';
-import { validateTopo } from '../src/model.js';
+import {
+  DEAD_CAPABLE_ELEMENT_TYPES,
+  ELEMENT_TYPES,
+  RANGE_ELEMENT_TYPES,
+  SEGMENT_TYPES,
+  validateTopo,
+} from '../src/model.js';
 import { layoutTopo } from '../src/layout.js';
 import { renderTopoSvg } from '../src/renderer.js';
 
@@ -55,12 +72,15 @@ async function withFetch(handler, fn) {
 }
 
 function jsonResponse(payload, status = 200) {
-  return {
+  const response = {
     ok: status >= 200 && status < 300,
     status,
     json: async () => payload,
     text: async () => JSON.stringify(payload),
+    // src/ai.js liest Fehlerantworten doppelt (Prüfung + Meldung).
+    clone: () => jsonResponse(payload, status),
   };
+  return response;
 }
 
 console.log('AI-Antwortverarbeitung');
@@ -351,6 +371,311 @@ await testAsync('im Proxy-Modus gibt es nichts aufzulisten', async () => {
   const result = await listModels();
   assert.equal(result.ok, false);
   assert.match(result.reason, /Proxy/);
+});
+
+
+/* --------------------------------------------------------- Prompt-Vorlagen */
+
+console.log('\nPrompt-Vorlagen');
+
+const IMAGE = 'data:image/png;base64,AAAA';
+const ANSWER = '{"canyon_name":"Test","segments":[{"type":"RAPPEL","height":20}]}';
+
+/** Antwort im OpenAI-Format mit einem brauchbaren Topo. */
+function openAiAnswer() {
+  return jsonResponse({ choices: [{ message: { content: ANSWER } }] });
+}
+
+/** Sammelt den zuletzt gesendeten Request-Body. */
+function recorder() {
+  const calls = [];
+  const handler = (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    if (String(url).includes('/messages')) {
+      return jsonResponse({ content: [{ type: 'text', text: ANSWER }] });
+    }
+    // Ein Proxy reicht den Modelltext als JSON-String durch.
+    if (String(url).includes('/api/topo')) return jsonResponse(ANSWER);
+    return openAiAnswer();
+  };
+  return { calls, handler };
+}
+
+function useOpenAi(patch = {}) {
+  saveAiSettings({
+    providerId: 'openai',
+    endpoint: 'https://api.example.com/v1',
+    model: 'gpt-4o',
+    apiKey: 'test-key',
+    promptTemplate: 'optimized',
+    customPrompt: '',
+    ...patch,
+  });
+}
+
+test('jede Vorlage hat Id, Label und Hinweis', () => {
+  assert.deepEqual(
+    PROMPT_TEMPLATES.map((entry) => entry.id),
+    ['optimized', 'compact', 'legacy', 'custom'],
+  );
+  for (const entry of PROMPT_TEMPLATES) {
+    assert.ok(entry.label && entry.hint, `${entry.id} ist unvollständig`);
+  }
+  assert.equal(promptTemplateById('gibt-es-nicht').id, 'optimized');
+});
+
+test('die optimierte Vorlage nennt jeden Segment- und jeden Symboltyp', () => {
+  const prompt = buildOptimizedInstructions();
+  for (const type of SEGMENT_TYPES) {
+    assert.ok(prompt.includes(type), `Segmenttyp ${type} fehlt`);
+  }
+  for (const type of ELEMENT_TYPES) {
+    assert.ok(prompt.includes(type), `Elementtyp ${type} fehlt`);
+  }
+});
+
+test('die optimierte Vorlage erklärt Rolle, Vorgehen, Einheiten und Ausgabe', () => {
+  const prompt = buildOptimizedInstructions();
+  assert.match(prompt, /Canyoning-Topo-Experte/);
+  assert.match(prompt, /VORGEHEN/);
+  assert.match(prompt, /AUSSCHLIESSLICH mit einem einzigen JSON-Objekt/);
+  assert.match(prompt, /kein Markdown/i);
+  assert.match(prompt, />90 = ÜBERHÄNGEND/);
+  assert.match(prompt, /wall_distance_in_meters/);
+  assert.match(prompt, /force_cut_row_after_this_segment/);
+  assert.match(prompt, /NIE beide zugleich true/);
+  assert.match(prompt, /"dead": true/);
+  assert.match(prompt, /links der Laufrichtung/);
+  assert.match(prompt, /BEISPIEL/);
+  // Streckenelemente und Bäume sind dynamisch markiert, nicht hart aufgezählt.
+  for (const type of RANGE_ELEMENT_TYPES) {
+    assert.ok(prompt.includes(`${type} (`), `${type} fehlt`);
+  }
+  for (const type of DEAD_CAPABLE_ELEMENT_TYPES) {
+    assert.match(prompt, new RegExp(`${type}[^\\n]*kennt "dead"`));
+  }
+});
+
+test('die kompakte Vorlage nennt ebenfalls jeden Typ, bleibt aber kürzer', () => {
+  const compact = buildPrompt({}, { template: 'compact' });
+  for (const type of [...SEGMENT_TYPES, ...ELEMENT_TYPES]) {
+    assert.ok(compact.includes(type), `${type} fehlt in der Kurzfassung`);
+  }
+  assert.ok(compact.length < buildPrompt({}, { template: 'optimized' }).length);
+});
+
+test('der bisherige Prompt ist byte-identisch zum alten Aufbau', () => {
+  const expected = readFileSync(new URL('./fixtures/legacy-prompt.txt', import.meta.url), 'utf8');
+  const actual = buildPrompt(
+    { canyonName: 'Boggera', notes: 'Skizze aus dem Führer' },
+    { template: 'legacy' },
+  );
+  assert.equal(actual, expected);
+});
+
+test('optimiert und kompakt trennen Anweisung und Bildaufgabe', () => {
+  for (const template of ['optimized', 'compact']) {
+    const parts = buildPromptParts({ canyonName: 'Boggera', notes: 'aus dem Führer' }, { template });
+    assert.ok(parts.system.length > 200, `${template} hat keine Anweisung`);
+    assert.ok(parts.user.length < 400, `${template} packt zu viel in die Aufgabe`);
+    assert.match(parts.user, /Boggera/);
+    assert.match(parts.user, /aus dem Führer/);
+  }
+});
+
+test('bisheriger und eigener Prompt bleiben ein einziger User-Text', () => {
+  const legacy = buildPromptParts({}, { template: 'legacy' });
+  assert.equal(legacy.system, '');
+  const custom = buildPromptParts({}, { template: 'custom', customPrompt: 'Mach ein Topo.' });
+  assert.equal(custom.system, '');
+  assert.equal(custom.user, 'Mach ein Topo.');
+});
+
+test('ein leerer eigener Prompt wird abgelehnt', () => {
+  assert.throws(
+    () => buildPromptParts({}, { template: 'custom', customPrompt: '   ' }),
+    /eigene Prompt ist leer/,
+  );
+});
+
+test('ein überlanger eigener Prompt wird abgelehnt', () => {
+  assert.throws(
+    () => buildPromptParts({}, { template: 'custom', customPrompt: 'x'.repeat(MAX_PROMPT_CHARS + 1) }),
+    /zu lang/,
+  );
+});
+
+test('Vorlage und eigener Text überleben einen Neustart', () => {
+  const store = new Map();
+  const original = globalThis.localStorage;
+  globalThis.localStorage = {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => store.set(key, String(value)),
+    removeItem: (key) => store.delete(key),
+  };
+  try {
+    saveAiSettings({ promptTemplate: 'compact', customPrompt: 'Mein Prompt', apiKey: 'geheim' });
+    const restored = loadAiSettings();
+    assert.equal(restored.promptTemplate, 'compact');
+    assert.equal(restored.customPrompt, 'Mein Prompt');
+  } finally {
+    if (original === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = original;
+  }
+});
+
+await testAsync('OpenAI bekommt System-Nachricht, niedrige Temperatur und JSON-Modus', async () => {
+  useOpenAi();
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo(IMAGE, { hints: { canyonName: 'Boggera' } }));
+  assert.equal(calls.length, 1);
+  const body = calls[0].body;
+  assert.equal(body.temperature, AI_TEMPERATURE);
+  assert.ok(AI_TEMPERATURE <= 0.2, 'die Temperatur soll niedrig bleiben');
+  assert.deepEqual(body.response_format, { type: 'json_object' });
+  assert.equal(body.messages[0].role, 'system');
+  assert.match(body.messages[0].content, /Canyoning-Topo-Experte/);
+  assert.equal(body.messages[1].role, 'user');
+  assert.equal(body.messages[1].content[0].type, 'text');
+  assert.match(body.messages[1].content[0].text, /Boggera/);
+  assert.equal(body.messages[1].content[1].image_url.url, IMAGE);
+});
+
+await testAsync('die Auswahl "kompakt" verändert die gesendete Anweisung', async () => {
+  useOpenAi({ promptTemplate: 'compact' });
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo(IMAGE));
+  const system = calls[0].body.messages[0].content;
+  assert.match(system, /Du bist Canyoning-Topo-Experte/);
+  assert.ok(system.length < buildOptimizedInstructions().length);
+});
+
+await testAsync('die Auswahl "bisheriger Prompt" sendet genau den alten Text', async () => {
+  useOpenAi({ promptTemplate: 'legacy' });
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo(IMAGE));
+  const messages = calls[0].body.messages;
+  assert.equal(messages.length, 1, 'ohne System-Nachricht');
+  assert.equal(messages[0].content[0].text, buildPrompt({}, { template: 'legacy' }));
+});
+
+await testAsync('ein eigener Prompt geht unverändert raus', async () => {
+  useOpenAi({ promptTemplate: 'custom', customPrompt: '  Bitte nur JSON.  ' });
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo(IMAGE));
+  const messages = calls[0].body.messages;
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].content[0].text, 'Bitte nur JSON.');
+});
+
+await testAsync('ein leerer eigener Prompt verhindert den Aufruf', async () => {
+  useOpenAi({ promptTemplate: 'custom', customPrompt: '' });
+  let called = false;
+  await withFetch(
+    () => {
+      called = true;
+      return openAiAnswer();
+    },
+    async () => {
+      await assert.rejects(() => photoToTopo(IMAGE), /eigene Prompt ist leer/);
+    },
+  );
+  assert.equal(called, false, 'es darf kein Leeraufruf abgesetzt werden');
+});
+
+await testAsync('ohne JSON-Modus wird einmal ohne response_format wiederholt', async () => {
+  useOpenAi();
+  const bodies = [];
+  await withFetch(
+    (url, init) => {
+      bodies.push(JSON.parse(init.body));
+      if (bodies.length === 1) {
+        return jsonResponse({ error: { message: 'response_format is not supported' } }, 400);
+      }
+      return openAiAnswer();
+    },
+    () => photoToTopo(IMAGE),
+  );
+  assert.equal(bodies.length, 2);
+  assert.ok(bodies[0].response_format, 'erster Versuch mit JSON-Modus');
+  assert.equal(bodies[1].response_format, undefined, 'zweiter Versuch ohne JSON-Modus');
+  assert.equal(bodies[1].temperature, AI_TEMPERATURE);
+});
+
+await testAsync('ein echter Fehler wird nicht als JSON-Modus-Problem missdeutet', async () => {
+  useOpenAi();
+  let calls = 0;
+  await withFetch(
+    () => {
+      calls += 1;
+      return jsonResponse({ error: { message: 'kein Zugriff auf dieses Modell' } }, 403);
+    },
+    async () => {
+      await assert.rejects(() => photoToTopo(IMAGE), /403/);
+    },
+  );
+  assert.equal(calls, 1);
+});
+
+await testAsync('Anthropic bekommt die Anweisung im system-Feld', async () => {
+  saveAiSettings({
+    providerId: 'anthropic',
+    endpoint: 'https://api.anthropic.com/v1',
+    model: 'claude-3-5-sonnet',
+    apiKey: 'test-key',
+    promptTemplate: 'optimized',
+    customPrompt: '',
+  });
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo('data:image/png;base64,AAAA'));
+  const body = calls[0].body;
+  assert.match(body.system, /Canyoning-Topo-Experte/);
+  assert.equal(body.temperature, AI_TEMPERATURE);
+  assert.equal(body.response_format, undefined, 'Anthropic kennt response_format nicht');
+  assert.equal(body.messages[0].content[0].type, 'image');
+  assert.equal(body.messages[0].content[1].type, 'text');
+  assert.match(body.messages[0].content[1].text, /Erzeuge aus diesem Bild/);
+});
+
+await testAsync('Anthropic sendet beim eigenen Prompt kein system-Feld', async () => {
+  saveAiSettings({ promptTemplate: 'custom', customPrompt: 'Nur JSON.' });
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo('data:image/png;base64,AAAA'));
+  assert.equal(calls[0].body.system, undefined);
+  assert.equal(calls[0].body.messages[0].content[1].text, 'Nur JSON.');
+});
+
+await testAsync('der Proxy-Pfad bekommt Prompt, System und die Vorlagen-Id', async () => {
+  saveAiSettings({
+    providerId: 'proxy',
+    endpoint: 'http://127.0.0.1:8787/api/topo',
+    promptTemplate: 'optimized',
+    customPrompt: '',
+  });
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo(IMAGE, { hints: { canyonName: 'Boggera' } }));
+  const body = calls[0].body;
+  assert.equal(body.promptTemplate, 'optimized');
+  assert.match(body.system, /Canyoning-Topo-Experte/);
+  assert.match(body.prompt, /Boggera/);
+  assert.equal(body.image, IMAGE);
+});
+
+await testAsync('der Proxy-Pfad sendet beim eigenen Prompt kein System', async () => {
+  saveAiSettings({ promptTemplate: 'custom', customPrompt: 'Nur JSON.' });
+  const { calls, handler } = recorder();
+  await withFetch(handler, () => photoToTopo(IMAGE));
+  assert.equal(calls[0].body.system, undefined);
+  assert.equal(calls[0].body.prompt, 'Nur JSON.');
+  assert.equal(calls[0].body.promptTemplate, 'custom');
+});
+
+await testAsync('die Vorlage aus den Einstellungen gilt ohne Zutun des Aufrufers', async () => {
+  useOpenAi({ promptTemplate: 'compact' });
+  assert.equal(getAiSettings().promptTemplate, 'compact');
+  assert.equal(buildPromptParts({}).template, 'compact');
+  useOpenAi();
+  assert.equal(buildPromptParts({}).template, 'optimized');
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);
