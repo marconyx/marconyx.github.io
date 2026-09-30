@@ -15,9 +15,11 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
   per Klick einfügen und im Topo frei verschieben. Ist bereits ein Symbol ausgewählt,
   entsteht das neue an derselben Stelle und direkt dahinter in der Reihenfolge —
   sonst in der Segmentmitte und am Ende.
-- **Layout**: Serpentine (automatischer Zeilenumbruch) oder Linear, Farbe oder Schwarz/Weiß,
-  Bildschirm / A4 quer / A4 hoch. In der Serpentine bestimmt das Format die nutzbare
-  Zeilenbreite — siehe [Zeilenumbruch](#zeilenumbruch).
+- **Layout**: Serpentine (automatischer Zeilenumbruch), Kaskadiert (automatische
+  Aufteilung in Spalten) oder Linear, Farbe oder Schwarz/Weiß, Bildschirm / A4 quer /
+  A4 hoch. In der Serpentine bestimmt das Format die nutzbare Zeilenbreite, bei
+  Kaskadiert die Spaltenhöhe — siehe [Zeilenumbruch](#zeilenumbruch) und
+  [Kaskadiert (Spalten)](#kaskadiert-spalten).
 - **Foto-/PDF-Referenz**: Bild **oder PDF** als halbtransparenten Hintergrund einblenden und
   das Topo darüber nachzeichnen (Deckkraft, Größe, Position regelbar). Bei mehrseitigen PDFs
   lässt sich die Seite auswählen.
@@ -95,7 +97,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `duration` | optionale Gesamtdauer als Freitext, z. B. `3-4 h` |
 | `date` | Datum (ISO, `YYYY-MM-DD`) |
 | `maximum_walk_length` | maximale **gezeichnete** Länge eines WALK-Segments in Metern; längere Gehstrecken werden gestaucht und erhalten eine Dauer-Klammer |
-| `distance_of_single_line` | Zeilenbreite in Metern für das Format *Bildschirm*; bei A4 wird die Breite aus dem Format abgeleitet |
+| `distance_of_single_line` | Zeilenbreite in Metern für das Format *Bildschirm* (bei *Kaskadiert* als Zielhöhe einer Spalte); bei A4 wird das Mass aus dem Format abgeleitet |
 | `legend_offset_top` | vertikaler Versatz der Legende in Metern |
 | `segments` | Liste der Abschnitte, von oben nach unten |
 
@@ -195,6 +197,40 @@ Im Layout **Serpentine** verteilt der Generator die Segmente selbständig auf Ze
 
 Das Layout **Linear** stellt weiterhin alle Segmente in eine einzige Zeile und ignoriert
 Format und Umbruch-Flags.
+
+## Kaskadiert (Spalten)
+
+Das Layout **Kaskadiert (Spalten)** arbeitet wie die Serpentine, teilt die Segmente aber
+nach ihrer **Höhe** auf Spalten auf statt nach ihrer Breite auf Zeilen.
+
+- **Fluss**: Innerhalb einer Spalte läuft das Topo mit seiner echten Geometrie von oben
+  nach unten. Beim Spaltenwechsel beginnt das nächste Segment wieder **oben** in der
+  nächsten Spalte **rechts** daneben. Alle Spalten laufen gleich, ohne abwechselnde
+  Richtung; Fortsetzungsmarken `(l)` stehen am Spaltenende und -anfang.
+- **Höhenbedarf** je Segment: `|sin(Winkel)| · gezeichnete Länge` plus die Wanddistanz,
+  soweit sie in die Höhe ausweicht (`|cos(Winkel)| · wall_distance_in_meters`). Flache
+  Gehstücke kosten keine Höhe, machen die Spalte aber breiter.
+- **Zielhöhe**: Beim Format *Bildschirm* dient `distance_of_single_line` als generisches
+  Aufteilungsmass je Spur, hier also als Spaltenhöhe — ein eigenes Dateifeld gibt es
+  bewusst nicht. Bei *A4 quer* und *A4 hoch* werden Kandidatenhöhen (Basiswert und die
+  ausgeglichenen Teilungen der Gesamthöhe in 1…n Spalten) durchprobiert; gewählt wird die
+  Höhe, deren fertiges Blatt inklusive Rand und Legende dem Seitenverhältnis am nächsten
+  kommt. *A4 hoch* bekommt dadurch typischerweise höhere und weniger Spalten als *A4 quer*.
+- **Aufteilung**: dieselbe Dynamische Programmierung wie bei den Zeilen (minimale Summe der
+  quadrierten Resthöhen), also ausgeglichen statt gierig.
+- **Umbruch-Flags**: *Zeilenumbruch erzwingen* erzwingt hier einen **Spaltenwechsel**,
+  *Umbruch verhindern* hält die Segmente in **derselben Spalte** — auch über die Zielhöhe
+  hinaus; das Blatt wächst dann mit. Im Konflikt gewinnt wie immer das Erzwingen.
+- **Geometrie**: Die Breite jeder Spalte ergibt sich aus den tatsächlichen Ausdehnungen
+  (Symbole, Endpunkte von Streckensymbolen, Ausbeulung der Wanddistanz). Zwischen den
+  Spaltenkästen liegt ein konstanter Abstand, jede Spalte beginnt oben bündig — auch wenn
+  Symbole über den Start hinausragen. Die Geländefüllung bleibt je Spalte in ihrem Kasten,
+  die Legende steht rechts neben der letzten Spalte.
+- **Ziehen**: Während ein Symbol gezogen wird, bleiben Spaltenzuordnung, Spaltenlage und
+  Blattgrösse eingefroren (das Blatt darf nur wachsen) — wie bei der Serpentine.
+
+Einschränkung: Sehr flache Schluchten (viel Gehen, wenig Höhe) ergeben breite Spalten; hier
+nutzt die Serpentine das Format meist besser.
 
 ### Zufalls-Topo
 

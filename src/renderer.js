@@ -280,7 +280,11 @@ export function renderTopoSvg(topo, layout, options = {}) {
       const first = row.placements[0];
       const last = row.placements[row.placements.length - 1];
       const bottom = row.bottom + TERRAIN_DEPTH_METERS;
-      const terrain = `${ground} L ${bounds.maxX} ${last.end.y} L ${bounds.maxX} ${bottom} L ${bounds.minX} ${bottom} L ${bounds.minX} ${first.start.y} Z`;
+      // Zeilen füllen die ganze Blattbreite, Spalten (Kaskadiert) nur ihren
+      // eigenen Kasten – sonst läge das Gelände über der Nachbarspalte.
+      const left = row.left ?? bounds.minX;
+      const right = row.right ?? bounds.maxX;
+      const terrain = `${ground} L ${right} ${last.end.y} L ${right} ${bottom} L ${left} ${bottom} L ${left} ${first.start.y} Z`;
 
       const water = row.placements
         .filter((placement) => WATER_SEGMENT_TYPES.has(placement.segment.type))

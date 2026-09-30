@@ -381,6 +381,82 @@ test('Linear zeigt weiterhin genau eine Zeile', () => {
   layoutSelect.dispatch('change');
 });
 
+test('Kaskadiert steht im Layout-Menü zwischen Serpentine und Linear', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const select = /<select id="select-layout">([\s\S]*?)<\/select>/.exec(html)[1];
+  const options = [...select.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g)].map(
+    (match) => [match[1], match[2]],
+  );
+  assert.deepEqual(options, [
+    ['serpentine', 'Serpentine (Zeilen)'],
+    ['cascaded', 'Kaskadiert (Spalten)'],
+    ['linear', 'Linear (eine Zeile)'],
+  ]);
+});
+
+test('Kaskadiert rendert Spalten, reagiert auf Format und Flags und wird gespeichert', () => {
+  // Die folgenden Tests bauen auf den flachen Segmenten und dem Format auf.
+  const segmentsBefore = JSON.parse(JSON.stringify(state.topo.segments));
+  const paperBefore = state.view.paper;
+  for (const segment of state.topo.segments) {
+    segment.type = 'RAPPEL';
+    segment.length_in_meters = 10;
+    segment.angle_in_degrees = 90;
+    segment.force_cut_row_after_this_segment = false;
+    segment.do_not_cut_row_after_this_segment = false;
+  }
+  const layoutSelect = elementById('select-layout');
+  layoutSelect.value = 'cascaded';
+  layoutSelect.dispatch('change');
+  assert.equal(state.view.layout, 'cascaded');
+
+  const columnsFor = (paper) => {
+    const select = elementById('select-paper');
+    select.value = paper;
+    select.dispatch('change');
+    assert.ok(!/NaN|Infinity/.test(svg()), `${paper}: NaN/Infinity im SVG`);
+    return (svg().match(/class="topo-row"/g) || []).length;
+  };
+  const screen = columnsFor('screen');
+  const landscape = columnsFor('a4_landscape');
+  const portrait = columnsFor('a4_portrait');
+  assert.ok(screen > 1, `Bildschirm: mehrere Spalten erwartet (${screen})`);
+  assert.ok(
+    portrait < landscape,
+    `A4 hoch (${portrait}) muss weniger Spalten zeigen als A4 quer (${landscape})`,
+  );
+
+  // Erzwingen wirkt als Spaltenwechsel direkt nach dem ersten Segment.
+  columnsFor('screen');
+  state.selection = { kind: 'segment', segmentIndex: 0 };
+  elementById('topo-name').dispatch('input');
+  const force = elementById('segment-force-cut');
+  force.checked = true;
+  force.dispatch('change');
+  const first = /<g class="topo-row" data-row="0">([\s\S]*?)<\/g>\s*<g class="topo-row" data-row="1">/.exec(
+    svg(),
+  );
+  assert.ok(first, 'mindestens zwei Spalten erwartet');
+  assert.equal((first[1].match(/topo-segment-hit[^>]*data-seg="/g) || []).length, 1);
+  elementById('segment-force-cut').checked = false;
+  elementById('segment-force-cut').dispatch('change');
+
+  const saved = JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1'));
+  assert.equal(saved.view.layout, 'cascaded', 'Layoutwahl muss im Autosave landen');
+
+  layoutSelect.value = 'serpentine';
+  layoutSelect.dispatch('change');
+  assert.equal(
+    JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1')).view.layout,
+    'serpentine',
+  );
+
+  state.topo.segments = segmentsBefore;
+  state.selection = null;
+  elementById('select-paper').value = paperBefore;
+  elementById('select-paper').dispatch('change');
+});
+
 /* -------------------------------------------------------- Umbruch-Optionen */
 
 test('erzwingen und verhindern schliessen sich in der UI gegenseitig aus', () => {
@@ -641,5 +717,38 @@ test('ein Anbieterwechsel setzt Endpoint und Modell des Anbieters', () => {
     select.dispatch('change');
   }
 });
+
+
+/* ------------------------------------- Wiederherstellen (eigene App-Instanz) */
+
+async function restoredAppWith(view, tag) {
+  const saved = JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1'));
+  localStorage.setItem(
+    'canyon-topo-generator/state/v1',
+    JSON.stringify({ ...saved, view }),
+  );
+  return import(`../src/app.js?${tag}`);
+}
+
+{
+  const restoredCascaded = await restoredAppWith(
+    { layout: 'cascaded', theme: 'color', paper: 'screen', zoom: 1 },
+    'restore-cascaded',
+  );
+  test('eine gespeicherte Layoutwahl Kaskadiert wird wiederhergestellt', () => {
+    assert.equal(restoredCascaded.state.view.layout, 'cascaded');
+    assert.equal(elementById('select-layout').value, 'cascaded');
+    assert.ok(svg().startsWith('<svg') && !/NaN|Infinity/.test(svg()));
+  });
+
+  // Ältere Stände kennen nur Serpentine/Linear oder gar kein Layout.
+  const legacy = await restoredAppWith({ theme: 'bw', paper: 'a4_portrait' }, 'restore-legacy');
+  test('ältere gespeicherte Zustände bleiben kompatibel', () => {
+    assert.equal(legacy.state.view.layout, 'serpentine');
+    assert.equal(legacy.state.view.paper, 'a4_portrait');
+    assert.equal(elementById('select-layout').value, 'serpentine');
+    assert.ok(svg().startsWith('<svg'));
+  });
+}
 
 console.log(`\n${passed} Test(s) bestanden.`);

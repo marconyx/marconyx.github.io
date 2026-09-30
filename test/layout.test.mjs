@@ -10,7 +10,13 @@ import { dirname, join } from 'node:path';
 import { normalizeTopo } from '../src/model.js';
 import { topoFromJson, topoToJsonObject } from '../src/io-json.js';
 import { topoFromXml, topoToXml } from '../src/io-xml.js';
-import { layoutTopo, rowBreakRulesFor } from '../src/layout.js';
+import {
+  LAYOUT_MODES,
+  layoutTopo,
+  rowBreakRulesFor,
+  worldToLocal,
+} from '../src/layout.js';
+import { createRandomTopo } from '../src/random-topo.js';
 import { renderTopoSvg } from '../src/renderer.js';
 import {
   contentBoundsFor,
@@ -672,6 +678,384 @@ test('Metadaten wirken sich sofort auf das nächste Rendering aus', () => {
   const after = renderTopoSvg(topo, layoutTopo(topo));
   assert.ok(after.includes('data-meta="duration"'));
   assert.ok(after.includes('3 h'));
+});
+
+/* ---------------------------------------------------- Kaskadiert (Spalten) */
+
+console.log('\nKaskadiert-Layout Tests');
+
+const CASCADED = { layout: 'cascaded' };
+
+/** Senkrechte Abseiler gleicher Länge – die Spaltenhöhe ist exakt vorhersagbar. */
+function steepTopo(count, lengthInMeters = 10, overrides = {}, extra = {}) {
+  return normalizeTopo({
+    canyon_name: 'Steil',
+    maximum_walk_length: 1000,
+    distance_of_single_line: 60,
+    ...extra,
+    segments: Array.from({ length: count }, (_, index) => ({
+      type: 'RAPPEL',
+      length_in_meters: lengthInMeters,
+      angle_in_degrees: 90,
+      ...(overrides[index] || {}),
+    })),
+  });
+}
+
+function columnSegments(layout) {
+  return layout.rows.map((column) => column.placements.map((p) => p.index));
+}
+
+/** Höhenbedarf einer Spalte, wie ihn die Aufteilung rechnet. */
+function columnSpan(column) {
+  return column.placements.reduce(
+    (sum, p) =>
+      sum +
+      Math.abs(p.dir.y * p.drawnLength) +
+      Math.abs(p.dir.x) * (p.segment.wall_distance_in_meters || 0),
+    0,
+  );
+}
+
+/** Alle Punkte, die eine Spalte tatsächlich belegt. */
+function trackedPointsOf(column) {
+  return column.placements.flatMap((p) => [
+    p.start,
+    p.end,
+    ...(p.wallBulge ? [p.wallBulge.apex] : []),
+    ...p.elements.flatMap((e) => (e.endPoint ? [e.point, e.endPoint] : [e.point])),
+  ]);
+}
+
+function allNumbersFinite(value, path = 'layout', seen = new Set()) {
+  if (typeof value === 'number') {
+    assert.ok(Number.isFinite(value) || value === Number.POSITIVE_INFINITY, `${path} = ${value}`);
+    assert.ok(!Number.isNaN(value), `${path} ist NaN`);
+    return;
+  }
+  if (!value || typeof value !== 'object' || seen.has(value)) return;
+  seen.add(value);
+  for (const [key, child] of Object.entries(value)) {
+    if (key === 'segment' || key === 'element') continue;
+    allNumbersFinite(child, `${path}.${key}`, seen);
+  }
+}
+
+test('Kaskadiert ist als Layoutmodus bekannt', () => {
+  assert.deepEqual(LAYOUT_MODES, ['serpentine', 'cascaded', 'linear']);
+  const layout = layoutTopo(steepTopo(3), CASCADED);
+  assert.equal(layout.mode, 'cascaded');
+  assert.equal(layout.orientation, 'columns');
+  assert.equal(layout.columns, layout.rows);
+});
+
+test('Kaskadiert teilt automatisch in Spalten auf und hält die Zielhöhe ein', () => {
+  const layout = layoutTopo(steepTopo(12, 10), CASCADED); // 120 m Höhe, Ziel 60 m
+  assert.equal(layout.columnHeightLimit, 60);
+  assert.deepEqual(columnSegments(layout), [
+    [0, 1, 2, 3, 4, 5],
+    [6, 7, 8, 9, 10, 11],
+  ]);
+  for (const column of layout.rows) {
+    assert.ok(columnSpan(column) <= 60 + 1e-9, `Spalte zu hoch: ${columnSpan(column)}`);
+    assert.ok(column.bottom - column.top <= 60 + 1e-9);
+  }
+});
+
+test('die Spaltenaufteilung folgt der Höhe, nicht der Segmentzahl', () => {
+  const short = layoutTopo(steepTopo(12, 5), CASCADED); // 60 m -> 1 Spalte
+  const tall = layoutTopo(steepTopo(6, 30), CASCADED); // 180 m -> 3 Spalten
+  assert.equal(short.rows.length, 1);
+  assert.equal(tall.rows.length, 3);
+  // Flache Gehstücke kosten keine Höhe und erzeugen keine eigene Spalte.
+  const mixed = steepTopo(6, 20, {
+    1: { type: 'WALK', angle_in_degrees: 0, length_in_meters: 25 },
+    3: { type: 'WALK', angle_in_degrees: 0, length_in_meters: 25 },
+  });
+  const mixedLayout = layoutTopo(mixed, CASCADED); // 80 m Höhe
+  assert.equal(mixedLayout.rows.length, 2);
+});
+
+test('die Spalten werden ausgeglichen gefüllt statt gierig', () => {
+  // 7 x 10 m bei 30 m Ziel: gierig ergäbe 3/3/1, ausgeglichen 3/2/2.
+  const layout = layoutTopo(
+    steepTopo(7, 10, {}, { distance_of_single_line: 30 }),
+    CASCADED,
+  );
+  const sizes = columnSegments(layout).map((column) => column.length);
+  assert.equal(sizes.length, 3);
+  assert.equal(sizes.reduce((a, b) => a + b, 0), 7);
+  assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1, sizes.join('/'));
+});
+
+test('jede Spalte startet oben bündig, die nächste folgt rechts daneben', () => {
+  const topo = steepTopo(12, 10, {
+    // Ein Symbol ragt weit über den Start der zweiten Spalte hinaus.
+    6: {
+      elements: [
+        { type: 'STONE', horizontal_start_rel_to_segment_start: 0, vertical_start_rel_to_segment_start: 0 },
+      ],
+    },
+    0: { type: 'WALK', angle_in_degrees: 0, length_in_meters: 10 },
+  });
+  // Das erste Segment flach, Symbol 9 m über dem Weg (negative lokale y).
+  topo.segments[0].elements = [
+    { ...topo.segments[6].elements[0], horizontal_start_rel_to_segment_start: 5, vertical_start_rel_to_segment_start: 9 },
+  ];
+  const layout = layoutTopo(topo, CASCADED);
+  assert.ok(layout.rows.length >= 2);
+  const tops = layout.rows.map((column) =>
+    Math.min(...trackedPointsOf(column).map((point) => point.y)),
+  );
+  for (const top of tops) assert.ok(Math.abs(top - tops[0]) < 1e-9, `Spalten nicht bündig: ${tops}`);
+  assert.ok(tops[0] >= 0, 'nichts ragt über die Blattoberkante');
+  layout.rows.forEach((column, index) => {
+    assert.ok(Math.abs(column.top - tops[0]) < 1e-9);
+    // Innerhalb der Spalte geht es abwärts, in Segmentreihenfolge.
+    column.placements.forEach((p, i) => {
+      assert.ok(p.end.y >= p.start.y - 1e-9, 'Spalte muss nach unten laufen');
+      if (i > 0) assert.deepEqual(p.start, column.placements[i - 1].end);
+    });
+    if (index > 0) {
+      const previous = layout.rows[index - 1];
+      assert.ok(column.contentLeft > previous.contentRight, 'nächste Spalte liegt rechts');
+      assert.equal(column.continuesBefore, true);
+      assert.equal(previous.continuesAfter, true);
+    }
+  });
+});
+
+test('Spaltenabstand ist konstant und nichts überlappt', () => {
+  const topo = steepTopo(16, 10, {
+    2: { wall_distance_in_meters: 6 },
+    5: { type: 'WALK', angle_in_degrees: 0, length_in_meters: 30 },
+    9: { angle_in_degrees: 120 },
+    12: {
+      elements: [
+        {
+          type: 'PATH',
+          horizontal_start_rel_to_segment_start: 0,
+          vertical_start_rel_to_segment_start: -3,
+          horizontal_end_rel_to_segment_start: 8,
+          vertical_end_rel_to_segment_start: -12,
+        },
+      ],
+    },
+  });
+  const layout = layoutTopo(topo, CASCADED);
+  assert.ok(layout.rows.length >= 3);
+  const gaps = [];
+  layout.rows.forEach((column, index) => {
+    for (const point of trackedPointsOf(column)) {
+      assert.ok(point.x >= column.contentLeft - 1e-9 && point.x <= column.contentRight + 1e-9);
+      assert.ok(point.y >= column.top - 1e-9 && point.y <= column.bottom + 1e-9);
+      assert.ok(point.x >= layout.minX - 1e-9 && point.x <= layout.maxX + 1e-9);
+      assert.ok(point.y <= layout.height + 1e-9, 'Punkt unter der Blattunterkante');
+    }
+    assert.ok(column.left < column.contentLeft && column.right > column.contentRight);
+    if (index > 0) gaps.push(column.left - layout.rows[index - 1].right);
+  });
+  for (const gap of gaps) {
+    assert.ok(gap > 0, 'Spalten überlappen');
+    assert.ok(Math.abs(gap - gaps[0]) < 1e-9, `Abstand nicht konstant: ${gaps}`);
+  }
+  // Wandausbeulung und Streckenende gehen in die Spaltenbreite ein.
+  const bulge = layout.placements[2].wallBulge;
+  assert.ok(bulge);
+  const bulgeColumn = layout.rows[layout.rowAssignment[2]];
+  assert.ok(bulge.apex.x < layout.placements[2].start.x - 5, 'Wand weicht seitlich aus');
+  assert.ok(bulgeColumn.contentLeft <= bulge.apex.x + 1e-9);
+  const stretch = layout.placements[12].elements[0].endPoint;
+  const stretchColumn = layout.rows[layout.rowAssignment[12]];
+  assert.ok(stretch.x < layout.placements[12].start.x - 10, 'Streckenende ragt seitlich hinaus');
+  assert.ok(stretchColumn.contentLeft <= stretch.x + 1e-9);
+});
+
+test('A4 hoch und A4 quer teilen sinnvoll und unterschiedlich in Spalten', () => {
+  const topo = steepTopo(24, 10);
+  const deviation = (layout, paper) => {
+    const bounds = contentBoundsFor(topo, layout);
+    return Math.abs(
+      Math.log((bounds.maxX - bounds.minX) / (bounds.maxY - bounds.minY) / paperAspectRatio(paper)),
+    );
+  };
+  const portrait = layoutTopo(topo, { ...CASCADED, paper: 'a4_portrait' });
+  const landscape = layoutTopo(topo, { ...CASCADED, paper: 'a4_landscape' });
+  const screen = layoutTopo(topo, { ...CASCADED, paper: 'screen' });
+  assert.equal(screen.columnHeightLimit, topo.distance_of_single_line);
+  assert.ok(
+    portrait.columnHeightLimit > landscape.columnHeightLimit,
+    `A4 hoch (${portrait.columnHeightLimit}) muss höhere Spalten haben als A4 quer (${landscape.columnHeightLimit})`,
+  );
+  assert.ok(
+    portrait.rows.length < landscape.rows.length,
+    `A4 hoch (${portrait.rows.length}) muss weniger Spalten haben als A4 quer (${landscape.rows.length})`,
+  );
+  // Jedes Format nutzt sein eigenes Seitenverhältnis besser als das andere.
+  assert.ok(deviation(portrait, 'a4_portrait') < deviation(landscape, 'a4_portrait'));
+  assert.ok(deviation(landscape, 'a4_landscape') < deviation(portrait, 'a4_landscape'));
+  assert.ok(deviation(landscape, 'a4_landscape') <= deviation(screen, 'a4_landscape') + 1e-9);
+  assert.ok(deviation(portrait, 'a4_portrait') <= deviation(screen, 'a4_portrait') + 1e-9);
+});
+
+test('Spaltenwechsel erzwingen trennt auch bei reichlich Platz', () => {
+  const topo = steepTopo(4, 5, { 1: { force_cut_row_after_this_segment: true } });
+  assert.deepEqual(columnSegments(layoutTopo(topo, CASCADED)), [[0, 1], [2, 3]]);
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const layout = layoutTopo(topo, { ...CASCADED, paper });
+    assert.equal(layout.rowAssignment[1], 0, paper);
+    assert.equal(layout.rowAssignment[2], 1, paper);
+  }
+});
+
+test('Verhindern hält Segmente in derselben Spalte – auch über die Zielhöhe', () => {
+  const overrides = {};
+  for (let index = 0; index < 9; index += 1) {
+    overrides[index] = { do_not_cut_row_after_this_segment: true };
+  }
+  const topo = steepTopo(12, 10, overrides); // 100 m Kette, Ziel 60 m
+  const layout = layoutTopo(topo, CASCADED);
+  assert.deepEqual(columnSegments(layout)[0], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  const column = layout.rows[0];
+  assert.ok(columnSpan(column) > layout.columnHeightLimit, 'Kette muss die Zielhöhe sprengen');
+  // Nichts wird abgeschnitten: Blatt und SVG wachsen mit.
+  assert.ok(layout.height >= column.bottom);
+  const bounds = contentBoundsFor(topo, layout);
+  assert.ok(bounds.maxY >= column.bottom);
+  const svg = renderTopoSvg(topo, layout);
+  const viewBox = /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
+  assert.ok(viewBox[1] + viewBox[3] >= column.bottom);
+});
+
+test('Konflikt: Erzwingen schlägt Verhindern auch bei Spalten', () => {
+  const topo = steepTopo(4, 5, {
+    1: { force_cut_row_after_this_segment: true, do_not_cut_row_after_this_segment: true },
+  });
+  assert.deepEqual(columnSegments(layoutTopo(topo, CASCADED)), [[0, 1], [2, 3]]);
+  // Verhindern davor, Erzwingen danach: beide gelten.
+  const chained = steepTopo(12, 10, {
+    4: { do_not_cut_row_after_this_segment: true },
+    5: { do_not_cut_row_after_this_segment: true },
+    6: { force_cut_row_after_this_segment: true },
+  });
+  const layout = layoutTopo(chained, CASCADED);
+  assert.equal(layout.rowAssignment[4], layout.rowAssignment[5]);
+  assert.equal(layout.rowAssignment[5], layout.rowAssignment[6]);
+  assert.notEqual(layout.rowAssignment[6], layout.rowAssignment[7]);
+});
+
+test('jedes Segment genau einmal, in Reihenfolge, ohne NaN/Infinity', () => {
+  const topos = [normalizeTopo(example)];
+  for (let seed = 1; seed <= 25; seed += 1) topos.push(createRandomTopo({ seed }));
+  for (const topo of topos) {
+    for (const paper of Object.keys(PAPER_PRESETS)) {
+      const layout = layoutTopo(topo, { ...CASCADED, paper });
+      const order = columnSegments(layout).flat();
+      assert.deepEqual(order, topo.segments.map((_, index) => index));
+      assert.equal(layout.placements.length, topo.segments.length);
+      for (const column of layout.rows) assert.ok(column.placements.length > 0, 'leere Spalte');
+      allNumbersFinite({ ...layout, rowWidthLimit: 0 });
+      const bounds = contentBoundsFor(topo, layout);
+      for (const value of Object.values(bounds)) assert.ok(Number.isFinite(value));
+      const svg = renderTopoSvg(topo, layout, { paper });
+      assert.ok(!/NaN|Infinity/.test(svg), `${paper}: NaN/Infinity im SVG`);
+    }
+  }
+});
+
+test('Kaskadiert rendert gültiges SVG für Bildschirm und A4', () => {
+  const topo = steepTopo(20, 10, {}, { canyon_name: 'Kaskade' });
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const layout = layoutTopo(topo, { ...CASCADED, paper });
+    const svg = renderTopoSvg(topo, layout, { paper, interactive: true });
+    assert.ok(svg.startsWith('<svg') && svg.includes('</svg>'));
+    const viewBox = /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
+    const preset = PAPER_PRESETS[paper];
+    if (preset.width) {
+      assert.equal(
+        Math.round((viewBox[2] / viewBox[3]) * 1000),
+        Math.round((preset.width / preset.height) * 1000),
+      );
+    }
+    // Je Spalte eine Gruppe, ein eindeutiger Verlauf, Marken an jedem Wechsel.
+    const columns = layout.rows.length;
+    assert.equal((svg.match(/class="topo-row"/g) || []).length, columns);
+    const gradientIds = [...svg.matchAll(/linearGradient id="([^"]+)"/g)].map((m) => m[1]);
+    assert.equal(new Set(gradientIds).size, columns);
+    assert.equal((svg.match(/>\(l\)</g) || []).length, 2 * (columns - 1));
+    // Die Geländefüllung bleibt im Spaltenkasten.
+    for (const column of layout.rows) {
+      const group = new RegExp(`data-row="${column.index}">\\s*<path d="([^"]+)"`).exec(svg)[1];
+      const xs = [...group.matchAll(/[MLQ] ([-\d.e]+) /g)].map((m) => Number(m[1]));
+      assert.ok(Math.min(...xs) >= column.left - 1e-9 && Math.max(...xs) <= column.right + 1e-9);
+      assert.ok(column.left >= viewBox[0] && column.right <= viewBox[0] + viewBox[2]);
+    }
+    // Die Legende steht rechts neben der letzten Spalte.
+    const panel = /<rect x="([-\d.]+)" y="[-\d.]+" width="([-\d.]+)"[^>]*opacity="0.92"/.exec(svg);
+    const lastColumn = layout.rows[columns - 1];
+    assert.ok(Number(panel[1]) > lastColumn.right, 'Legende kollidiert mit der letzten Spalte');
+  }
+});
+
+test('Der Drag-Rahmen friert Spaltenzuordnung und -lage ein', () => {
+  const topo = steepTopo(12, 10, {
+    3: {
+      elements: [
+        { type: 'STONE', horizontal_start_rel_to_segment_start: 2, vertical_start_rel_to_segment_start: 1 },
+      ],
+    },
+  });
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const frame = layoutTopo(topo, { ...CASCADED, paper });
+    const element = topo.segments[3].elements[0];
+    const before = { ...element };
+    element.horizontal_start_rel_to_segment_start = 30;
+    element.vertical_start_rel_to_segment_start = -80;
+    const dragged = layoutTopo(topo, { ...CASCADED, paper, frame });
+    assert.deepEqual(dragged.rowAssignment, frame.rowAssignment, paper);
+    assert.equal(dragged.columnHeightLimit, frame.columnHeightLimit);
+    dragged.rows.forEach((column, index) => {
+      assert.equal(column.offsetX, frame.rows[index].offsetX, `${paper}: Spalte ${index} verrutscht`);
+      assert.equal(column.offsetY, frame.rows[index].offsetY);
+    });
+    dragged.placements.forEach((p, index) => {
+      assert.deepEqual(p.start, frame.placements[index].start, `${paper}: Segment ${index} verschoben`);
+    });
+    assert.equal(dragged.minX, frame.minX);
+    assert.ok(dragged.width >= frame.width && dragged.height >= frame.height);
+    // Das gezogene Symbol lässt sich weiterhin in lokale Koordinaten zurückrechnen.
+    const placed = dragged.placements[3].elements[0];
+    const local = worldToLocal(dragged.placements[3], placed.point);
+    assert.ok(Math.abs(local.horizontal - 30) < 1e-9 && Math.abs(local.vertical + 80) < 1e-9);
+    Object.assign(element, before);
+    // Ein Rahmen aus einem anderen Modus wird nicht übernommen.
+    const serpentineFrame = layoutTopo(topo, { paper });
+    const fresh = layoutTopo(topo, { ...CASCADED, paper, frame: serpentineFrame });
+    assert.deepEqual(fresh.rowAssignment, frame.rowAssignment);
+    assert.equal(fresh.orientation, 'columns');
+  }
+});
+
+test('Serpentine und Linear bleiben vom neuen Modus unberührt', () => {
+  const topo = normalizeTopo(example);
+  for (const paper of Object.keys(PAPER_PRESETS)) {
+    const implicit = layoutTopo(topo, { paper });
+    const explicit = layoutTopo(topo, { layout: 'serpentine', paper });
+    assert.equal(implicit.mode, 'serpentine');
+    assert.deepEqual(implicit.rowAssignment, explicit.rowAssignment);
+    assert.equal(implicit.orientation, undefined);
+    for (const row of implicit.rows) {
+      assert.equal(row.left, undefined, 'Zeilen füllen weiterhin die ganze Breite');
+      assert.equal(row.placements[0].start.x, 0);
+    }
+    const linear = layoutTopo(topo, { layout: 'linear', paper });
+    assert.equal(linear.rows.length, 1);
+    assert.equal(linear.rowWidthLimit, Number.POSITIVE_INFINITY);
+    const svg = renderTopoSvg(topo, implicit, { paper });
+    const bounds = fitBoundsToPaper(contentBoundsFor(topo, implicit), paper);
+    // Das Gelände der Serpentine reicht weiterhin über die volle Blattbreite.
+    assert.ok(svg.includes(`L ${bounds.maxX} `) && svg.includes(`L ${bounds.minX} `));
+  }
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);

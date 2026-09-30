@@ -14,14 +14,21 @@
  *    gestauchte Segmente bekommen eine Dauer-Klammer (|← 5min →|).
  *  - `distance_of_single_line` ist die Zeilenbreite für das freie Bildschirm-
  *    format. Bei A4 ergibt sich die nutzbare Breite aus dem Format, siehe
- *    `planRowWidthLimit`.
+ *    `planTrackLimit`.
  *
- * Zeilenumbruch (nur Serpentine):
+ * Kaskadiert (Spalten): dieselbe Aufteilung, aber nach Höhe statt Breite.
+ *  Die Segmentfolge läuft in einer Spalte von oben nach unten (echte
+ *  Geometrie), die nächste Spalte beginnt wieder oben rechts daneben. Als
+ *  Zielhöhe dient beim Bildschirmformat ebenfalls `distance_of_single_line`
+ *  (generisches Aufteilungsmass je Spur), bei A4 wird sie wie die Zeilenbreite
+ *  gegen das Seitenverhältnis optimiert, siehe `planTrackLimit`.
+ *
+ * Zeilen- bzw. Spaltenumbruch (Serpentine und Kaskadiert):
  *  - `force_cut_row_after_this_segment` ist eine harte Trennstelle NACH dem
- *    Segment – auch wenn die Zeile noch Platz hätte.
+ *    Segment – auch wenn die Zeile/Spalte noch Platz hätte.
  *  - `do_not_cut_row_after_this_segment` hält das Segment mit dem folgenden
- *    zusammen – auch wenn die Zielbreite dabei überschritten wird. Das Blatt
- *    wächst dann mit, abgeschnitten wird nichts.
+ *    zusammen – auch wenn die Zielbreite/-höhe dabei überschritten wird. Das
+ *    Blatt wächst dann mit, abgeschnitten wird nichts.
  *  - Konflikt (beide Flags am selben Übergang): Erzwingen gewinnt. Es ist die
  *    explizitere Ansage und immer erfüllbar. Die UI schliesst die Kombination
  *    zusätzlich aus; alte Dateien bleiben dadurch trotzdem lesbar.
@@ -31,6 +38,13 @@ import { contentBoundsFor, paperAspectRatio, wallBulgeFor } from './sheet.js';
 
 const ROW_GAP_METERS = 14;
 const ROW_PADDING_METERS = 4;
+// Kaskadiert: seitlicher Innenrand je Spalte (Platz für Beschriftungskästen
+// links senkrechter Abseiler und die Fortsetzungsmarken) und konstanter
+// Abstand zwischen den Spaltenkästen.
+const COLUMN_PADDING_METERS = 5;
+const COLUMN_GAP_METERS = 6;
+
+export const LAYOUT_MODES = ['serpentine', 'cascaded', 'linear'];
 
 function toRadians(degrees) {
   return (degrees * Math.PI) / 180;
@@ -112,6 +126,11 @@ function segmentMetricsFor(topo, maximumWalkLength) {
       perp: { x: dir.y, y: -dir.x },
       // Überhänge laufen nach links; für die Zeilenbreite zählt der Betrag.
       horizontalSpan: Math.abs(dir.x * drawn) + wallSpan,
+      // Kaskadiert: benötigte Höhe. Eine Wand weicht bei flachen Stücken nach
+      // oben bzw. unten aus und kostet dann Höhe statt Breite.
+      verticalSpan:
+        Math.abs(dir.y * drawn) +
+        Math.abs(dir.x) * (segment.wall_distance_in_meters || 0),
     };
   });
 }
@@ -136,12 +155,12 @@ export function rowBreakRulesFor(segments) {
 }
 
 /** Segmente, die zwingend in derselben Zeile bleiben, zu Blöcken bündeln. */
-function chunksOf(metrics, keepTogether) {
+function chunksOf(metrics, keepTogether, spanKey = 'horizontalSpan') {
   const chunks = [];
   let current = null;
   metrics.forEach((metric, index) => {
     if (!current) current = { from: index, to: index, span: 0 };
-    current.span += metric.horizontalSpan;
+    current.span += metric[spanKey];
     current.to = index;
     if (!keepTogether[index]) {
       chunks.push(current);
@@ -230,8 +249,14 @@ function round(value) {
  * `distance_of_single_line`. Bei A4 wird die Breite gesucht, deren fertiges
  * Blatt dem Seitenverhältnis des Formats am nächsten kommt – A4 hoch wird
  * dadurch schmaler (mehr Zeilen), A4 quer breiter (weniger Zeilen).
+ *
+ * Generisch für beide Spurarten (Zeilenbreite bzw. Spaltenhöhe). Kandidaten
+ * sind die Basisgrösse und die ausgeglichenen Teilungen der Gesamtausdehnung
+ * in 1..n Spuren; gewählt wird der Kandidat, dessen fertiges Blatt (inkl. Rand
+ * und Legende) dem Seitenverhältnis am nächsten kommt. Bei Spalten heisst das:
+ * A4 hoch bekommt höhere, dafür weniger Spalten als A4 quer.
  */
-function planRowWidthLimit(topo, chunks, baseWidth, paperKey, buildFor) {
+function planTrackLimit(topo, chunks, baseWidth, paperKey, buildFor) {
   const aspect = paperAspectRatio(paperKey);
   if (!aspect || !chunks.length) return baseWidth;
 
@@ -262,7 +287,7 @@ function planRowWidthLimit(topo, chunks, baseWidth, paperKey, buildFor) {
 
 /* -------------------------------------------------------------- Platzieren */
 
-function buildLayout(metrics, assignment, rowWidthLimit, mode, frame) {
+function placeTracks(metrics, assignment) {
   const rows = [];
   const placements = [];
 
@@ -332,6 +357,12 @@ function buildLayout(metrics, assignment, rowWidthLimit, mode, frame) {
     cursor = end;
   });
 
+  return { rows, placements };
+}
+
+function buildLayout(metrics, assignment, rowWidthLimit, mode, frame) {
+  const { rows, placements } = placeTracks(metrics, assignment);
+
   // Zeilen vertikal stapeln und lokale Koordinaten in Weltkoordinaten überführen.
   let offsetY = 0;
   let minX = 0;
@@ -394,12 +425,103 @@ function buildLayout(metrics, assignment, rowWidthLimit, mode, frame) {
   };
 }
 
+function shiftPlacement(placement, dx, dy) {
+  const points = [placement.start, placement.end];
+  if (placement.wallBulge) {
+    points.push(placement.wallBulge.control, placement.wallBulge.apex);
+  }
+  for (const element of placement.elements) {
+    points.push(element.point);
+    if (element.endPoint) points.push(element.endPoint);
+  }
+  for (const point of points) {
+    point.x += dx;
+    point.y += dy;
+  }
+}
+
+/**
+ * Kaskadiert: Spalten nebeneinander, jede oben bündig. Innerhalb einer Spalte
+ * bleibt die echte Geometrie stehen; die Spaltenbreite ergibt sich aus den
+ * tatsächlichen Ausdehnungen (Elemente, Streckenenden, Wandausbeulung), der
+ * Abstand zwischen den Spaltenkästen ist konstant. Die Spalten behalten aus
+ * Kompatibilitätsgründen den Namen `rows` (generische Spuren).
+ */
+function buildColumnLayout(metrics, assignment, columnHeightLimit, mode, frame) {
+  const { rows: columns, placements } = placeTracks(metrics, assignment);
+
+  let boxRight = null;
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let plainHeight = 1;
+  for (const column of columns) {
+    const frozen = frame?.rows?.[column.index];
+    column.offsetY =
+      frozen?.offsetY == null ? ROW_PADDING_METERS - column.minY : frozen.offsetY;
+    column.offsetX =
+      frozen?.offsetX == null
+        ? boxRight == null
+          ? 0
+          : boxRight + COLUMN_GAP_METERS + COLUMN_PADDING_METERS - column.minX
+        : frozen.offsetX;
+
+    for (const placement of column.placements) {
+      shiftPlacement(placement, column.offsetX, column.offsetY);
+    }
+
+    column.top = column.offsetY + column.minY;
+    column.bottom = column.offsetY + column.maxY;
+    column.contentLeft = column.offsetX + column.minX;
+    column.contentRight = column.offsetX + column.maxX;
+    // Kastenkanten der Spalte: dort endet die Geländefüllung.
+    column.left = column.contentLeft - COLUMN_PADDING_METERS;
+    column.right = column.contentRight + COLUMN_PADDING_METERS;
+    column.height = column.maxY - column.minY + 2 * ROW_PADDING_METERS;
+    boxRight = column.right;
+
+    minX = Math.min(minX, column.contentLeft);
+    maxX = Math.max(maxX, column.contentRight);
+    plainHeight = Math.max(plainHeight, column.bottom + ROW_PADDING_METERS);
+  }
+  if (!Number.isFinite(minX)) minX = 0;
+  if (!Number.isFinite(maxX)) maxX = 0;
+
+  // Wie bei der Serpentine: Während des Ziehens wächst das Blatt, schrumpft
+  // aber nie – sonst würde es unter dem Zeiger neu skaliert.
+  if (frame) {
+    minX = frame.minX;
+    maxX = Math.max(frame.maxX, maxX);
+  }
+  const plainWidth = Math.max(maxX - minX, 1);
+  const height = frame ? Math.max(frame.height, plainHeight) : plainHeight;
+  const width = frame ? Math.max(frame.width, plainWidth) : plainWidth;
+
+  return {
+    rows: columns,
+    columns,
+    placements,
+    minX,
+    maxX,
+    width,
+    height,
+    // Spalten haben keine Zielbreite; die Blattbreite folgt dem Inhalt.
+    rowWidthLimit: Number.POSITIVE_INFINITY,
+    columnHeightLimit,
+    rowAssignment: assignment,
+    columnAssignment: assignment,
+    orientation: 'columns',
+    maximumWalkLength: 0,
+    mode,
+  };
+}
+
 /**
  * @param {object} topo normalisiertes Topo
- * @param {object} [options] `{ layout: 'serpentine' | 'linear', paper, frame }`
+ * @param {object} [options]
+ *   `{ layout: 'serpentine' | 'cascaded' | 'linear', paper, frame }`
  *
  * `paper` ist der Formatschlüssel aus `sheet.js` und bestimmt in der Serpentine
- * die nutzbare Zeilenbreite.
+ * die nutzbare Zeilenbreite, bei Kaskadiert die Spaltenhöhe.
  *
  * `frame` ist ein früheres Layout, dessen Zeilenaufteilung, Zeilenversatz und
  * Aussenmasse übernommen werden. Nötig beim Ziehen eines Symbols:
@@ -417,6 +539,46 @@ export function layoutTopo(topo, options = {}) {
 
   let rowWidthLimit;
   let assignment;
+
+  if (mode === 'cascaded') {
+    let columnHeightLimit;
+    if (
+      frame?.rowAssignment &&
+      frame.rowAssignment.length === metrics.length &&
+      frame.mode === mode
+    ) {
+      // Während des Ziehens bleiben Spaltenzuordnung und -lage stehen.
+      columnHeightLimit = frame.columnHeightLimit;
+      assignment = frame.rowAssignment;
+    } else {
+      const { forced, keepTogether } = rowBreakRulesFor(topo.segments);
+      const chunks = chunksOf(metrics, keepTogether, 'verticalSpan');
+      const partitionFor = (limit) =>
+        assignmentFor(
+          chunks,
+          partitionChunks(chunks, forced, limit),
+          metrics.length,
+        );
+      columnHeightLimit = planTrackLimit(
+        topo,
+        chunks,
+        baseWidth,
+        options.paper,
+        (limit) =>
+          buildColumnLayout(metrics, partitionFor(limit), limit, mode, null),
+      );
+      assignment = partitionFor(columnHeightLimit);
+    }
+    const layout = buildColumnLayout(
+      metrics,
+      assignment,
+      columnHeightLimit,
+      mode,
+      frame,
+    );
+    layout.maximumWalkLength = maxWalk;
+    return layout;
+  }
 
   if (mode === 'linear') {
     rowWidthLimit = Number.POSITIVE_INFINITY;
@@ -438,7 +600,7 @@ export function layoutTopo(topo, options = {}) {
         partitionChunks(chunks, forced, limit),
         metrics.length,
       );
-    rowWidthLimit = planRowWidthLimit(
+    rowWidthLimit = planTrackLimit(
       topo,
       chunks,
       baseWidth,
