@@ -225,7 +225,7 @@ function rappelGeometry(topo) {
 }
 
 test('alle vier Infrastrukturtypen sind im Modell und mit deutschen Labels in der Palette', () => {
-  assert.equal(ELEMENT_TYPES.length, 28);
+  assert.equal(ELEMENT_TYPES.length, 41);
   assert.deepEqual(new Set(Object.keys(SYMBOLS)), new Set(ELEMENT_TYPES));
   const group = symbolOptions().find((category) => category.id === 'infrastructure');
   for (const [type, name] of Object.entries(infrastructure)) {
@@ -598,6 +598,111 @@ test('die Gehzeit steht als Beschriftung am Fluchtweg-Schild', () => {
   topo.segments[0].elements[0].duration_to_walk_in_min = null;
   const plain = renderTopoSvg(topo, layoutTopo(topo));
   assert.equal(/ min</.test(plain), false, 'ohne Wert keine Beschriftung');
+});
+
+/* ------------------------------------------ Neue Topo-Symbole (Referenzsatz) */
+
+const NEW_HAZARDS = [
+  'DEATH_HAZARD',
+  'TREE_JAM',
+  'BOULDER_JAM',
+  'ROCKFALL',
+  'UNDERCUT',
+  'DANGEROUS_CURRENT',
+  'SIPHON',
+];
+const NEW_INFRASTRUCTURE = ['WATER_DIVERSION', 'PATH', 'ROAD'];
+const NEW_ANNOTATION = ['BYPASS', 'ENTRY_POINT', 'EXIT_POINT'];
+const NEW_TYPES = [...NEW_HAZARDS, ...NEW_INFRASTRUCTURE, ...NEW_ANNOTATION];
+const NEW_POINT_TYPES = NEW_TYPES.filter((type) => !RANGE_ELEMENT_TYPES.has(type));
+
+test('die neuen Symbole stehen im Modell und mit Kategorie in der Palette', () => {
+  const expected = {
+    ...Object.fromEntries(NEW_HAZARDS.map((type) => [type, 'hazards'])),
+    ...Object.fromEntries(NEW_INFRASTRUCTURE.map((type) => [type, 'infrastructure'])),
+    ...Object.fromEntries(NEW_ANNOTATION.map((type) => [type, 'annotation'])),
+  };
+  const palette = symbolOptions();
+  for (const [type, category] of Object.entries(expected)) {
+    assert.ok(ELEMENT_TYPES.includes(type), `${type} fehlt im Modell`);
+    assert.equal(SYMBOLS[type].category, category, `${type} in falscher Kategorie`);
+    const group = palette.find((entry) => entry.id === category);
+    const entry = group.symbols.find((symbol) => symbol.type === type);
+    assert.ok(entry, `${type} fehlt in der Palette`);
+    assert.ok(entry.label && entry.label !== type, `${type} ohne deutsches Label`);
+    assert.equal(entry.range, RANGE_ELEMENT_TYPES.has(type));
+  }
+  assert.deepEqual(
+    NEW_TYPES.filter((type) => RANGE_ELEMENT_TYPES.has(type)),
+    ['PATH', 'ROAD'],
+  );
+});
+
+test('jedes neue Punktsymbol zeichnet eigenständig, in Farbe wie in S/W', () => {
+  for (const mode of ['color', 'bw']) {
+    const drawings = NEW_POINT_TYPES.map((type) => SYMBOLS[type].render({ text: '' }, mode));
+    assert.equal(new Set(drawings).size, NEW_POINT_TYPES.length, `${mode}: Symbole doppelt`);
+    for (const [index, drawing] of drawings.entries()) {
+      const type = NEW_POINT_TYPES[index];
+      assert.match(drawing, /<path|<circle|<line|<rect/, `${type} zeichnet nichts`);
+      assert.equal(/NaN|Infinity|undefined|null/.test(drawing), false, `${type}: ungültiger Wert`);
+    }
+  }
+});
+
+test('die neuen Symbole tragen optionale Beschriftungen', () => {
+  for (const type of NEW_POINT_TYPES) {
+    const drawing = SYMBOLS[type].render({ text: 'Hinweis' }, 'color');
+    assert.ok(drawing.includes('Hinweis'), `${type} zeigt den Text nicht`);
+    assert.equal(
+      SYMBOLS[type].render({ text: '' }, 'color').includes('Hinweis'),
+      false,
+    );
+  }
+  for (const type of ['PATH', 'ROAD']) {
+    const a = { x: 0, y: 0 };
+    const b = { x: 6, y: 2 };
+    const withText = SYMBOLS[type].render(a, b, { size: 1, element: { text: 'Alpweg' } });
+    assert.ok(withText.includes('Alpweg'), `${type} zeigt den Text nicht`);
+    const plain = SYMBOLS[type].render(a, b, { size: 1, element: { text: '' } });
+    assert.equal(plain.includes('<text'), false, `${type} beschriftet ohne Text`);
+    // Entartete Strecke (Start = Ende) darf keine Division durch 0 erzeugen.
+    const degenerate = SYMBOLS[type].render(a, a, { size: 1, element: { text: '' } });
+    assert.equal(/NaN|Infinity/.test(degenerate), false, `${type}: NaN bei Nulllänge`);
+  }
+});
+
+test('die neuen Symbole überleben JSON- und XML-Roundtrip und rendern im SVG', () => {
+  const elements = NEW_TYPES.map((type, index) => ({
+    type,
+    horizontal_start_rel_to_segment_start: index * 2 + 1,
+    vertical_start_rel_to_segment_start: (index % 5) - 2,
+    horizontal_end_rel_to_segment_start: RANGE_ELEMENT_TYPES.has(type) ? index * 2 + 6 : null,
+    vertical_end_rel_to_segment_start: RANGE_ELEMENT_TYPES.has(type) ? 3 : null,
+    size: 1.1,
+    text: `Hinweis ${index + 1}`,
+  }));
+  const input = {
+    ...original,
+    segments: [{ ...original.segments[0], type: 'WALK', length_in_meters: 60, elements }],
+  };
+  const topo = topoFromJson(input);
+  assert.deepEqual(validateTopo(topo), []);
+  assert.deepEqual(topoToJsonObject(topo).segments[0].elements, elements);
+  const xml = topoToXml(topo);
+  for (const type of NEW_TYPES) assert.ok(xml.includes(`type="${type}"`), `${type} fehlt im XML`);
+  assert.deepEqual(topoToJsonObject(topoFromXml(xml)), input);
+
+  for (const mode of ['color', 'bw']) {
+    const svg = renderTopoSvg(topo, layoutTopo(topo), { theme: mode, interactive: true });
+    assert.equal(
+      (svg.match(/class="topo-element"/g) || []).length,
+      NEW_TYPES.length,
+      `${mode}: nicht alle Symbole gerendert`,
+    );
+    assert.equal(/NaN|Infinity/.test(svg), false, `${mode}: ungültige Koordinaten`);
+    assert.equal(svg.includes('>?</text>'), false, `${mode}: unbekannter Typ gezeichnet`);
+  }
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);

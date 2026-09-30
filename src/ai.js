@@ -357,7 +357,25 @@ export function promptTemplateById(id) {
 }
 
 
-const POINT_ELEMENTS = ELEMENT_TYPES.filter((t) => !RANGE_ELEMENT_TYPES.has(t));
+/**
+ * Typlisten des bisherigen Prompts – bewusst eingefroren.
+ *
+ * Die Vorlage "legacy" ist der Vergleichsmassstab gegen die überarbeiteten
+ * Prompts; sie muss deshalb wortgleich bleiben, auch wenn die Symbolbibliothek
+ * wächst. Neue Typen erscheinen in "optimized" und "compact", die aus
+ * ELEMENT_TYPES abgeleitet werden. Der Import kennt die neuen Typen ohnehin,
+ * unabhängig davon, welche Vorlage das Bild beschrieben hat.
+ */
+const LEGACY_POINT_ELEMENTS = [
+  'BOLT', 'BOLT_LEFT', 'BOLT_RIGHT', 'STONE', 'TRAPPED_STONE', 'SHARP_EDGE',
+  'LADDER', 'TRUNK', 'LEAF_TREE', 'CONIFER_TREE', 'CAVE', 'BACKWATER',
+  'STONE_BRIDGE', 'WOODEN_BRIDGE', 'STONE_HOUSE', 'RADIO_MAST', 'LIFT_MAST',
+  'SQUARE_CONCRETE_BASE', 'STEEL_BEAM', 'INLET_LEFT', 'INLET_RIGHT',
+  'ESCAPE_EXIT_LEFT', 'ESCAPE_EXIT_RIGHT', 'ELEMENT_NUMBER', 'CUSTOM_TEXT',
+  'WARNING_AND_TEXT',
+];
+
+const LEGACY_RANGE_ELEMENTS = ['ROPE_RAILING_LEFT', 'ROPE_RAILING_RIGHT'];
 
 export function buildLegacyPrompt(hints = {}) {
   return `Du analysierst ein Bild eines Canyoning-Topos (Schluchten-Abstiegsskizze) oder ein Foto einer Schlucht und erzeugst daraus ein strukturiertes Topo.
@@ -404,9 +422,9 @@ Segmenttypen: ${SEGMENT_TYPES.join(', ')}.
 - JUMP = Sprung, SLIDE = Rutsche, CLIMB = Kletterstelle
 
 Elementtypen mit nur einem Punkt (End-Koordinaten müssen null sein):
-${POINT_ELEMENTS.join(', ')}.
+${LEGACY_POINT_ELEMENTS.join(', ')}.
 Elementtypen mit Start UND Ende (alle vier Koordinaten als Zahl angeben):
-${[...RANGE_ELEMENT_TYPES].join(', ')}.
+${LEGACY_RANGE_ELEMENTS.join(', ')}.
 
 Koordinatensystem der Elemente (wichtig):
 - Es ist LOKAL pro Segment, Einheit Meter.
@@ -480,7 +498,20 @@ const ELEMENT_DESCRIPTIONS = {
   ROPE_RAILING_RIGHT: 'Seilgeländer/Handlauf rechts – Strecke mit Ringen, braucht Start UND Ende.',
   ELEMENT_NUMBER: 'Nummerierter Marker im Kreis – die App nummeriert selbst neu.',
   CUSTOM_TEXT: 'Freie Beschriftung aus dem Bild; der Text gehört ins Feld "text".',
-  WARNING_AND_TEXT: 'Warndreieck mit Text – Siphon, Steinschlag, Sperre und Ähnliches.',
+  WARNING_AND_TEXT: 'Warndreieck mit Text – allgemeine Gefahrenstelle mit Erklärung im Feld "text".',
+  DEATH_HAZARD: 'Totenkopf – Lebensgefahr an genau dieser Stelle (Walze, Siphonzug, Sperre).',
+  TREE_JAM: 'Baumverhau – verkeiltes Treibholz quer im Bachbett, oft nicht durchschwimmbar.',
+  BOULDER_JAM: 'Felsblockverhau – mehrere verkeilte Blöcke, Durchstieg nur zwischen den Blöcken.',
+  ROCKFALL: 'Steinschlag – Blöcke lösen sich aus der Wand, Fallspuren als Striche.',
+  UNDERCUT: 'Unterspülung – ausgewaschene Wand, das Wasser zieht unter den Fels.',
+  DANGEROUS_CURRENT: 'Gefährliche Strömung – kräftige Pfeile im Wasser, Verdriftungsgefahr.',
+  SIPHON: 'Siphon – das Wasser verschwindet unter einer Verblockung, kein sichtbarer Ausgang.',
+  WATER_DIVERSION: 'Wasserableitung – künstliche Fassung/Wehrklappe, die Wasser seitlich abzweigt.',
+  PATH: 'Pfad – gestrichelte Strecke neben der Schlucht, braucht Start UND Ende.',
+  ROAD: 'Weg oder Strasse – doppelte Linie, braucht Start UND Ende.',
+  BYPASS: 'Umgehung – gestrichelter Bogen um ein Hindernis, Text nennt Seite oder Hinweis.',
+  ENTRY_POINT: 'Einstieg in die Schlucht – Pfeil zwischen den Wänden nach unten.',
+  EXIT_POINT: 'Ausstieg aus der Schlucht am Ende der Tour – grüner Pfeil nach oben.',
 };
 
 function symbolLabelFor(type) {
@@ -891,6 +922,51 @@ function mapElementType(value) {
     NOTE: 'CUSTOM_TEXT',
     WARNING: 'WARNING_AND_TEXT',
     NUMBER: 'ELEMENT_NUMBER',
+    SKULL: 'DEATH_HAZARD',
+    DEATH: 'DEATH_HAZARD',
+    DANGER_OF_DEATH: 'DEATH_HAZARD',
+    LEBENSGEFAHR: 'DEATH_HAZARD',
+    TOTENKOPF: 'DEATH_HAZARD',
+    BAUMVERHAU: 'TREE_JAM',
+    WOOD_JAM: 'TREE_JAM',
+    LOG_JAM: 'TREE_JAM',
+    LOGJAM: 'TREE_JAM',
+    DEBRIS: 'TREE_JAM',
+    FELSBLOCKVERHAU: 'BOULDER_JAM',
+    BOULDER_CHOKE: 'BOULDER_JAM',
+    BLOCK_JAM: 'BOULDER_JAM',
+    STEINSCHLAG: 'ROCKFALL',
+    ROCK_FALL: 'ROCKFALL',
+    FALLING_ROCKS: 'ROCKFALL',
+    UNTERSPÜLUNG: 'UNDERCUT',
+    UNDERWASH: 'UNDERCUT',
+    UNDERCUT_ROCK: 'UNDERCUT',
+    STRÖMUNG: 'DANGEROUS_CURRENT',
+    CURRENT: 'DANGEROUS_CURRENT',
+    STRONG_CURRENT: 'DANGEROUS_CURRENT',
+    DANGEROUS_FLOW: 'DANGEROUS_CURRENT',
+    SYPHON: 'SIPHON',
+    SUMP: 'SIPHON',
+    WASSERABLEITUNG: 'WATER_DIVERSION',
+    WATER_INTAKE: 'WATER_DIVERSION',
+    DIVERSION: 'WATER_DIVERSION',
+    INTAKE: 'WATER_DIVERSION',
+    UMGEHUNG: 'BYPASS',
+    DETOUR: 'BYPASS',
+    PORTAGE: 'BYPASS',
+    EINSTIEG: 'ENTRY_POINT',
+    ENTRY: 'ENTRY_POINT',
+    PUT_IN: 'ENTRY_POINT',
+    AUSSTIEG: 'EXIT_POINT',
+    TAKE_OUT: 'EXIT_POINT',
+    END_POINT: 'EXIT_POINT',
+    PFAD: 'PATH',
+    TRAIL: 'PATH',
+    FOOTPATH: 'PATH',
+    WEG: 'ROAD',
+    STRASSE: 'ROAD',
+    STREET: 'ROAD',
+    TRACK: 'ROAD',
   };
   return aliases[key] || null;
 }

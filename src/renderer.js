@@ -157,7 +157,7 @@ function renderElement(placed, theme, options = {}) {
 
   if (symbol && symbol.range) {
     if (!endPoint) return '';
-    return `<g${hooks} fill="${theme.text}" stroke-linejoin="round">${symbol.render(point, endPoint, { size })}</g>`;
+    return `<g${hooks} fill="${theme.text}" stroke-linejoin="round">${symbol.render(point, endPoint, { size, element })}</g>`;
   }
   const body = symbol
     ? symbol.render(element, options.theme === 'bw' ? 'bw' : 'color')

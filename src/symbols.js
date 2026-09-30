@@ -139,6 +139,197 @@ function ropeRailing(side) {
   };
 }
 
+/**
+ * Totenkopf als eigenständiges Gefahrenzeichen: "hier ist der Fehler tödlich".
+ * Bewusst getrennt vom abgestorbenen Baum – der warnt vor einer untauglichen
+ * Verankerung, dieses Zeichen vor der Stelle selbst.
+ */
+function deathHazard(text) {
+  const bone = 'stroke="#111" stroke-width="0.17" stroke-linecap="round" fill="none"';
+  return `
+    <g ${bone}>
+      <line x1="-0.8" y1="-0.1" x2="0.8" y2="-0.5"/>
+      <line x1="-0.8" y1="-0.5" x2="0.8" y2="-0.1"/>
+    </g>
+    <circle cx="0" cy="-1.0" r="0.52" fill="#fff" ${stroke}/>
+    <path d="M-0.26,-0.6 L0.26,-0.6 L0.26,-0.32 L-0.26,-0.32 Z" fill="#fff" ${stroke}/>
+    <g fill="#111">
+      <circle cx="-0.19" cy="-1.07" r="0.14"/>
+      <circle cx="0.19" cy="-1.07" r="0.14"/>
+      <path d="M0,-0.88 L-0.1,-0.68 L0.1,-0.68 Z"/>
+    </g>
+    <g ${thin}>
+      <line x1="0" y1="-0.58" x2="0" y2="-0.34"/>
+      <line x1="-0.13" y1="-0.58" x2="-0.13" y2="-0.34"/>
+      <line x1="0.13" y1="-0.58" x2="0.13" y2="-0.34"/>
+    </g>
+    ${label(text, 0, -1.75)}`;
+}
+
+/** Baumverhau: übereinandergeschobenes Treibholz, das den Bachlauf sperrt. */
+function treeJam(text) {
+  return `
+    <g fill="#6b3f1d" ${stroke}>
+      <path d="M-1.25,0.15 L0.95,-0.5 L1.05,-0.16 L-1.15,0.49 Z"/>
+      <path d="M-1.05,-0.7 L1.1,0.0 L1.0,0.34 L-1.15,-0.36 Z"/>
+      <path d="M-0.2,-1.15 L0.2,-1.1 L0.05,0.4 L-0.35,0.35 Z"/>
+    </g>
+    <g ${thin} fill="none">
+      <path d="M1.0,-0.33 L1.5,-0.62"/>
+      <path d="M1.05,0.17 L1.55,0.3"/>
+      <path d="M0.12,-1.12 L0.45,-1.5"/>
+    </g>
+    ${label(text, 0, -1.5)}`;
+}
+
+/** Felsblockverhau: mehrere verkeilte Blöcke, Durchstieg nur zwischendurch. */
+function boulderJam(text) {
+  return `
+    <g fill="#8d8d8d" ${stroke}>
+      <path d="M-1.3,0.3 L-1.1,-0.35 L-0.4,-0.52 L-0.15,0.05 L-0.6,0.35 Z"/>
+      <path d="M0.1,0.35 L0.2,-0.3 L0.95,-0.55 L1.3,0.05 L0.8,0.4 Z"/>
+      <path d="M-0.6,-0.55 L-0.2,-1.2 L0.6,-1.1 L0.8,-0.55 L0.15,-0.32 Z"/>
+    </g>
+    ${label(text, 0, -1.5)}`;
+}
+
+/** Steinschlag: Blöcke lösen sich aus der Wand, Fallspuren als dünne Striche. */
+function rockfall(text) {
+  return `
+    <path d="M-1.45,-1.6 L-0.75,-0.15 L-1.45,-0.15 Z" fill="#b9b2a6" ${stroke}/>
+    <g fill="#8d8d8d" ${stroke}>
+      <path d="M-0.35,-1.15 L-0.02,-1.35 L0.25,-1.1 L0.05,-0.8 L-0.3,-0.85 Z"/>
+      <path d="M0.45,-0.45 L0.8,-0.68 L1.1,-0.4 L0.9,-0.05 L0.5,-0.1 Z"/>
+      <path d="M-0.2,0.05 L0.08,-0.15 L0.32,0.08 L0.12,0.38 L-0.2,0.32 Z"/>
+    </g>
+    <g ${thin} fill="none">
+      <path d="M-0.55,-1.5 L-0.35,-1.25"/>
+      <path d="M0.3,-0.9 L0.55,-0.6"/>
+      <path d="M0.0,-0.55 L0.05,-0.25"/>
+    </g>
+    ${label(text, 0, -1.8)}`;
+}
+
+/** Unterspülung: ausgewaschener Fels, das Wasser zieht unter die Wand. */
+function undercut(text) {
+  return `
+    <path d="M-1.25,-1.5 L1.25,-1.5 L1.25,-0.35 L0.35,-0.42 C-0.15,-0.5 -0.45,-0.85 -1.25,-0.75 Z"
+          fill="#8d8d8d" ${stroke}/>
+    <g fill="none" stroke="#1b3fb5" stroke-width="0.14" stroke-linecap="round">
+      <path d="M1.15,0.15 C0.35,0.15 0.1,-0.2 -0.45,-0.3"/>
+    </g>
+    <path d="M-0.35,-0.55 L-0.75,-0.18 L-0.3,-0.02 Z" fill="#1b3fb5"/>
+    ${label(text, 0, -1.8)}`;
+}
+
+/** Gefährliche Strömung: kräftige Pfeile plus rotes Ausrufezeichen. */
+function dangerousCurrent(text) {
+  return `
+    <g fill="none" stroke="#1b3fb5" stroke-width="0.16" stroke-linecap="round">
+      <path d="M-1.35,-0.8 C-0.95,-1.1 -0.5,-0.5 -0.1,-0.8 C0.2,-1.02 0.45,-0.65 0.7,-0.8"/>
+      <path d="M-1.35,-0.15 C-0.95,-0.45 -0.5,0.15 -0.1,-0.15 C0.2,-0.37 0.45,0.0 0.7,-0.15"/>
+    </g>
+    <g fill="#1b3fb5">
+      <path d="M0.65,-1.05 L1.2,-0.8 L0.65,-0.55 Z"/>
+      <path d="M0.65,-0.4 L1.2,-0.15 L0.65,0.1 Z"/>
+    </g>
+    <circle cx="0.95" cy="-1.45" r="0.32" fill="#c81e1e" ${thin}/>
+    <g fill="#fff">
+      <rect x="0.89" y="-1.62" width="0.12" height="0.22"/>
+      <circle cx="0.95" cy="-1.33" r="0.07"/>
+    </g>
+    ${label(text, 0, -1.95)}`;
+}
+
+/** Siphon: das Wasser verschwindet unter einer Verblockung – kein Ausgang sichtbar. */
+function siphon(text) {
+  return `
+    <path d="M-0.5,-1.35 L0.7,-1.25 L0.95,-0.5 L-0.25,-0.42 Z" fill="#8d8d8d" ${stroke}/>
+    <g fill="none" stroke="#1b3fb5" stroke-width="0.15" stroke-linecap="round">
+      <path d="M-1.4,-0.85 C-0.85,-0.85 -0.7,-0.15 -0.05,-0.1 C0.35,-0.07 0.6,-0.14 0.8,-0.28"/>
+    </g>
+    <path d="M0.6,-0.5 L1.05,-0.32 L0.72,-0.02 Z" fill="#1b3fb5"/>
+    <g stroke="#c81e1e" stroke-width="0.15" stroke-linecap="round">
+      <line x1="1.25" y1="-0.72" x2="1.25" y2="0.1"/>
+    </g>
+    ${label(text, 0, -1.8)}`;
+}
+
+/** Wasserableitung: Wehrklappe zweigt einen Teil des Baches seitlich ab. */
+function waterDiversion(text) {
+  return `
+    <g fill="none" stroke="#1b3fb5" stroke-width="0.14" stroke-linecap="round">
+      <path d="M-1.45,-0.85 L0.2,-0.85"/>
+      <path d="M-0.45,-0.85 C-0.15,-0.85 -0.05,-0.4 0.0,-0.05"/>
+    </g>
+    <g fill="#1b3fb5">
+      <path d="M0.15,-1.05 L0.75,-0.85 L0.15,-0.65 Z"/>
+      <path d="M-0.22,-0.05 L0.22,-0.05 L0.0,0.5 Z"/>
+    </g>
+    <path d="M-0.62,-1.35 L-0.38,-1.35 L-0.38,-0.55 L-0.62,-0.55 Z" fill="#9a9a9a" ${stroke}/>
+    ${label(text, 0, -1.6)}`;
+}
+
+/** Umgehung: gestrichelter Bogen um das Hindernis herum. */
+function bypass(text) {
+  return `
+    <path d="M-0.35,0.35 L-0.2,-0.15 L0.3,-0.25 L0.45,0.3 Z" fill="#8d8d8d" ${stroke}/>
+    <path d="M-1.2,0.35 C-1.15,-1.15 0.85,-1.35 1.15,-0.5"
+          fill="none" stroke="#111" stroke-width="0.11" stroke-linecap="round"
+          stroke-dasharray="0.32 0.22"/>
+    <path d="M0.88,-0.62 L1.3,-0.3 L0.85,-0.12 Z" fill="#111"/>
+    ${label(text, 0, -1.6)}`;
+}
+
+/**
+ * Einstieg/Ausstieg: Schluchtwände als Klammer, Pfeil hinein bzw. hinaus.
+ * Der Ausstieg bleibt grün wie das Fluchtweg-Schild, der Einstieg neutral.
+ */
+function entryExit(kind, text) {
+  const arrow =
+    kind === 'entry'
+      ? `<path d="M0,0.2 L-0.42,-0.4 L-0.16,-0.4 L-0.16,-1.3 L0.16,-1.3 L0.16,-0.4 L0.42,-0.4 Z" fill="#111" ${thin}/>`
+      : `<path d="M0,-1.4 L0.42,-0.8 L0.16,-0.8 L0.16,0.2 L-0.16,0.2 L-0.16,-0.8 L-0.42,-0.8 Z" fill="#0b7a45" ${thin}/>`;
+  return `
+    <g ${stroke} fill="none">
+      <path d="M-1.15,-1.3 L-0.6,0.4"/>
+      <path d="M1.15,-1.3 L0.6,0.4"/>
+    </g>
+    ${arrow}
+    ${label(text, 0, -1.7)}`;
+}
+
+/**
+ * Weg-Strecken (Pfad, Weg/Strasse) zwischen zwei Punkten. Der Text steht
+ * mittig darüber, damit Wegnamen und Ziele beschriftet werden können.
+ */
+function trackLine(kind) {
+  return {
+    range: true,
+    render(a, b, options) {
+      const size = options.size > 0 ? options.size : 1;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const length = Math.hypot(dx, dy) || 1;
+      const px = -dy / length;
+      const py = dx / length;
+      const text = options.element?.text;
+      const caption = text
+        ? `<text x="${(a.x + b.x) / 2}" y="${(a.y + b.y) / 2 - 0.6 * size}" font-size="${0.55 * size}" text-anchor="middle">${esc(text)}</text>`
+        : '';
+      if (kind === 'path') {
+        return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" fill="none"
+          stroke="#111" stroke-width="${0.1 * size}" stroke-linecap="round"
+          stroke-dasharray="${0.4 * size} ${0.26 * size}"/>${caption}`;
+      }
+      const offset = 0.17 * size;
+      const rail = (sign) =>
+        `<line x1="${a.x + px * offset * sign}" y1="${a.y + py * offset * sign}" x2="${b.x + px * offset * sign}" y2="${b.y + py * offset * sign}" fill="none" stroke="#111" stroke-width="${0.09 * size}" stroke-linecap="round"/>`;
+      return `${rail(1)}${rail(-1)}${caption}`;
+    },
+  };
+}
+
 export const SYMBOL_CATEGORIES = [
   { id: 'anchors', label: 'Verankerung' },
   { id: 'hazards', label: 'Gefahren' },
@@ -402,6 +593,71 @@ export const SYMBOLS = {
              <text x="${1.3}" y="-0.4" font-size="0.6">${esc(element.text)}</text>`
           : ''
       }`,
+  },
+  DEATH_HAZARD: {
+    label: 'Lebensgefahr',
+    category: 'hazards',
+    render: (element) => deathHazard(element.text),
+  },
+  TREE_JAM: {
+    label: 'Baumverhau',
+    category: 'hazards',
+    render: (element) => treeJam(element.text),
+  },
+  BOULDER_JAM: {
+    label: 'Felsblockverhau',
+    category: 'hazards',
+    render: (element) => boulderJam(element.text),
+  },
+  ROCKFALL: {
+    label: 'Steinschlag',
+    category: 'hazards',
+    render: (element) => rockfall(element.text),
+  },
+  UNDERCUT: {
+    label: 'Unterspülung',
+    category: 'hazards',
+    render: (element) => undercut(element.text),
+  },
+  DANGEROUS_CURRENT: {
+    label: 'Gefährliche Strömung',
+    category: 'hazards',
+    render: (element) => dangerousCurrent(element.text),
+  },
+  SIPHON: {
+    label: 'Siphon',
+    category: 'hazards',
+    render: (element) => siphon(element.text),
+  },
+  WATER_DIVERSION: {
+    label: 'Wasserableitung',
+    category: 'infrastructure',
+    render: (element) => waterDiversion(element.text),
+  },
+  PATH: {
+    label: 'Pfad',
+    category: 'infrastructure',
+    ...trackLine('path'),
+  },
+  ROAD: {
+    label: 'Weg / Strasse',
+    category: 'infrastructure',
+    ...trackLine('road'),
+  },
+  BYPASS: {
+    label: 'Umgehung',
+    category: 'annotation',
+    render: (element) => bypass(element.text),
+  },
+  ENTRY_POINT: {
+    label: 'Einstieg',
+    category: 'annotation',
+    render: (element) => entryExit('entry', element.text),
+  },
+  EXIT_POINT: {
+    label: 'Ausstieg',
+    category: 'annotation',
+    render: (element) => entryExit('exit', element.text),
   },
 };
 

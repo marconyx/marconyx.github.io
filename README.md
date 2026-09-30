@@ -9,7 +9,9 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
 
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
   bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
-- **Symbole**: 28 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Funk- und Liftmasten, Fluchtwege, Warnungen …)
+- **Symbole**: 41 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Funk- und Liftmasten,
+  Fluchtwege, Gefahrenzeichen wie Lebensgefahr, Baum- und Felsblockverhau, Steinschlag,
+  Unterspülung, Siphon, Wege und Umgehungen …)
   per Klick einfügen und im Topo frei verschieben. Ist bereits ein Symbol ausgewählt,
   entsteht das neue an derselben Stelle und direkt dahinter in der Reihenfolge —
   sonst in der Segmentmitte und am Ende.
@@ -128,12 +130,21 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | Kategorie | Typen |
 | --- | --- |
 | Verankerung | `BOLT`, `BOLT_LEFT`, `BOLT_RIGHT` |
-| Gefahren | `SHARP_EDGE`, `TRAPPED_STONE`, `BACKWATER`, `WARNING_AND_TEXT` |
+| Gefahren | `SHARP_EDGE`, `TRAPPED_STONE`, `BACKWATER`, `WARNING_AND_TEXT`, `DEATH_HAZARD` (Lebensgefahr), `TREE_JAM` (Baumverhau), `BOULDER_JAM` (Felsblockverhau), `ROCKFALL` (Steinschlag), `UNDERCUT` (Unterspülung), `DANGEROUS_CURRENT` (gefährliche Strömung), `SIPHON` |
 | Natur | `STONE`, `TRUNK`, `LEAF_TREE`, `CONIFER_TREE` (beide auch abgestorben), `CAVE`, `INLET_LEFT`, `INLET_RIGHT` |
-| Infrastruktur | `LADDER`, `STONE_BRIDGE`, `WOODEN_BRIDGE`, `STONE_HOUSE`, `RADIO_MAST` (Funkmast), `LIFT_MAST` (Liftmast), `SQUARE_CONCRETE_BASE` (Betonsockel eckig), `STEEL_BEAM` (Stahlträger), `ROPE_RAILING_LEFT`, `ROPE_RAILING_RIGHT` |
-| Beschriftung | `ELEMENT_NUMBER`, `CUSTOM_TEXT`, `ESCAPE_EXIT_LEFT`, `ESCAPE_EXIT_RIGHT` |
+| Infrastruktur | `LADDER`, `STONE_BRIDGE`, `WOODEN_BRIDGE`, `STONE_HOUSE`, `RADIO_MAST` (Funkmast), `LIFT_MAST` (Liftmast), `SQUARE_CONCRETE_BASE` (Betonsockel eckig), `STEEL_BEAM` (Stahlträger), `WATER_DIVERSION` (Wasserableitung), `ROPE_RAILING_LEFT`, `ROPE_RAILING_RIGHT`, `PATH` (Pfad), `ROAD` (Weg / Strasse) |
+| Beschriftung | `ELEMENT_NUMBER`, `CUSTOM_TEXT`, `ESCAPE_EXIT_LEFT`, `ESCAPE_EXIT_RIGHT`, `BYPASS` (Umgehung), `ENTRY_POINT` (Einstieg), `EXIT_POINT` (Ausstieg) |
 
-Streckenelemente (`ROPE_RAILING_*`) benötigen zusätzlich die `*_end_*`-Koordinaten.
+Streckenelemente (`ROPE_RAILING_*`, `PATH`, `ROAD`) benötigen zusätzlich die
+`*_end_*`-Koordinaten. `PATH` und `ROAD` schreiben ein vorhandenes `text` mittig
+über die Strecke (Wegname, Ziel); alle übrigen neuen Symbole beschriften sich
+oberhalb des Zeichens, wenn `text` gesetzt ist.
+
+Die Gefahrenzeichen folgen der üblichen Schluchtentopo-Legende, sind aber eigens
+gezeichnet: `DEATH_HAZARD` warnt vor der Stelle selbst (tödliche Folge), während
+ein abgestorbener Baum (`dead`) vor einer untauglichen Verankerung warnt. Was
+bereits ein Segmenttyp abbildet (Wehr, Gumpe, Abklettern, Gehpassage), gibt es
+bewusst nicht doppelt als Symbol.
 
 `LEAF_TREE` und `CONIFER_TREE` kennen zusätzlich `dead` (Boolean): Ein abgestorbener
 Baum wird kahl und graubraun gezeichnet. Die Palette bietet beide Varianten direkt
@@ -311,12 +322,14 @@ Der Prompt entscheidet über die Erkennungsqualität mehr als das Modell. Unter
 |---|---|
 | **Optimiert (empfohlen)** | Standard. Rolle, Schritt-für-Schritt-Vorgehen, vollständiger Typkatalog mit Erkennungsmerkmalen, Einheiten und Wertebereiche, Regeln bei Unsicherheit, Beispiel-JSON. |
 | **Kompakt** | Kurzfassung für kleine Modelle oder enges Kontextfenster. |
-| **Bisheriger Prompt** | Der Prompt vor der Überarbeitung — zum Vergleichen. |
+| **Bisheriger Prompt** | Der Prompt vor der Überarbeitung — zum Vergleichen. Seine Typlisten sind eingefroren, damit er als Massstab wortgleich bleibt; neue Symbole stehen nur in den aktiven Vorlagen. |
 | **Eigener Prompt** | Freitext, vorbelegt mit der optimierten Vorlage. |
 
 Die Listen der gültigen Segment- und Symboltypen erzeugt `src/ai.js` aus
-`src/model.js` und `src/symbols.js`. Neue Typen stehen damit automatisch im
-Prompt — nichts ist doppelt gepflegt.
+`src/model.js` und `src/symbols.js`. Neue Typen stehen damit automatisch in den
+Vorlagen *Optimiert* und *Kompakt* — nichts ist doppelt gepflegt. Nur die Vorlage
+*Bisheriger Prompt* führt ihre historischen Listen fest mit, damit der Vergleich
+byte-identisch bleibt; der Import erkennt die neuen Typen unabhängig davon.
 
 Auswahl und eigener Text liegen wie Endpoint und Modell im `localStorage`. Ein
 leerer eigener Prompt wird abgelehnt, statt einen nutzlosen Aufruf abzusetzen.

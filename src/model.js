@@ -57,12 +57,27 @@ export const ELEMENT_TYPES = [
   'ELEMENT_NUMBER',
   'CUSTOM_TEXT',
   'WARNING_AND_TEXT',
+  'DEATH_HAZARD',
+  'TREE_JAM',
+  'BOULDER_JAM',
+  'ROCKFALL',
+  'UNDERCUT',
+  'DANGEROUS_CURRENT',
+  'SIPHON',
+  'WATER_DIVERSION',
+  'PATH',
+  'ROAD',
+  'BYPASS',
+  'ENTRY_POINT',
+  'EXIT_POINT',
 ];
 
 /** Elemente mit Start- UND Endpunkt (Strecken statt Punkte). */
 export const RANGE_ELEMENT_TYPES = new Set([
   'ROPE_RAILING_LEFT',
   'ROPE_RAILING_RIGHT',
+  'PATH',
+  'ROAD',
 ]);
 
 /**

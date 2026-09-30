@@ -979,4 +979,91 @@ test('gibt es mehrere Topos, gewinnt das grössere', () => {
   assert.equal(extractJsonObject(`${big}${small}`).segments.length, 2);
 });
 
+/* --------------------------------------- Neue Symboltypen im Prompt und Import */
+
+const NEW_ELEMENT_TYPES = [
+  'DEATH_HAZARD',
+  'TREE_JAM',
+  'BOULDER_JAM',
+  'ROCKFALL',
+  'UNDERCUT',
+  'DANGEROUS_CURRENT',
+  'SIPHON',
+  'WATER_DIVERSION',
+  'PATH',
+  'ROAD',
+  'BYPASS',
+  'ENTRY_POINT',
+  'EXIT_POINT',
+];
+
+test('die neuen Symboltypen sind in den aktiven Vorlagen erklärt', () => {
+  const optimized = buildOptimizedInstructions();
+  const compact = buildCompactInstructions();
+  for (const type of NEW_ELEMENT_TYPES) {
+    assert.ok(optimized.includes(`${type} (`), `${type} fehlt in der optimierten Vorlage`);
+    assert.ok(compact.includes(type), `${type} fehlt in der Kurzfassung`);
+    assert.equal(
+      new RegExp(`- ${type} \\([^)]+\\)[^\\n]*= Symbol "`).test(optimized),
+      false,
+      `${type} hat nur die Platzhalter-Erklärung`,
+    );
+  }
+  for (const type of ['PATH', 'ROAD']) {
+    assert.match(optimized, new RegExp(`${type}[^\\n]*Strecke: Start UND Ende`));
+  }
+});
+
+test('die bisherige Vorlage bleibt trotz neuer Symbole eingefroren', () => {
+  const legacy = buildPrompt({}, { template: 'legacy' });
+  for (const type of NEW_ELEMENT_TYPES) {
+    assert.equal(legacy.includes(type), false, `${type} ist in die alte Vorlage geraten`);
+  }
+  assert.ok(legacy.includes('ROPE_RAILING_LEFT'), 'die alte Vorlage wurde beschnitten');
+});
+
+test('gängige Fremdbezeichnungen landen auf den neuen Symbolen', () => {
+  const topo = sanitizeTopoCandidate({
+    canyon_name: 'Synonyme neu',
+    segments: [
+      {
+        type: 'WALK',
+        elements: [
+          { type: 'skull' },
+          { type: 'log jam' },
+          { type: 'boulder choke' },
+          { type: 'falling rocks' },
+          { type: 'underwash' },
+          { type: 'strong current' },
+          { type: 'sump' },
+          { type: 'water intake' },
+          { type: 'detour' },
+          { type: 'put in' },
+          { type: 'take out' },
+          {
+            type: 'trail',
+            horizontal_start_rel_to_segment_start: 1,
+            horizontal_end_rel_to_segment_start: 8,
+            vertical_end_rel_to_segment_start: 2,
+          },
+          {
+            type: 'street',
+            horizontal_start_rel_to_segment_start: 2,
+            horizontal_end_rel_to_segment_start: 9,
+            vertical_end_rel_to_segment_start: 3,
+          },
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(
+    topo.segments[0].elements.map((element) => element.type).sort(),
+    [...NEW_ELEMENT_TYPES].sort(),
+  );
+  assert.deepEqual(validateTopo(topo), []);
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  assert.ok(svg.startsWith('<svg'));
+  assert.equal(/NaN|Infinity/.test(svg), false);
+});
+
 console.log(`\n${passed} Test(s) bestanden.`);
