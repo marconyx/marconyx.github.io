@@ -320,7 +320,7 @@ Der Prompt entscheidet über die Erkennungsqualität mehr als das Modell. Unter
 
 | Vorlage | Wofür |
 |---|---|
-| **Optimiert (empfohlen)** | Standard. Rolle, Schritt-für-Schritt-Vorgehen, vollständiger Typkatalog mit Erkennungsmerkmalen, Einheiten und Wertebereiche, Regeln bei Unsicherheit, Beispiel-JSON. |
+| **Optimiert (empfohlen)** | Standard. Rolle, Schritt-für-Schritt-Vorgehen, priorisiertes Kodierungs-Mapping, vollständiger Typkatalog mit Erkennungsmerkmalen, Einheiten und Wertebereiche, Regeln bei Unsicherheit, Beispiel-JSON. |
 | **Kompakt** | Kurzfassung für kleine Modelle oder enges Kontextfenster. |
 | **Bisheriger Prompt** | Der Prompt vor der Überarbeitung — zum Vergleichen. Seine Typlisten sind eingefroren, damit er als Massstab wortgleich bleibt; neue Symbole stehen nur in den aktiven Vorlagen. |
 | **Eigener Prompt** | Freitext, vorbelegt mit der optimierten Vorlage. |
@@ -330,6 +330,11 @@ Die Listen der gültigen Segment- und Symboltypen erzeugt `src/ai.js` aus
 Vorlagen *Optimiert* und *Kompakt* — nichts ist doppelt gepflegt. Nur die Vorlage
 *Bisheriger Prompt* führt ihre historischen Listen fest mit, damit der Vergleich
 byte-identisch bleibt; der Import erkennt die neuen Typen unabhängig davon.
+Das Kodierungs-Mapping der optimierten Vorlage hat Vorrang vor den Kurzlabels
+im Katalog: `C` als Cascade bedeutet `RAPPEL_WET` (nicht `CLIMB`),
+`T`/`TP` als Toboggan bedeutet `SLIDE`, `R`/`Rd`/`Rw` entsprechen
+`RAPPEL`/`RAPPEL_DRY`/`RAPPEL_WET` und `MC` (Main-Courante) wird je nach
+Lage als `ROPE_RAILING_LEFT` oder `ROPE_RAILING_RIGHT` erfasst.
 
 Auswahl und eigener Text liegen wie Endpoint und Modell im `localStorage`. Ein
 leerer eigener Prompt wird abgelehnt, statt einen nutzlosen Aufruf abzusetzen.

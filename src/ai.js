@@ -466,7 +466,7 @@ const SEGMENT_DESCRIPTIONS = {
   RAPPEL_WET: 'Abseilen im Wasserfall – Label "R_w", Seil mitten im Strahl.',
   JUMP: 'Sprung – Label "J", Pfeil senkrecht nach unten in eine Gumpe.',
   SLIDE: 'Rutsche – Label "S", schräge glatte Rampe ins Wasser.',
-  CLIMB: 'Kletterstelle/Abklettern – Label "C", steile Stufe ohne Seillinie.',
+  CLIMB: 'Kletterstelle/Abklettern – Label "C" nur bei eindeutigem Klettern ohne Seillinie; C (Cascade) ist RAPPEL_WET.',
   WEIR: 'Wehr oder Verblockung – Label "W", künstliche Stufe, Betonkante.',
 };
 
@@ -609,10 +609,18 @@ export function buildOptimizedInstructions() {
 VORGEHEN (in dieser Reihenfolge):
 1. Lies das Bild von OBEN (Einstieg) nach UNTEN (Ausstieg). Die Reihenfolge der Segmente ist die Abstiegsreihenfolge.
 2. Zerlege den Abstieg in zusammenhängende Abschnitte – jeder Abschnitt wird ein Segment.
-3. Bestimme für jeden Abschnitt den Typ aus der Segmentliste unten. Kurzlabels wie "R_d10", "J6" oder "S6" verraten Typ UND Höhe.
+3. Bestimme für jeden Abschnitt den Typ aus der Segmentliste unten. Nutze das untenstehende KODIERUNGS-MAPPING, um Kurzlabels aus dem Bild (z. B. "C", "T", "S") den korrekten JSON-Segmenttypen zuzuordnen. Kurzlabels wie "R_d10", "J6" oder "S6" verraten auch die Höhe.
 4. Schätze Länge/Höhe in Metern und den Winkel. Steht eine Zahl im Bild, übernimm sie unverändert.
 5. Ordne die sichtbaren Symbole dem Segment zu, in dem sie stehen, und setze ihre lokalen Koordinaten.
 6. Lies die Metadaten aus Titel und Legende: Name, Author, Dauer, Datum. Was nicht dasteht, bleibt leer.
+
+KODIERUNGS-MAPPING (Priorität!):
+Wenn du im Bild folgende Buchstaben/Labels siehst, ordne sie ZWINGEND so zu. Diese Regeln haben Vorrang vor Kurzlabels und Erkennungsmerkmalen in der Segmentliste:
+
+C (Cascade) → RAPPEL_WET (Wasserfall-Abseilen/Abfahrt)
+T / TP (Toboggan) → SLIDE (Rutsche)
+R / Rd / Rw → RAPPEL / RAPPEL_DRY / RAPPEL_WET
+MC (Main-Courante) → Elementtyp ROPE_RAILING_LEFT oder ROPE_RAILING_RIGHT (je nach Lage)
 
 AUSGABE:
 - Antworte AUSSCHLIESSLICH mit einem einzigen JSON-Objekt.

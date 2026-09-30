@@ -438,6 +438,19 @@ test('die optimierte Vorlage nennt jeden Segment- und jeden Symboltyp', () => {
   }
 });
 
+test('die optimierte Vorlage priorisiert die Kodierung der Topo-Kurzlabels', () => {
+  const prompt = buildOptimizedInstructions();
+  const mapping = prompt.split('KODIERUNGS-MAPPING (Priorität!):')[1]?.split('\nAUSGABE:')[0];
+  assert.ok(mapping, 'das priorisierte Kodierungs-Mapping fehlt');
+  assert.match(mapping, /Vorrang vor Kurzlabels und Erkennungsmerkmalen/);
+  assert.match(mapping, /C \(Cascade\) → RAPPEL_WET \(Wasserfall-Abseilen\/Abfahrt\)/);
+  assert.match(mapping, /T \/ TP \(Toboggan\) → SLIDE \(Rutsche\)/);
+  assert.match(mapping, /R \/ Rd \/ Rw → RAPPEL \/ RAPPEL_DRY \/ RAPPEL_WET/);
+  assert.match(mapping, /MC \(Main-Courante\) → Elementtyp ROPE_RAILING_LEFT oder ROPE_RAILING_RIGHT \(je nach Lage\)/);
+  assert.ok(prompt.indexOf('KODIERUNGS-MAPPING (Priorität!):') < prompt.indexOf('SEGMENTTYPEN ('));
+  assert.match(prompt, /CLIMB[^\n]*C \(Cascade\) ist RAPPEL_WET/);
+});
+
 test('die optimierte Vorlage erklärt die Gehzeit von Segment und Fluchtweg', () => {
   for (const prompt of [buildOptimizedInstructions(), buildCompactInstructions()]) {
     assert.match(prompt, /duration_to_walk_in_min/);
@@ -1000,8 +1013,10 @@ const NEW_ELEMENT_TYPES = [
 test('die neuen Symboltypen sind in den aktiven Vorlagen erklärt', () => {
   const optimized = buildOptimizedInstructions();
   const compact = buildCompactInstructions();
+  const catalog = optimized.split('ELEMENTTYPEN (nur diese Werte sind gültig):')[1]?.split('\nPunktelemente')[0];
+  assert.ok(catalog, 'der dynamische Symbolkatalog fehlt');
   for (const type of NEW_ELEMENT_TYPES) {
-    assert.ok(optimized.includes(`${type} (`), `${type} fehlt in der optimierten Vorlage`);
+    assert.ok(catalog.includes(`${type} (`), `${type} fehlt im dynamischen Symbolkatalog`);
     assert.ok(compact.includes(type), `${type} fehlt in der Kurzfassung`);
     assert.equal(
       new RegExp(`- ${type} \\([^)]+\\)[^\\n]*= Symbol "`).test(optimized),
