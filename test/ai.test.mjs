@@ -1081,4 +1081,62 @@ test('gängige Fremdbezeichnungen landen auf den neuen Symbolen', () => {
   assert.equal(/NaN|Infinity/.test(svg), false);
 });
 
+test('die optimierte und kompakte Vorlage kennen Rappel Guide und das RG-Mapping', () => {
+  for (const prompt of [buildOptimizedInstructions(), buildCompactInstructions()]) {
+    assert.ok(prompt.includes('RAPPEL_GUIDE'), 'RAPPEL_GUIDE fehlt im Prompt');
+  }
+  const optimized = buildOptimizedInstructions();
+  assert.ok(optimized.includes('Rappel Guide'), 'deutsches Label fehlt im optimierten Prompt');
+  const mapping = optimized.split('KODIERUNGS-MAPPING (Priorität!):')[1]?.split('\nAUSGABE:')[0];
+  assert.ok(mapping, 'Kodierungs-Mapping fehlt');
+  assert.match(
+    mapping,
+    /RG \(Rappel Guide\) → Elementtyp RAPPEL_GUIDE/,
+    'RG-Mapping fehlt im Kodierungs-Mapping',
+  );
+});
+
+test('RG, GUIDED_RAPPEL und GUIDE_LINE normalisieren alle zu RAPPEL_GUIDE', () => {
+  const aliases = ['RG', 'RAPPEL_GUIDE', 'GUIDED_RAPPEL', 'GUIDE_LINE', 'GUIDELINE'];
+  const report = [];
+  const topo = sanitizeTopoCandidate(
+    {
+      segments: [
+        {
+          type: 'WALK',
+          elements: aliases.map((alias) => ({
+            type: alias,
+            horizontal_start_rel_to_segment_start: 1,
+            horizontal_end_rel_to_segment_start: 6,
+            vertical_end_rel_to_segment_start: 1,
+          })),
+        },
+      ],
+    },
+    report,
+  );
+  assert.deepEqual(
+    topo.segments[0].elements.map((element) => element.type),
+    aliases.map(() => 'RAPPEL_GUIDE'),
+  );
+  assert.deepEqual(report, []);
+  for (const element of topo.segments[0].elements) {
+    assert.ok(
+      Number.isFinite(element.horizontal_end_rel_to_segment_start),
+      'Endpunkt nach Normalisierung verloren',
+    );
+  }
+});
+
+test('der Legacy-Prompt bleibt frei von Rappel Guide (byte-identisch zur Fixture)', () => {
+  const expected = readFileSync(new URL('./fixtures/legacy-prompt.txt', import.meta.url), 'utf8');
+  const actual = buildPrompt(
+    { canyonName: 'Boggera', notes: 'Skizze aus dem Führer' },
+    { template: 'legacy' },
+  );
+  assert.equal(actual, expected);
+  assert.equal(actual.includes('RAPPEL_GUIDE'), false, 'Legacy-Prompt erwähnt RAPPEL_GUIDE');
+  assert.equal(actual.includes('Rappel Guide'), false, 'Legacy-Prompt erwähnt Rappel Guide');
+});
+
 console.log(`\n${passed} Test(s) bestanden.`);

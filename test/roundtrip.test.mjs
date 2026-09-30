@@ -225,7 +225,7 @@ function rappelGeometry(topo) {
 }
 
 test('alle vier Infrastrukturtypen sind im Modell und mit deutschen Labels in der Palette', () => {
-  assert.equal(ELEMENT_TYPES.length, 41);
+  assert.equal(ELEMENT_TYPES.length, 42);
   assert.deepEqual(new Set(Object.keys(SYMBOLS)), new Set(ELEMENT_TYPES));
   const group = symbolOptions().find((category) => category.id === 'infrastructure');
   for (const [type, name] of Object.entries(infrastructure)) {
@@ -702,6 +702,135 @@ test('die neuen Symbole überleben JSON- und XML-Roundtrip und rendern im SVG', 
     );
     assert.equal(/NaN|Infinity/.test(svg), false, `${mode}: ungültige Koordinaten`);
     assert.equal(svg.includes('>?</text>'), false, `${mode}: unbekannter Typ gezeichnet`);
+  }
+});
+
+/* ------------------------------------------------------- Rappel Guide (RG) */
+
+test('Rappel Guide steht im Modell, als Strecke und in der Palette Verankerung', () => {
+  assert.ok(ELEMENT_TYPES.includes('RAPPEL_GUIDE'), 'RAPPEL_GUIDE fehlt im Modell');
+  assert.ok(RANGE_ELEMENT_TYPES.has('RAPPEL_GUIDE'), 'RAPPEL_GUIDE ist keine Strecke');
+  assert.equal(SYMBOLS.RAPPEL_GUIDE.category, 'anchors');
+  assert.equal(SYMBOLS.RAPPEL_GUIDE.range, true);
+  const group = symbolOptions().find((category) => category.id === 'anchors');
+  const entry = group.symbols.find((symbol) => symbol.type === 'RAPPEL_GUIDE');
+  assert.ok(entry, 'RAPPEL_GUIDE fehlt in der Palettenkategorie Verankerung');
+  assert.equal(entry.label, 'Rappel Guide (RG)');
+  assert.equal(entry.range, true);
+});
+
+test('Rappel Guide zeichnet eine Linie exakt von Start zu Ende mit RG-Kennung', () => {
+  const a = { x: 3, y: 4 };
+  const b = { x: 11, y: 9 };
+  const drawing = SYMBOLS.RAPPEL_GUIDE.render(a, b, {
+    size: 1,
+    element: { text: '' },
+    color: '#111111',
+  });
+  assert.match(
+    drawing,
+    new RegExp(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"`),
+    'die Linie läuft nicht exakt von Start zu Ende',
+  );
+  assert.ok(drawing.includes('>RG<'), 'RG-Kennung fehlt');
+  assert.equal(/NaN|Infinity|undefined/.test(drawing), false, 'ungültiger Wert im SVG');
+  // Farb- und S/W-Theme werden über options.color weitergereicht.
+  const colored = SYMBOLS.RAPPEL_GUIDE.render(a, b, {
+    size: 1,
+    element: { text: '' },
+    color: '#000000',
+  });
+  assert.ok(colored.includes('#000000'), 'Farbe aus dem Theme wird nicht übernommen');
+  // size skaliert Strichstärke und Pfeil.
+  const big = SYMBOLS.RAPPEL_GUIDE.render(a, b, {
+    size: 2,
+    element: { text: '' },
+    color: '#111',
+  });
+  assert.ok(big.includes('stroke-width="0.24"'), 'size skaliert die Strichstärke nicht');
+  // Entartete Strecke (Start = Ende) darf keine Division durch 0 erzeugen.
+  const degenerate = SYMBOLS.RAPPEL_GUIDE.render(a, a, {
+    size: 1,
+    element: { text: '' },
+    color: '#111',
+  });
+  assert.equal(/NaN|Infinity/.test(degenerate), false, 'NaN bei Nulllänge');
+  // Optionaler Text wird angehangen.
+  const withText = SYMBOLS.RAPPEL_GUIDE.render(a, b, {
+    size: 1,
+    element: { text: 'Pfad' },
+    color: '#111',
+  });
+  assert.ok(withText.includes('>RG Pfad<'), 'Beschriftung fehlt');
+});
+
+test('Rappel Guide rendert in allen Layoutmodi und Papierformaten ohne NaN', () => {
+  const base = {
+    ...original,
+    segments: [
+      {
+        ...original.segments[0],
+        type: 'WALK',
+        length_in_meters: 40,
+        elements: [
+          {
+            type: 'RAPPEL_GUIDE',
+            horizontal_start_rel_to_segment_start: 2,
+            vertical_start_rel_to_segment_start: 1,
+            horizontal_end_rel_to_segment_start: 18,
+            vertical_end_rel_to_segment_start: 4,
+            size: 1,
+            text: '',
+          },
+        ],
+      },
+    ],
+  };
+  const topo = topoFromJson(base);
+  assert.deepEqual(validateTopo(topo), []);
+  for (const layout of ['serpentine', 'cascaded', 'linear']) {
+    for (const paper of ['screen', 'a4_landscape', 'a4_portrait']) {
+      const layoutData = layoutTopo(topo, { layout, paper });
+      for (const theme of ['color', 'bw']) {
+        const svg = renderTopoSvg(topo, layoutData, { theme, interactive: true });
+        assert.ok(svg.includes('>RG<'), `${layout}/${paper}/${theme}: RG fehlt`);
+        assert.equal(/NaN|Infinity/.test(svg), false, `${layout}/${paper}/${theme}: NaN/Infinity`);
+        assert.ok(
+          (svg.match(/class="topo-element"/g) || []).length >= 1,
+          `${layout}/${paper}/${theme}: Element nicht gerendert`,
+        );
+      }
+    }
+  }
+});
+
+test('Rappel Guide überlebt JSON-, XML- und XSD-Roundtrip', () => {
+  const element = {
+    type: 'RAPPEL_GUIDE',
+    horizontal_start_rel_to_segment_start: 5,
+    vertical_start_rel_to_segment_start: 2,
+    horizontal_end_rel_to_segment_start: 22,
+    vertical_end_rel_to_segment_start: -1,
+    size: 1.3,
+    text: 'Führungsseil',
+  };
+  const input = {
+    ...original,
+    segments: [{ ...original.segments[0], type: 'WALK', length_in_meters: 40, elements: [element] }],
+  };
+  const topo = topoFromJson(input);
+  assert.deepEqual(validateTopo(topo), []);
+  assert.deepEqual(topoToJsonObject(topo).segments[0].elements, [element]);
+  const xml = topoToXml(topo);
+  assert.ok(xml.includes('type="RAPPEL_GUIDE"'), 'RAPPEL_GUIDE fehlt im XML');
+  assert.deepEqual(topoToJsonObject(topoFromXml(xml)), input);
+  // XSD-Validierung (falls xmllint vorhanden, sonst nur Schema-Plausibilität).
+  const result = spawnSync('xmllint', ['--noout', '--schema', xsdPath, '-'], {
+    encoding: 'utf8',
+    input: xml,
+  });
+  if (result.error?.code !== 'ENOENT') {
+    assert.equal(result.status, 0, result.stderr);
   }
 });
 

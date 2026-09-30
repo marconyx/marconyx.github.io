@@ -330,6 +330,47 @@ function trackLine(kind) {
   };
 }
 
+/**
+ * Rappel Guide (RG): geführte Abseile entlang eines gespannten Führungsseils.
+ * Gerade Linie von Start zu Ende wie der Abseilpfeil der Abseilstellen,
+ * Pfeilspitze am Endpunkt und das Kürzel "RG" mittig über der Linie.
+ * Die Farbe kommt aus dem Theme (options.color), damit SW korrekt bleibt.
+ */
+function rappelGuide() {
+  return {
+    range: true,
+    render(a, b, options) {
+      const size = options.size > 0 ? options.size : 1;
+      const color = options.color || '#111';
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const length = Math.hypot(dx, dy);
+      const ux = length ? dx / length : 1;
+      const uy = length ? dy / length : 0;
+      const px = -uy;
+      const py = ux;
+      const head = Math.min(0.55 * size, length * 0.4);
+      const headWidth = head * 0.55;
+      const baseX = b.x - ux * head;
+      const baseY = b.y - uy * head;
+      const arrow = length
+        ? `<path d="M${b.x},${b.y} L${baseX + px * headWidth},${baseY + py * headWidth} L${baseX - px * headWidth},${baseY - py * headWidth} Z" fill="${color}" stroke="none"/>`
+        : '';
+      const midX = (a.x + b.x) / 2;
+      const midY = (a.y + b.y) / 2;
+      // Beschriftung immer auf der oberen Seite der Linie.
+      const side = py > 0 ? -1 : 1;
+      const offset = 0.55 * size;
+      const text = options.element?.text;
+      const caption = text ? ` ${esc(text)}` : '';
+      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" fill="none"
+          stroke="${color}" stroke-width="${0.12 * size}" stroke-linecap="butt"/>
+        <circle cx="${a.x}" cy="${a.y}" r="${0.12 * size}" fill="${color}" stroke="none"/>${arrow}
+        <text x="${midX + px * offset * side}" y="${midY + py * offset * side + 0.2 * size}" font-size="${0.6 * size}" font-weight="700" text-anchor="middle" fill="${color}">RG${caption}</text>`;
+    },
+  };
+}
+
 export const SYMBOL_CATEGORIES = [
   { id: 'anchors', label: 'Verankerung' },
   { id: 'hazards', label: 'Gefahren' },
@@ -353,6 +394,11 @@ export const SYMBOLS = {
     label: 'Bolt rechts',
     category: 'anchors',
     render: (element) => bolt('right', element.text),
+  },
+  RAPPEL_GUIDE: {
+    label: 'Rappel Guide (RG)',
+    category: 'anchors',
+    ...rappelGuide(),
   },
   LADDER: {
     label: 'Leiter',

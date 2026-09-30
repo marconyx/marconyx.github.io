@@ -261,4 +261,31 @@ test('der Zufall-Knopf steht neben dem Beispiel-Knopf in der Toolbar', () => {
   assert.match(html, /id="btn-random"[^>]*>\s*Zufall\s*</);
 });
 
+test('der Zufallskatalog enthält Rappel Guide mit vollständigen Endkoordinaten', () => {
+  const variants = requiredSymbolVariants();
+  const guide = variants.find((variant) => variant.type === 'RAPPEL_GUIDE');
+  assert.ok(guide, 'RAPPEL_GUIDE fehlt in den Palettenvarianten');
+  assert.equal(guide.range, true);
+  // Über viele Seeds sichern, dass der Generator RAPPEL_GUIDE wirklich auswürfelt.
+  let seen = false;
+  for (let seed = 1; seed < 5000; seed += 1) {
+    for (const segment of createRandomTopo({ seed }).segments) {
+      for (const element of segment.elements) {
+        if (element.type !== 'RAPPEL_GUIDE') continue;
+        seen = true;
+        assert.ok(
+          Number.isFinite(element.horizontal_end_rel_to_segment_start),
+          `Seed ${seed}: horizontaler Endpunkt fehlt`,
+        );
+        assert.ok(
+          Number.isFinite(element.vertical_end_rel_to_segment_start),
+          `Seed ${seed}: vertikaler Endpunkt fehlt`,
+        );
+      }
+    }
+    if (seen) break;
+  }
+  assert.ok(seen, 'RAPPEL_GUIDE wurde in keinem der Seeds erzeugt');
+});
+
 console.log(`\n${passed} Test(s) bestanden.`);

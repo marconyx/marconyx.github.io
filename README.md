@@ -131,15 +131,17 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 
 | Kategorie | Typen |
 | --- | --- |
-| Verankerung | `BOLT`, `BOLT_LEFT`, `BOLT_RIGHT` |
+| Verankerung | `BOLT`, `BOLT_LEFT`, `BOLT_RIGHT`, `RAPPEL_GUIDE` (Rappel Guide, RG) |
 | Gefahren | `SHARP_EDGE`, `TRAPPED_STONE`, `BACKWATER`, `WARNING_AND_TEXT`, `DEATH_HAZARD` (Lebensgefahr), `TREE_JAM` (Baumverhau), `BOULDER_JAM` (Felsblockverhau), `ROCKFALL` (Steinschlag), `UNDERCUT` (Unterspülung), `DANGEROUS_CURRENT` (gefährliche Strömung), `SIPHON` |
 | Natur | `STONE`, `TRUNK`, `LEAF_TREE`, `CONIFER_TREE` (beide auch abgestorben), `CAVE`, `INLET_LEFT`, `INLET_RIGHT` |
 | Infrastruktur | `LADDER`, `STONE_BRIDGE`, `WOODEN_BRIDGE`, `STONE_HOUSE`, `RADIO_MAST` (Funkmast), `LIFT_MAST` (Liftmast), `SQUARE_CONCRETE_BASE` (Betonsockel eckig), `STEEL_BEAM` (Stahlträger), `WATER_DIVERSION` (Wasserableitung), `ROPE_RAILING_LEFT`, `ROPE_RAILING_RIGHT`, `PATH` (Pfad), `ROAD` (Weg / Strasse) |
 | Beschriftung | `ELEMENT_NUMBER`, `CUSTOM_TEXT`, `ESCAPE_EXIT_LEFT`, `ESCAPE_EXIT_RIGHT`, `BYPASS` (Umgehung), `ENTRY_POINT` (Einstieg), `EXIT_POINT` (Ausstieg) |
 
-Streckenelemente (`ROPE_RAILING_*`, `PATH`, `ROAD`) benötigen zusätzlich die
+Streckenelemente (`ROPE_RAILING_*`, `RAPPEL_GUIDE`, `PATH`, `ROAD`) benötigen zusätzlich die
 `*_end_*`-Koordinaten. `PATH` und `ROAD` schreiben ein vorhandenes `text` mittig
-über die Strecke (Wegname, Ziel); alle übrigen neuen Symbole beschriften sich
+über die Strecke (Wegname, Ziel); `RAPPEL_GUIDE` zeichnet eine gerade Füh­rungs­linie
+zwischen Start und Ende mit der Kennung `RG` und einem Richtungspfeil zum Endpunkt;
+alle übrigen neuen Symbole beschriften sich
 oberhalb des Zeichens, wenn `text` gesetzt ist.
 
 Die Gefahrenzeichen folgen der üblichen Schluchtentopo-Legende, sind aber eigens
@@ -371,6 +373,7 @@ im Katalog: `C` als Cascade bedeutet `RAPPEL_WET` (nicht `CLIMB`),
 `T`/`TP` als Toboggan bedeutet `SLIDE`, `R`/`Rd`/`Rw` entsprechen
 `RAPPEL`/`RAPPEL_DRY`/`RAPPEL_WET` und `MC` (Main-Courante) wird je nach
 Lage als `ROPE_RAILING_LEFT` oder `ROPE_RAILING_RIGHT` erfasst.
+`RG` (Rappel Guide) wird als `RAPPEL_GUIDE` kodiert.
 
 Auswahl und eigener Text liegen wie Endpoint und Modell im `localStorage`. Ein
 leerer eigener Prompt wird abgelehnt, statt einen nutzlosen Aufruf abzusetzen.

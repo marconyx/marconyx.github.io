@@ -183,7 +183,7 @@ globalThis.FileReader = class {
 import { readFileSync } from 'node:fs';
 
 import { PROMPT_TEMPLATES, getAiSettings, providerById } from '../src/ai.js';
-import { SEGMENT_TYPES, validateTopo } from '../src/model.js';
+import { SEGMENT_TYPES, validateTopo, createEmptyTopo } from '../src/model.js';
 import { symbolOptions } from '../src/symbols.js';
 
 const app = await import('../src/app.js');
@@ -718,6 +718,60 @@ test('ein Anbieterwechsel setzt Endpoint und Modell des Anbieters', () => {
   }
 });
 
+
+/* ------------------------------------------------------------- Rappel Guide */
+
+test('Rappel Guide lässt sich hinzufügen, Endpunkt ist gesetzt und unabhängig bewegbar', () => {
+  state.topo = createEmptyTopo();
+  state.topo.segments[0].length_in_meters = 30;
+  state.selection = { kind: 'segment', segmentIndex: 0 };
+  elementById('topo-name').dispatch('input');
+
+  const button = elementById('symbol-palette')
+    .descendants()
+    .find(
+      (node) => node.tagName === 'BUTTON' && node.textContent === 'Rappel Guide (RG)',
+    );
+  assert.ok(button, 'Rappel-Guide-Knopf fehlt in der Palette Verankerung');
+
+  button.dispatch('click');
+  const segment = state.topo.segments[0];
+  const element = segment.elements[segment.elements.length - 1];
+  assert.equal(element.type, 'RAPPEL_GUIDE');
+  assert.ok(
+    Number.isFinite(element.horizontal_end_rel_to_segment_start),
+    'horizontaler Endpunkt nicht gesetzt',
+  );
+  assert.ok(
+    Number.isFinite(element.vertical_end_rel_to_segment_start),
+    'vertikaler Endpunkt nicht gesetzt',
+  );
+
+  // Inspector bietet die End-Felder an.
+  assert.ok(inspectorHasField('Ende entlang (m)'), 'Feld Ende entlang fehlt');
+  assert.ok(inspectorHasField('Ende quer (m)'), 'Feld Ende quer fehlt');
+
+  // Endpunkt lässt sich unabhängig vom Startpunkt ändern.
+  const endLabel = elementById('inspector')
+    .descendants()
+    .find(
+      (node) => node.tagName === 'LABEL' && node.textContent === 'Ende entlang (m)',
+    );
+  const endInput = endLabel.children[0];
+  const startHorizontal = element.horizontal_start_rel_to_segment_start;
+  endInput.value = '27';
+  endInput.dispatch('change');
+  assert.equal(element.horizontal_end_rel_to_segment_start, 27, 'Ende-entlang nicht übernommen');
+  assert.equal(
+    element.horizontal_start_rel_to_segment_start,
+    startHorizontal,
+    'Start wurde versehentlich verschoben',
+  );
+
+  // Render-Ausgabe enthält RG und keine ungültigen Koordinaten.
+  assert.ok(svg().includes('>RG<'), 'RG fehlt im gerenderten SVG');
+  assert.equal(/NaN|Infinity/.test(svg()), false, 'NaN/Infinity im SVG');
+});
 
 /* ------------------------------------- Wiederherstellen (eigene App-Instanz) */
 

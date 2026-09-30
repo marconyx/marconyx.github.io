@@ -474,6 +474,7 @@ const ELEMENT_DESCRIPTIONS = {
   BOLT: 'Bohrhaken/Standplatz – kleiner Kreis mit Punkt, am Kopf einer Abseilstelle.',
   BOLT_LEFT: 'Bohrhaken links (in Abstiegsrichtung), im Bild oft mit "(le)".',
   BOLT_RIGHT: 'Bohrhaken rechts (in Abstiegsrichtung), im Bild oft mit "(ri)".',
+  RAPPEL_GUIDE: 'Rappel Guide (RG) – geführtes Abseilen entlang eines gespannten Führungsseils; Strecke mit Start UND Ende, Pfeil zeigt zum Endpunkt.',
   STONE: 'Loser Block/Felsbrocken am Grund.',
   TRAPPED_STONE: 'Klemmblock zwischen zwei Wänden – Block mit Wandbögen links und rechts.',
   SHARP_EDGE: 'Scharfe Kante – Seilrisiko, meist als Kreuz mit roten Ringen markiert.',
@@ -621,6 +622,7 @@ C (Cascade) → RAPPEL_WET (Wasserfall-Abseilen/Abfahrt)
 T / TP (Toboggan) → SLIDE (Rutsche)
 R / Rd / Rw → RAPPEL / RAPPEL_DRY / RAPPEL_WET
 MC (Main-Courante) → Elementtyp ROPE_RAILING_LEFT oder ROPE_RAILING_RIGHT (je nach Lage)
+RG (Rappel Guide) → Elementtyp RAPPEL_GUIDE
 
 AUSGABE:
 - Antworte AUSSCHLIESSLICH mit einem einzigen JSON-Objekt.
@@ -925,6 +927,11 @@ function mapElementType(value) {
     INLET: 'INLET_RIGHT',
     TRIBUTARY: 'INLET_RIGHT',
     HANDLINE: 'ROPE_RAILING_RIGHT',
+    RG: 'RAPPEL_GUIDE',
+    RAPPEL_GUIDE: 'RAPPEL_GUIDE',
+    GUIDED_RAPPEL: 'RAPPEL_GUIDE',
+    GUIDE_LINE: 'RAPPEL_GUIDE',
+    GUIDELINE: 'RAPPEL_GUIDE',
     TEXT: 'CUSTOM_TEXT',
     LABEL: 'CUSTOM_TEXT',
     NOTE: 'CUSTOM_TEXT',
