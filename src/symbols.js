@@ -707,6 +707,221 @@ export const SYMBOLS = {
   },
 };
 
+/* ------------------------------------------------------------ Eau Froide */
+
+/**
+ * Farbpalette des Stils „Eau Froide“, aus dem Referenz-Topo abgeleitet.
+ * Rot (#ff0000) steht für Verankerungen und Dächer, Dunkelrot (#800000) für
+ * Weg/Strasse/Pfad, Braun (#993300) für Holz und Hütte, Cyan für Wasser.
+ */
+export const EAU_FROIDE_PALETTE = {
+  water: '#00ffff',
+  waterDark: '#33cccc',
+  tree: '#00ff00',
+  treeLine: '#004d00',
+  anchor: '#ff0000',
+  road: '#800000',
+  wood: '#993300',
+  woodDark: '#662200',
+  stone: '#b1b1b1',
+  stoneLight: '#cfcfcf',
+  stoneShade: '#898989',
+  shadow: '#bfbfbf',
+  line: '#000000',
+};
+
+const EF = EAU_FROIDE_PALETTE;
+const efStroke = `stroke="${EF.line}" stroke-width="0.07" stroke-linejoin="round" stroke-linecap="round"`;
+const efThin = `stroke="${EF.line}" stroke-width="0.05" stroke-linejoin="round"`;
+
+function efLabel(text, x, y) {
+  return label(text, x, y, 'font-weight="700"');
+}
+
+function efAnchor(side, text) {
+  const tag = side === 'left' ? 'RG' : side === 'right' ? 'RD' : '';
+  return `
+    <g fill="${EF.anchor}">
+      <circle cx="-0.28" cy="0" r="0.26"/>
+      <circle cx="0.28" cy="0.1" r="0.26"/>
+    </g>
+    ${tag ? `<text x="0.75" y="-0.2" font-size="0.85" font-weight="700" text-anchor="start">${tag}</text>` : ''}
+    ${efLabel(text, 0, tag ? -1.1 : -0.55)}`;
+}
+
+/** Grauer Block mit Schattenfläche unten rechts und Lichtkante oben links. */
+function efBlock(x, y, scale = 1) {
+  return `<g transform="translate(${x},${y}) scale(${scale})">
+    <path d="M-0.8,0 L-0.95,-0.65 L-0.35,-1.15 L0.5,-1.1 L0.95,-0.45 L0.7,0 Z" fill="${EF.stone}" ${efStroke}/>
+    <path d="M0.1,0 L0.7,0 L0.95,-0.45 L0.5,-1.1 L0.45,-0.45 Z" fill="${EF.stoneShade}" stroke="none"/>
+    <path d="M-0.85,-0.6 L-0.35,-1.05 L0.3,-1.02 L-0.15,-0.62 Z" fill="${EF.stoneLight}" stroke="none"/>
+    <path d="M-0.8,0 L-0.95,-0.65 L-0.35,-1.15 L0.5,-1.1 L0.95,-0.45 L0.7,0 Z" fill="none" ${efStroke}/>
+  </g>`;
+}
+
+/** Holzkreuz: zwei gekreuzte braune Stäbe. */
+function efWoodCross(x, y, scale = 1, angle = 0) {
+  return `<g transform="translate(${x},${y}) rotate(${angle}) scale(${scale})" fill="none"
+      stroke="${EF.wood}" stroke-width="0.2" stroke-linecap="butt">
+    <line x1="-1" y1="-0.15" x2="1" y2="-0.75"/>
+    <line x1="-0.7" y1="-1" x2="0.7" y2="0.1"/>
+  </g>`;
+}
+
+function efConifer(text) {
+  return `
+    <path d="M-0.1,0 L-0.1,-0.4 L0.1,-0.4 L0.1,0 Z" fill="${EF.wood}" stroke="none"/>
+    <path d="M0,-3.0 L0.4,-2.15 L0.18,-2.15 L0.62,-1.4 L0.28,-1.4 L0.9,-0.4 L-0.9,-0.4 L-0.28,-1.4 L-0.62,-1.4 L-0.18,-2.15 L-0.4,-2.15 Z"
+          fill="${EF.tree}" stroke="${EF.treeLine}" stroke-width="0.06" stroke-linejoin="round"/>
+    <g stroke="${EF.treeLine}" stroke-width="0.045" stroke-linecap="round" fill="none">
+      <line x1="0" y1="-2.9" x2="0" y2="-0.4"/>
+      <line x1="0" y1="-2.4" x2="-0.32" y2="-2.2"/><line x1="0" y1="-2.4" x2="0.32" y2="-2.2"/>
+      <line x1="0" y1="-1.8" x2="-0.5" y2="-1.45"/><line x1="0" y1="-1.8" x2="0.5" y2="-1.45"/>
+      <line x1="0" y1="-1.1" x2="-0.78" y2="-0.55"/><line x1="0" y1="-1.1" x2="0.78" y2="-0.55"/>
+    </g>
+    ${efLabel(text, 0, -3.3)}`;
+}
+
+function efLeafTree(text) {
+  return `
+    <path d="M-0.1,0 L-0.1,-1 L0.1,-1 L0.1,0 Z" fill="${EF.wood}" stroke="none"/>
+    <path d="M0,-2.5 C0.95,-2.5 1.3,-1.6 1,-1.1 C1.25,-0.6 0.7,-0.3 0,-0.45 C-0.7,-0.3 -1.25,-0.6 -1,-1.1 C-1.3,-1.6 -0.95,-2.5 0,-2.5 Z"
+          fill="${EF.tree}" stroke="${EF.treeLine}" stroke-width="0.06"/>
+    <g stroke="${EF.treeLine}" stroke-width="0.045" fill="none" stroke-linecap="round">
+      <line x1="0" y1="-1" x2="-0.5" y2="-1.6"/><line x1="0" y1="-1" x2="0.5" y2="-1.6"/>
+      <line x1="0" y1="-1" x2="0" y2="-2.1"/>
+    </g>
+    ${efLabel(text, 0, -2.8)}`;
+}
+
+function efHut(text) {
+  return `
+    <path d="M0.3,0 L0.3,-1.05 L1.3,-1.45 L1.3,-0.4 Z" fill="${EF.woodDark}" stroke="${EF.road}" stroke-width="0.08" stroke-linejoin="round"/>
+    <path d="M-1.3,0 L-1.3,-1.05 L0.3,-1.05 L0.3,0 Z" fill="${EF.wood}" stroke="${EF.road}" stroke-width="0.08" stroke-linejoin="round"/>
+    <path d="M-1.45,-1.0 L-0.45,-1.95 L1.45,-1.45 L0.4,-1.0 Z" fill="${EF.anchor}" stroke="${EF.road}" stroke-width="0.08" stroke-linejoin="round"/>
+    <path d="M-1.45,-1.0 L-0.45,-1.95 L-0.1,-1.45 Z" fill="#cc0000" stroke="${EF.road}" stroke-width="0.06" stroke-linejoin="round"/>
+    ${efLabel(text, 0, -2.3)}`;
+}
+
+function efWarning(element) {
+  const text = element.text;
+  return `
+    <path d="M0,-1.6 L1.0,0.1 L-1.0,0.1 Z" fill="#fff" stroke="${EF.anchor}" stroke-width="0.2" stroke-linejoin="round"/>
+    <rect x="-0.07" y="-1.05" width="0.14" height="0.62" fill="${EF.line}"/>
+    <circle cx="0" cy="-0.22" r="0.1" fill="${EF.line}"/>
+    ${text ? `<text x="1.3" y="-0.35" font-size="0.65" font-weight="700" text-anchor="start">${esc(text)}</text>` : ''}`;
+}
+
+/** Läufer-Piktogramm, schwarz, nach rechts laufend. */
+function efRunner(text, arrow) {
+  return `
+    <g fill="${EF.line}" stroke="${EF.line}" stroke-width="0.17" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0.35" cy="-2.0" r="0.22" stroke="none"/>
+      <path d="M0.15,-1.65 L-0.15,-0.95" fill="none"/>
+      <path d="M0.12,-1.5 L0.7,-1.2 M0.1,-1.45 L-0.5,-1.15" fill="none"/>
+      <path d="M-0.15,-0.95 L0.35,-0.45 L0.2,0 M-0.15,-0.95 L-0.6,-0.5 L-0.95,-0.7" fill="none"/>
+    </g>
+    ${arrow || ''}
+    ${efLabel(text, 0, -2.5)}`;
+}
+
+function efArrow(direction) {
+  return direction === 'up'
+    ? `<path d="M-1.35,-1.5 L-1.1,-1.0 L-1.25,-1.0 L-1.25,-0.3 L-1.45,-0.3 L-1.45,-1.0 L-1.6,-1.0 Z" fill="${EF.line}"/>`
+    : `<path d="M-1.35,-0.3 L-1.1,-0.8 L-1.25,-0.8 L-1.25,-1.5 L-1.45,-1.5 L-1.45,-0.8 L-1.6,-0.8 Z" fill="${EF.line}"/>`;
+}
+
+const EAU_FROIDE_SYMBOLS = {
+  BOLT: (e) => efAnchor('none', e.text),
+  BOLT_LEFT: (e) => efAnchor('left', e.text),
+  BOLT_RIGHT: (e) => efAnchor('right', e.text),
+  STONE: (e) => `${efBlock(0, 0)}${efLabel(e.text, 0, -1.4)}`,
+  TRAPPED_STONE: (e) => `
+    <g fill="none" ${efStroke}>
+      <path d="M-1.5,-1.6 C-1.1,-1.0 -1.1,-0.5 -1.5,0.1"/>
+      <path d="M1.5,-1.6 C1.1,-1.0 1.1,-0.5 1.5,0.1"/>
+    </g>${efBlock(0, 0.1, 0.85)}${efLabel(e.text, 0, -1.7)}`,
+  BOULDER_JAM: (e) => `${efBlock(-0.7, 0.2, 0.75)}${efBlock(0.75, 0.2, 0.75)}${efBlock(0, -0.4, 0.8)}${efLabel(e.text, 0, -1.5)}`,
+  ROCKFALL: (e) => `
+    <path d="M-1.45,-1.6 L-0.75,-0.15 L-1.45,-0.15 Z" fill="${EF.stoneLight}" ${efStroke}/>
+    ${efBlock(-0.1, -0.7, 0.45)}${efBlock(0.8, -0.1, 0.5)}${efBlock(0.05, 0.4, 0.35)}${efLabel(e.text, 0, -1.8)}`,
+  TRUNK: (e) => `${efWoodCross(0, -0.3, 1, -8)}${efLabel(e.text, 0, -1.2)}`,
+  TREE_JAM: (e) => `${efWoodCross(-0.3, -0.3, 1, -6)}${efWoodCross(0.4, -0.5, 0.9, 12)}${efLabel(e.text, 0, -1.6)}`,
+  CONIFER_TREE: (e) => (e.dead ? null : efConifer(e.text)),
+  LEAF_TREE: (e) => (e.dead ? null : efLeafTree(e.text)),
+  STONE_HOUSE: (e) => efHut(e.text),
+  WARNING_AND_TEXT: (e) => efWarning(e),
+  ELEMENT_NUMBER: (e) => `
+    <circle cx="0" cy="-0.55" r="0.55" fill="#fff" ${efStroke}/>
+    <text x="0" y="-0.3" font-size="0.65" text-anchor="middle">${esc(e.text || '?')}</text>`,
+  ENTRY_POINT: (e) => efRunner(e.text, efArrow('down')),
+  EXIT_POINT: (e) => efRunner(e.text, efArrow('up')),
+  ESCAPE_EXIT_LEFT: (e) => `<g transform="scale(-1,1)">${efRunner('', '')}</g>${efLabel(e.text, 0, -2.5)}${walkTimeLabel(e.duration_to_walk_in_min)}`,
+  ESCAPE_EXIT_RIGHT: (e) => `${efRunner(e.text, '')}${walkTimeLabel(e.duration_to_walk_in_min)}`,
+};
+
+const EAU_FROIDE_COLORS = {
+  '#1b3fb5': '#00b4c4',
+  '#1f7a34': '#00e000',
+  '#0b7a45': '#00a000',
+  '#c81e1e': '#ff0000',
+  '#c52b24': '#ff0000',
+  '#f0b400': '#ff0000',
+  '#6b3f1d': '#993300',
+  '#b5651d': '#993300',
+  '#b5451d': '#ff0000',
+  '#5b4632': '#666666',
+  '#7a6a58': '#666666',
+  '#8a7864': '#a0a0a0',
+  '#e8dcb5': '#f0f0f0',
+  '#8d8d8d': '#b1b1b1',
+  '#9a9a9a': '#b1b1b1',
+  '#b9b2a6': '#cfcfcf',
+  '#d7d4c9': '#e0e0e0',
+  '#111': '#000000',
+  '#111111': '#000000',
+};
+
+function eauFroideRecolor(svg) {
+  return svg.replace(/#[\da-f]{3,8}(?=["'])/gi, (color) => EAU_FROIDE_COLORS[color.toLowerCase()] || color);
+}
+
+/** Weg/Strasse: durchgezogen dunkelrot; Pfad: dunkelrot gepunktet. */
+function efTrackLine(kind) {
+  return (a, b, options) => {
+    const size = options.size > 0 ? options.size : 1;
+    const text = options.element?.text;
+    const caption = text
+      ? `<text x="${(a.x + b.x) / 2}" y="${(a.y + b.y) / 2 - 0.6 * size}" font-size="${0.55 * size}" text-anchor="middle">${esc(text)}</text>`
+      : '';
+    const dash =
+      kind === 'path'
+        ? ` stroke-dasharray="${0.01 * size} ${0.3 * size}" stroke-linecap="round"`
+        : ' stroke-linecap="round"';
+    const width = kind === 'path' ? 0.2 : 0.16;
+    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" fill="none"
+      stroke="${EF.road}" stroke-width="${width * size}"${dash}/>${caption}`;
+  };
+}
+
+const EAU_FROIDE_RANGE = { PATH: efTrackLine('path'), ROAD: efTrackLine('road') };
+
+/** Punktsymbol im Stil Eau Froide: eigene Form, sonst an die Palette angepasst. */
+export function renderEauFroideSymbol(type, element) {
+  const custom = EAU_FROIDE_SYMBOLS[type];
+  const own = custom ? custom(element) : null;
+  if (own) return own;
+  const symbol = SYMBOLS[type];
+  return symbol ? eauFroideRecolor(symbol.render(element, 'color')) : renderUnknownSymbol(element);
+}
+
+/** Streckensymbol im Stil Eau Froide. */
+export function renderEauFroideRange(type, a, b, options) {
+  const custom = EAU_FROIDE_RANGE[type];
+  if (custom) return custom(a, b, options);
+  return eauFroideRecolor(SYMBOLS[type].render(a, b, options));
+}
+
 export function symbolFor(type) {
   return SYMBOLS[type] || null;
 }

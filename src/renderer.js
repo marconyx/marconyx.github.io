@@ -2,7 +2,13 @@
  * SVG-Renderer: zeichnet ein Layout als eigenständiges SVG-Dokument.
  */
 import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js';
-import { symbolFor, renderUnknownSymbol } from './symbols.js';
+import {
+  symbolFor,
+  renderUnknownSymbol,
+  renderEauFroideSymbol,
+  renderEauFroideRange,
+  EAU_FROIDE_PALETTE,
+} from './symbols.js';
 import {
   PAPER_PRESETS,
   contentBoundsFor,
@@ -57,7 +63,45 @@ export const THEMES = {
     background: '#fbfbf8',
     classic: true,
   },
+  eau_froide: {
+    label: 'Eau Froide',
+    terrainTop: '#d9dde0',
+    terrainBottom: '#f4f4f4',
+    terrainLine: EAU_FROIDE_PALETTE.line,
+    water: EAU_FROIDE_PALETTE.water,
+    cascade: EAU_FROIDE_PALETTE.water,
+    shadow: EAU_FROIDE_PALETTE.shadow,
+    text: '#000000',
+    accent: '#000000',
+    background: '#ffffff',
+    eauFroide: true,
+  },
 };
+
+// Segmente, die im Stil Eau Froide als cyanfarbene Kaskadenlinie gezeichnet werden.
+const CASCADE_SEGMENT_TYPES = new Set(['RAPPEL', 'RAPPEL_WET', 'CLIMB', 'JUMP', 'SLIDE']);
+
+/**
+ * Deterministische Marmorierung: feine graue Adern und weiche Flecken als
+ * wiederholbares Muster, ganz ohne Zufall.
+ */
+const MARBLE_PATTERN = `<pattern id="topo-marble" patternUnits="userSpaceOnUse" width="36" height="24" patternTransform="scale(0.4)">
+      <g fill="#c4c9cd" opacity="0.2">
+        <ellipse cx="6" cy="5" rx="5.5" ry="2.2"/>
+        <ellipse cx="24" cy="10" rx="7" ry="2.6"/>
+        <ellipse cx="14" cy="19" rx="6" ry="2"/>
+        <ellipse cx="31" cy="21" rx="4" ry="1.8"/>
+      </g>
+      <g fill="none" stroke-linecap="round">
+        <path d="M0.5,4 C5,1.5 8,7 13,4 S21,1 25,5" stroke="#9aa0a6" stroke-width="0.3" opacity="0.42"/>
+        <path d="M2,14 C8,10 12,16 18,12 S28,9 34,13" stroke="#aab0b5" stroke-width="0.5" opacity="0.35"/>
+        <path d="M10,22 C14,18 19,23 24,19 S31,16 35,20" stroke="#9aa0a6" stroke-width="0.3" opacity="0.39"/>
+        <path d="M26,0.5 C28,4 31,3 33,7" stroke="#b5bbc0" stroke-width="0.6" opacity="0.32"/>
+        <path d="M18,6 C20,9 23,8 24,12" stroke="#9aa0a6" stroke-width="0.25" opacity="0.45"/>
+        <path d="M5,18 C7,20 10,19 12,23" stroke="#b5bbc0" stroke-width="0.5" opacity="0.32"/>
+        <path d="M30,16 C32,18 34,17 35.5,19.5" stroke="#9aa0a6" stroke-width="0.25" opacity="0.42"/>
+      </g>
+    </pattern>`;
 
 const LEGEND_LINE_HEIGHT = LEGEND_LINE_HEIGHT_METERS;
 
@@ -159,6 +203,12 @@ function waterShapeFor(placement) {
   return `M ${start.x} ${start.y} Q ${midX} ${midY} ${end.x} ${end.y} L ${end.x} ${surfaceY} L ${start.x} ${surfaceY} Z`;
 }
 
+function cascadePathFor(placement) {
+  const { start, end, wallBulge } = placement;
+  if (wallBulge) return `M ${start.x} ${start.y} Q ${wallBulge.control.x} ${wallBulge.control.y} ${end.x} ${end.y}`;
+  return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+}
+
 function arrowFor(placement, theme) {
   const { start, end, perp, angle } = placement;
   const offset = 1.0;
@@ -181,6 +231,12 @@ function labelBoxFor(placement, theme) {
   const midY = (start.y + end.y) / 2 - perp.y * 2.2;
   const text = `${info.base}${info.sub}${info.value}`;
   const width = 0.62 * text.length + 0.7;
+  if (theme.eauFroide) {
+    return `
+    <g transform="translate(${midX},${midY})">
+      <text x="0" y="0.45" font-size="1.25" font-weight="700" text-anchor="middle" fill="${theme.text}" stroke="${theme.background}" stroke-width="0.35" paint-order="stroke">${esc(info.base)}<tspan font-size="0.8" dy="0.25">${esc(info.sub)}</tspan><tspan dy="-0.25"> ${esc(info.value)}</tspan></text>
+    </g>`;
+  }
   return `
     <g transform="translate(${midX},${midY})">
       <rect x="${-width / 2}" y="-0.85" width="${width}" height="1.7"
@@ -222,11 +278,16 @@ function renderElement(placed, theme, options = {}) {
 
   if (symbol && symbol.range) {
     if (!endPoint) return '';
-    const drawing = symbol.render(point, endPoint, { size, element, color: theme.accent });
+    const rangeOptions = { size, element, color: theme.accent };
+    const drawing = theme.eauFroide
+      ? renderEauFroideRange(element.type, point, endPoint, rangeOptions)
+      : symbol.render(point, endPoint, rangeOptions);
     const styledDrawing = theme.classic ? classicSymbolStyle(drawing) : drawing;
     return `<g${hooks} fill="${theme.text}" stroke-linejoin="round">${styledDrawing}</g>`;
   }
-  let body = symbol
+  let body = theme.eauFroide
+    ? renderEauFroideSymbol(element.type, element)
+    : symbol
     ? symbol.render(
         element,
         options.theme === 'bw' ? 'bw' : 'color',
@@ -287,11 +348,18 @@ function renderLegend(topo, layout, theme, bounds) {
   const panelWidth = legendPanelWidthMeters(topo);
   const panelHeight = legendPanelHeightMeters(topo);
 
+  const frame = theme.eauFroide
+    ? `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.1"/>`
+    : `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" opacity="0.92"/>`;
+  const titleShadow = theme.eauFroide
+    ? `<rect class="topo-title-shadow" x="${right - titleWidth + 0.6}" y="${top + 0.6}" width="${titleWidth}" height="3.2" fill="${theme.shadow}"/>`
+    : '';
   const parts = [
-    `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" opacity="0.92"/>`,
+    frame,
     `<g>
-      <rect x="${right - titleWidth}" y="${top}" width="${titleWidth}" height="3.2" rx="0.3"
-            fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.12"/>
+      ${titleShadow}
+      <rect x="${right - titleWidth}" y="${top}" width="${titleWidth}" height="3.2" rx="${theme.eauFroide ? 0 : 0.3}"
+            fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="${theme.eauFroide ? 0.16 : 0.12}"/>
       <text x="${right - titleWidth / 2}" y="${top + 2.3}" font-size="1.9" font-weight="700"
             text-anchor="middle" fill="${theme.text}">${esc(topo.canyon_name)}</text>
     </g>`,
@@ -305,13 +373,15 @@ function renderLegend(topo, layout, theme, bounds) {
   }
   if (headLines.length) y += 0.4;
   parts.push(
-    `<text x="${right}" y="${y}" font-size="1.1" font-weight="700" text-anchor="end" fill="${theme.text}">Legend:</text>`,
+    `<text x="${right}" y="${y}" font-size="1.1" font-weight="700"${theme.eauFroide ? ' font-style="italic"' : ''} text-anchor="end" fill="${theme.text}">Legend:</text>`,
   );
   y += 1.6;
   for (const entry of entries) {
     const match = /^([A-Z])_([a-z]) (.*)$/.exec(entry);
     const formatted = match
-      ? `${match[1]}<tspan font-size="0.75" dy="0.25">${esc(match[2])}</tspan><tspan dy="-0.25"> ${esc(match[3])}</tspan>`
+      ? theme.eauFroide
+        ? `<tspan font-weight="700">${match[1]}<tspan font-size="0.75" dy="0.25">${esc(match[2])}</tspan></tspan><tspan dy="-0.25"> ${esc(match[3])}</tspan>`
+        : `${match[1]}<tspan font-size="0.75" dy="0.25">${esc(match[2])}</tspan><tspan dy="-0.25"> ${esc(match[3])}</tspan>`
       : esc(entry);
     parts.push(
       `<text x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}">${formatted}</text>`,
@@ -366,9 +436,19 @@ export function renderTopoSvg(topo, layout, options = {}) {
         .filter((placement) => WATER_SEGMENT_TYPES.has(placement.segment.type))
         .map(
           (placement) =>
-            `<path d="${waterShapeFor(placement)}" fill="${theme.water}" stroke="${theme.terrainLine}" stroke-width="0.1"/>`,
+            `<path d="${waterShapeFor(placement)}" fill="${theme.water}" stroke="${theme.terrainLine}" stroke-width="${theme.eauFroide ? 0.07 : 0.1}"/>`,
         )
         .join('');
+
+      const cascades = theme.eauFroide
+        ? row.placements
+            .filter((placement) => CASCADE_SEGMENT_TYPES.has(placement.segment.type))
+            .map(
+              (placement) =>
+                `<path class="topo-cascade" d="${cascadePathFor(placement)}" fill="none" stroke="${theme.cascade}" stroke-width="0.3" stroke-linecap="round"/>`,
+            )
+            .join('')
+        : '';
 
       const arrows = row.placements
         .filter((placement) => placement.segment.type.startsWith('RAPPEL'))
@@ -394,7 +474,9 @@ export function renderTopoSvg(topo, layout, options = {}) {
 
       return `<g class="topo-row" data-row="${row.index}">
         <path d="${terrain}" fill="url(#topo-terrain-${row.index})" stroke="none"/>
+        ${theme.eauFroide ? `<path d="${terrain}" fill="url(#topo-marble)" stroke="none"/>` : ''}
         <path d="${ground}" fill="none" stroke="${theme.terrainLine}" stroke-width="0.14" stroke-linejoin="round"/>
+        ${cascades}
         ${water}
         ${arrows}
         ${hits}
@@ -424,6 +506,7 @@ export function renderTopoSvg(topo, layout, options = {}) {
   font-family="Helvetica, Arial, sans-serif">
   <defs>
     ${gradientDefs}
+    ${theme.eauFroide ? MARBLE_PATTERN : ''}
     <marker id="topo-arrow" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="5" markerHeight="5" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="${theme.accent}"/>

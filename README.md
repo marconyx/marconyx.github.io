@@ -16,7 +16,7 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
   entsteht das neue an derselben Stelle und direkt dahinter in der Reihenfolge —
   sonst in der Segmentmitte und am Ende.
 - **Layout**: Serpentine (automatischer Zeilenumbruch), Kaskadiert (automatische
-  Aufteilung in Spalten) oder Linear, Farbe, Schwarz/Weiß oder Alpin klassisch,
+  Aufteilung in Spalten) oder Linear, Farbe, Schwarz/Weiß, Alpin klassisch oder Eau Froide,
   Bildschirm / A4 quer / A4 hoch. In der Serpentine bestimmt das Format die
   nutzbare Zeilenbreite, bei Kaskadiert die Spaltenhöhe — siehe
   [Zeilenumbruch](#zeilenumbruch) und [Kaskadiert (Spalten)](#kaskadiert-spalten).
@@ -37,6 +37,15 @@ und kompakter Symbolzeichnung. Er umfasst auch Streckensymbole wie Rappel Guide,
 und Seilgeländer. Wie Layout und Papierformat ist die Stilwahl eine Ansichtspräferenz:
 sie wird im Browser-Autosave gespeichert, aber nicht in die inhaltskompatiblen
 Canyon-Explore-JSON/XML-Dateien geschrieben.
+
+**Eau Froide** (`eau_froide`) ist ein weiterer Stil nach dem Vorbild des Topos „Eau Froide“:
+weisser Hintergrund, hellgrau marmorierter Fels (deterministisches SVG-Pattern) mit
+schwarzer Kontur, cyanfarbene Kaskaden und Becken (`#00ffff`), leuchtend grüne Bäume
+(`#00ff00`) mit Zweigstruktur, rote Anker-Punkte (`#ff0000`) mit fettem RG/RD, graue
+Blöcke mit Schattierung, braune Holzkreuze (`#993300`), dunkelrote Strassen/Pfade
+(`#800000`), Hütte mit rotem Dach, rot-weisses Warndreieck, Läufer-Piktogramm sowie ein
+Titelkasten mit grauem Schlagschatten. Auch dieser Stil ist nur eine Ansichtspräferenz
+im Autosave und ändert JSON/XML nicht.
 
 ## Schnellstart
 

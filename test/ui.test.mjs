@@ -272,6 +272,19 @@ test('Alpin klassisch lässt sich auswählen und wird in den Ansichten gespeiche
   );
 });
 
+test('Eau Froide lässt sich auswählen und wird in den Ansichten gespeichert', () => {
+  const select = elementById('select-theme');
+  select.value = 'eau_froide';
+  select.dispatch('change');
+
+  assert.equal(state.view.theme, 'eau_froide');
+  assert.ok(svg().includes('topo-marble'));
+  assert.equal(
+    JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1')).view.theme,
+    'eau_froide',
+  );
+});
+
 /* ------------------------------------------------- Legende: live, wie Name */
 
 test('der Name aktualisiert das Topo sofort beim Tippen', () => {
@@ -816,6 +829,16 @@ async function restoredAppWith(view, tag) {
     assert.equal(restoredClassic.state.view.theme, 'alpiner_classic');
     assert.equal(elementById('select-theme').value, 'alpiner_classic');
     assert.ok(svg().includes('stop-color="#cbd5d8"'));
+  });
+
+  const restoredEau = await restoredAppWith(
+    { layout: 'linear', theme: 'eau_froide', paper: 'screen', zoom: 1 },
+    'restore-eau-froide',
+  );
+  test('Eau Froide wird nach einem Reload wiederhergestellt', () => {
+    assert.equal(restoredEau.state.view.theme, 'eau_froide');
+    assert.equal(elementById('select-theme').value, 'eau_froide');
+    assert.ok(svg().includes('topo-marble'));
   });
 
   // Ältere Stände kennen nur Serpentine/Linear oder gar kein Layout.

@@ -693,7 +693,7 @@ test('die neuen Symbole überleben JSON- und XML-Roundtrip und rendern im SVG', 
   for (const type of NEW_TYPES) assert.ok(xml.includes(`type="${type}"`), `${type} fehlt im XML`);
   assert.deepEqual(topoToJsonObject(topoFromXml(xml)), input);
 
-  for (const mode of ['color', 'bw', 'alpiner_classic']) {
+  for (const mode of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
     const svg = renderTopoSvg(topo, layoutTopo(topo), { theme: mode, interactive: true });
     assert.equal(
       (svg.match(/class="topo-element"/g) || []).length,
@@ -765,6 +765,71 @@ test('Alpin klassisch ist ein eigenständiger, vollständiger Renderstil', () =>
   const bw = renderTopoSvg(topo, layout, { theme: 'bw' });
   assert.ok(bw.includes('stop-color="#d8d8d8"'));
   assert.ok(!bw.includes('stop-color="#cbd5d8"'));
+});
+
+test('Eau Froide: Palette, eigene Symbole und Regression der anderen Stile', () => {
+  assert.equal(THEMES.eau_froide.label, 'Eau Froide');
+  assert.match(html, /<option value="eau_froide">Eau Froide<\/option>/);
+
+  const elements = ELEMENT_TYPES.map((type, index) => ({
+    type,
+    horizontal_start_rel_to_segment_start: index * 0.4 + 1,
+    vertical_start_rel_to_segment_start: 0,
+    horizontal_end_rel_to_segment_start: RANGE_ELEMENT_TYPES.has(type) ? index * 0.4 + 4 : null,
+    vertical_end_rel_to_segment_start: RANGE_ELEMENT_TYPES.has(type) ? 1 : null,
+    size: 1,
+    text: type === 'CUSTOM_TEXT' ? 'Eau Froide' : '1',
+  }));
+  const topo = topoFromJson({
+    ...original,
+    segments: [
+      { ...original.segments[0], type: 'WALK', length_in_meters: 70, elements },
+      { ...original.segments[0], type: 'RAPPEL', length_in_meters: 20, elements: [] },
+      { ...original.segments[0], type: 'POOL', length_in_meters: 8, elements: [] },
+    ],
+  });
+  const layout = layoutTopo(topo);
+  const ef = renderTopoSvg(topo, layout, { theme: 'eau_froide', interactive: true });
+
+  assert.equal((ef.match(/class="topo-element"/g) || []).length, ELEMENT_TYPES.length);
+  for (const marker of [
+    'stop-color="#d9dde0"', 'id="topo-marble"', 'url(#topo-marble)', 'class="topo-title-shadow"',
+    'class="topo-cascade"', '#00ffff', '#00ff00', '#ff0000', '#993300', '#800000',
+  ]) {
+    assert.ok(ef.includes(marker), `Marker fehlt: ${marker}`);
+  }
+  assert.equal(/NaN|Infinity/.test(ef), false);
+  assert.equal(ef.includes('>?</text>'), false);
+  assert.equal(ef, renderTopoSvg(topo, layout, { theme: 'eau_froide', interactive: true }), 'nicht deterministisch');
+
+  assert.equal(renderTopoSvg(topo, layout), renderTopoSvg(topo, layout, { theme: 'color' }));
+  for (const theme of ['color', 'bw', 'alpiner_classic']) {
+    const other = renderTopoSvg(topo, layout, { theme });
+    assert.ok(!other.includes('topo-marble') && !other.includes('topo-title-shadow'), `${theme} enthält Eau-Froide-Marker`);
+  }
+});
+
+test('Eau Froide rendert alle Layouts und Papierformate mit allen Elementen', () => {
+  const elements = ELEMENT_TYPES.map((type, index) => ({
+    type,
+    horizontal_start_rel_to_segment_start: index * 0.4 + 1,
+    vertical_start_rel_to_segment_start: 0,
+    horizontal_end_rel_to_segment_start: RANGE_ELEMENT_TYPES.has(type) ? index * 0.4 + 4 : null,
+    vertical_end_rel_to_segment_start: RANGE_ELEMENT_TYPES.has(type) ? 1 : null,
+    size: 1,
+    text: '1',
+  }));
+  const topo = topoFromJson({
+    ...original,
+    segments: [{ ...original.segments[0], type: 'WALK', length_in_meters: 80, elements }],
+  });
+  for (const layout of ['serpentine', 'cascaded', 'linear']) {
+    for (const paper of ['screen', 'a4_landscape', 'a4_portrait']) {
+      const svg = renderTopoSvg(topo, layoutTopo(topo, { layout, paper }), { theme: 'eau_froide', interactive: true });
+      assert.equal((svg.match(/class="topo-element"/g) || []).length, ELEMENT_TYPES.length, `${layout}/${paper}`);
+      assert.equal(/NaN|Infinity/.test(svg), false, `${layout}/${paper}`);
+    }
+  }
 });
 
 /* ------------------------------------------------------- Rappel Guide (RG) */
@@ -853,7 +918,7 @@ test('Rappel Guide rendert in allen Layoutmodi und Papierformaten ohne NaN', () 
   for (const layout of ['serpentine', 'cascaded', 'linear']) {
     for (const paper of ['screen', 'a4_landscape', 'a4_portrait']) {
       const layoutData = layoutTopo(topo, { layout, paper });
-      for (const theme of ['color', 'bw', 'alpiner_classic']) {
+      for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
         const svg = renderTopoSvg(topo, layoutData, { theme, interactive: true });
         assert.ok(svg.includes('>RG<'), `${layout}/${paper}/${theme}: RG fehlt`);
         assert.equal(/NaN|Infinity/.test(svg), false, `${layout}/${paper}/${theme}: NaN/Infinity`);
