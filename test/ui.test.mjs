@@ -272,7 +272,7 @@ test('Alpin klassisch lässt sich auswählen und wird in den Ansichten gespeiche
   );
 });
 
-test('Eau Froide lässt sich auswählen und wird in den Ansichten gespeichert', () => {
+test('Stil Standard (eau_froide) lässt sich auswählen und wird in den Ansichten gespeichert', () => {
   const select = elementById('select-theme');
   select.value = 'eau_froide';
   select.dispatch('change');
@@ -835,7 +835,7 @@ async function restoredAppWith(view, tag) {
     { layout: 'linear', theme: 'eau_froide', paper: 'screen', zoom: 1 },
     'restore-eau-froide',
   );
-  test('Eau Froide wird nach einem Reload wiederhergestellt', () => {
+  test('Stil Standard (eau_froide) wird nach einem Reload wiederhergestellt', () => {
     assert.equal(restoredEau.state.view.theme, 'eau_froide');
     assert.equal(elementById('select-theme').value, 'eau_froide');
     assert.ok(svg().includes('topo-marble'));

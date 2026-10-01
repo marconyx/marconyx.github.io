@@ -767,9 +767,9 @@ test('Alpin klassisch ist ein eigenständiger, vollständiger Renderstil', () =>
   assert.ok(!bw.includes('stop-color="#cbd5d8"'));
 });
 
-test('Eau Froide: Palette, eigene Symbole und Regression der anderen Stile', () => {
-  assert.equal(THEMES.eau_froide.label, 'Eau Froide');
-  assert.match(html, /<option value="eau_froide">Eau Froide<\/option>/);
+test('Stil Standard (eau_froide): Palette, eigene Symbole und Regression der anderen Stile', () => {
+  assert.equal(THEMES.eau_froide.label, 'Standard');
+  assert.match(html, /<option value="eau_froide">Standard<\/option>/);
 
   const elements = ELEMENT_TYPES.map((type, index) => ({
     type,

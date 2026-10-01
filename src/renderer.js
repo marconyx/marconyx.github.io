@@ -64,7 +64,7 @@ export const THEMES = {
     classic: true,
   },
   eau_froide: {
-    label: 'Eau Froide',
+    label: 'Standard',
     terrainTop: '#d9dde0',
     terrainBottom: '#f4f4f4',
     terrainLine: EAU_FROIDE_PALETTE.line,
