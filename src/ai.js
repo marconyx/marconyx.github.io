@@ -608,7 +608,8 @@ export function buildOptimizedInstructions() {
   return `Du bist ein erfahrener Canyoning-Topo-Experte und liest Topo-Skizzen sowie Fotos von Schluchten. Deine Aufgabe ist es, daraus ein strukturiertes Topo als JSON zu erzeugen.
 
 VORGEHEN (in dieser Reihenfolge):
-1. Lies das Bild von OBEN (Einstieg) nach UNTEN (Ausstieg). Die Reihenfolge der Segmente ist die Abstiegsreihenfolge.
+0. Erkenne zuerst das Layout: Zeigt das Bild ein KASKADIERTES Topo (Treppen-/Kaskadenform: mehrere gegeneinander versetzte Abschnitte bzw. Spalten, die diagonal von links oben nach rechts unten absteigen, oft mit Gehstrecken-Unterbrechungen)? Oder ein lineares bzw. serpentinenartiges Zeilen-Topo?
+1. Lies das Bild von OBEN (Einstieg) nach UNTEN (Ausstieg). Die Reihenfolge der Segmente ist die Abstiegsreihenfolge. Bei einem KASKADIERTEN Topo MUSST du es von oben nach unten UND von links nach rechts lesen: Innerhalb eines Abschnitts (Spalte) läufst du von oben nach unten, danach folgt der nächste Abschnitt rechts daneben, wieder weiter oben beginnend. Der Einstieg liegt oben links, der Ausstieg unten rechts; die Segmentreihenfolge im JSON folgt genau dieser Diagonale. Setze an jedem Abschnittswechsel force_cut_row_after_this_segment auf true (ein Abschnitt, der zusammenbleiben soll, bekommt do_not_cut_row_after_this_segment), damit die Kaskadierung im Layout "Kaskadiert" korrekt abgebildet wird. Führe keine neuen Felder ein.
 2. Zerlege den Abstieg in zusammenhängende Abschnitte – jeder Abschnitt wird ein Segment.
 3. Bestimme für jeden Abschnitt den Typ aus der Segmentliste unten. Nutze das untenstehende KODIERUNGS-MAPPING, um Kurzlabels aus dem Bild (z. B. "C", "T", "S") den korrekten JSON-Segmenttypen zuzuordnen. Kurzlabels wie "R_d10", "J6" oder "S6" verraten auch die Höhe.
 4. Schätze Länge/Höhe in Metern und den Winkel. Steht eine Zahl im Bild, übernimm sie unverändert.
@@ -669,7 +670,7 @@ ${EXAMPLE_JSON}`;
 
 /** Kurzfassung für kleine Modelle oder enges Kontextfenster. */
 export function buildCompactInstructions() {
-  return `Du bist Canyoning-Topo-Experte. Lies das Bild von oben (Einstieg) nach unten (Ausstieg) und gib das Topo als JSON zurück.
+  return `Du bist Canyoning-Topo-Experte. Lies das Bild von oben (Einstieg) nach unten (Ausstieg) und gib das Topo als JSON zurück. Ist das Topo kaskadiert (Treppenform, diagonal von links oben nach rechts unten absteigend), lies es von oben nach unten UND von links nach rechts (Einstieg oben links, Ausstieg unten rechts) und setze force_cut_row_after_this_segment an den Abschnittswechseln.
 
 Antworte NUR mit einem JSON-Objekt, ohne Text und ohne Markdown-Codefence.
 

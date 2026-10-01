@@ -428,6 +428,19 @@ test('jede Vorlage hat Id, Label und Hinweis', () => {
   assert.equal(promptTemplateById('gibt-es-nicht').id, 'optimized');
 });
 
+test('Optimiert und Kompakt enthalten die Kaskaden-Leseregel, Legacy bleibt unberührt', () => {
+  const optimized = buildOptimizedInstructions();
+  assert.match(optimized, /KASKADIERTES Topo/);
+  assert.match(optimized, /von oben nach unten UND von links nach rechts/);
+  assert.match(optimized, /force_cut_row_after_this_segment auf true/);
+  assert.ok(optimized.indexOf('0. Erkenne zuerst das Layout') < optimized.indexOf('1. Lies das Bild'));
+  const compact = buildCompactInstructions();
+  assert.match(compact, /kaskadiert/);
+  assert.match(compact, /von links nach rechts/);
+  const legacy = buildPrompt({}, { template: 'legacy' });
+  assert.equal(/kaskadiert|von links nach rechts/i.test(legacy), false);
+});
+
 test('die optimierte Vorlage nennt jeden Segment- und jeden Symboltyp', () => {
   const prompt = buildOptimizedInstructions();
   for (const type of SEGMENT_TYPES) {

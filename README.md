@@ -374,8 +374,8 @@ Der Prompt entscheidet über die Erkennungsqualität mehr als das Modell. Unter
 
 | Vorlage | Wofür |
 |---|---|
-| **Optimiert (empfohlen)** | Standard. Rolle, Schritt-für-Schritt-Vorgehen, priorisiertes Kodierungs-Mapping, vollständiger Typkatalog mit Erkennungsmerkmalen, Einheiten und Wertebereiche, Regeln bei Unsicherheit, Beispiel-JSON. |
-| **Kompakt** | Kurzfassung für kleine Modelle oder enges Kontextfenster. |
+| **Optimiert (empfohlen)** | Standard. Rolle, Schritt-für-Schritt-Vorgehen, priorisiertes Kodierungs-Mapping, vollständiger Typkatalog mit Erkennungsmerkmalen, Layout-Erkennung (bei kaskadierten Topos von oben nach unten und von links nach rechts lesen), Einheiten und Wertebereiche, Regeln bei Unsicherheit, Beispiel-JSON. |
+| **Kompakt** | Kurzfassung für kleine Modelle oder enges Kontextfenster, inkl. Kurzregel zu kaskadierten Topos. |
 | **Bisheriger Prompt** | Der Prompt vor der Überarbeitung — zum Vergleichen. Seine Typlisten sind eingefroren, damit er als Massstab wortgleich bleibt; neue Symbole stehen nur in den aktiven Vorlagen. |
 | **Eigener Prompt** | Freitext, vorbelegt mit der optimierten Vorlage. |
 
