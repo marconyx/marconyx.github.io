@@ -259,6 +259,19 @@ test('die App startet und rendert ein SVG', () => {
   assert.ok(svg().includes(state.topo.canyon_name));
 });
 
+test('Alpin klassisch lässt sich auswählen und wird in den Ansichten gespeichert', () => {
+  const select = elementById('select-theme');
+  select.value = 'alpiner_classic';
+  select.dispatch('change');
+
+  assert.equal(state.view.theme, 'alpiner_classic');
+  assert.ok(svg().includes('stop-color="#cbd5d8"'));
+  assert.equal(
+    JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1')).view.theme,
+    'alpiner_classic',
+  );
+});
+
 /* ------------------------------------------------- Legende: live, wie Name */
 
 test('der Name aktualisiert das Topo sofort beim Tippen', () => {
@@ -793,6 +806,16 @@ async function restoredAppWith(view, tag) {
     assert.equal(restoredCascaded.state.view.layout, 'cascaded');
     assert.equal(elementById('select-layout').value, 'cascaded');
     assert.ok(svg().startsWith('<svg') && !/NaN|Infinity/.test(svg()));
+  });
+
+  const restoredClassic = await restoredAppWith(
+    { layout: 'linear', theme: 'alpiner_classic', paper: 'screen', zoom: 1 },
+    'restore-alpiner-classic',
+  );
+  test('Alpin klassisch wird nach einem Reload samt SVG-Stil wiederhergestellt', () => {
+    assert.equal(restoredClassic.state.view.theme, 'alpiner_classic');
+    assert.equal(elementById('select-theme').value, 'alpiner_classic');
+    assert.ok(svg().includes('stop-color="#cbd5d8"'));
   });
 
   // Ältere Stände kennen nur Serpentine/Linear oder gar kein Layout.

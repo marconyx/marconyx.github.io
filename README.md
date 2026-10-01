@@ -16,10 +16,10 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
   entsteht das neue an derselben Stelle und direkt dahinter in der Reihenfolge —
   sonst in der Segmentmitte und am Ende.
 - **Layout**: Serpentine (automatischer Zeilenumbruch), Kaskadiert (automatische
-  Aufteilung in Spalten) oder Linear, Farbe oder Schwarz/Weiß, Bildschirm / A4 quer /
-  A4 hoch. In der Serpentine bestimmt das Format die nutzbare Zeilenbreite, bei
-  Kaskadiert die Spaltenhöhe — siehe [Zeilenumbruch](#zeilenumbruch) und
-  [Kaskadiert (Spalten)](#kaskadiert-spalten).
+  Aufteilung in Spalten) oder Linear, Farbe, Schwarz/Weiß oder Alpin klassisch,
+  Bildschirm / A4 quer / A4 hoch. In der Serpentine bestimmt das Format die
+  nutzbare Zeilenbreite, bei Kaskadiert die Spaltenhöhe — siehe
+  [Zeilenumbruch](#zeilenumbruch) und [Kaskadiert (Spalten)](#kaskadiert-spalten).
 - **Foto-/PDF-Referenz**: Bild **oder PDF** als halbtransparenten Hintergrund einblenden und
   das Topo darüber nachzeichnen (Deckkraft, Größe, Position regelbar). Bei mehrseitigen PDFs
   lässt sich die Seite auswählen.
@@ -30,6 +30,13 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
 - **Zufall**: Knopf *Zufall* erzeugt per Klick ein vollständiges Demo-Topo — mit
   jedem Segmenttyp und jedem Symbol der Palette mindestens einmal
+
+**Alpin klassisch** ist ein zusätzlicher, optionaler Darstellungsstil mit blaugrauer
+Terrain-Schattierung, feiner dunkler Linienführung, zurückhaltend blauen Wasserflächen
+und kompakter Symbolzeichnung. Er umfasst auch Streckensymbole wie Rappel Guide, Wege
+und Seilgeländer. Wie Layout und Papierformat ist die Stilwahl eine Ansichtspräferenz:
+sie wird im Browser-Autosave gespeichert, aber nicht in die inhaltskompatiblen
+Canyon-Explore-JSON/XML-Dateien geschrieben.
 
 ## Schnellstart
 

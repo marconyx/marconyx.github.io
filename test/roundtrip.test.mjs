@@ -18,7 +18,7 @@ import {
 import { topoFromJson, topoToJsonObject } from '../src/io-json.js';
 import { topoToXml, topoFromXml } from '../src/io-xml.js';
 import { layoutTopo } from '../src/layout.js';
-import { renderTopoSvg } from '../src/renderer.js';
+import { renderTopoSvg, THEMES } from '../src/renderer.js';
 import { SYMBOLS, symbolOptions } from '../src/symbols.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -693,7 +693,7 @@ test('die neuen Symbole überleben JSON- und XML-Roundtrip und rendern im SVG', 
   for (const type of NEW_TYPES) assert.ok(xml.includes(`type="${type}"`), `${type} fehlt im XML`);
   assert.deepEqual(topoToJsonObject(topoFromXml(xml)), input);
 
-  for (const mode of ['color', 'bw']) {
+  for (const mode of ['color', 'bw', 'alpiner_classic']) {
     const svg = renderTopoSvg(topo, layoutTopo(topo), { theme: mode, interactive: true });
     assert.equal(
       (svg.match(/class="topo-element"/g) || []).length,
@@ -703,6 +703,68 @@ test('die neuen Symbole überleben JSON- und XML-Roundtrip und rendern im SVG', 
     assert.equal(/NaN|Infinity/.test(svg), false, `${mode}: ungültige Koordinaten`);
     assert.equal(svg.includes('>?</text>'), false, `${mode}: unbekannter Typ gezeichnet`);
   }
+});
+
+test('Alpin klassisch ist ein eigenständiger, vollständiger Renderstil', () => {
+  assert.equal(THEMES.alpiner_classic.label, 'Alpin klassisch');
+  assert.match(html, /<option value="alpiner_classic">Alpin klassisch<\/option>/);
+
+  const elements = ELEMENT_TYPES.map((type, index) => ({
+    type,
+    horizontal_start_rel_to_segment_start: index * 0.4 + 1,
+    vertical_start_rel_to_segment_start: 0,
+    horizontal_end_rel_to_segment_start: RANGE_ELEMENT_TYPES.has(type)
+      ? index * 0.4 + 4
+      : null,
+    vertical_end_rel_to_segment_start: RANGE_ELEMENT_TYPES.has(type) ? 1 : null,
+    size: 1,
+    text: type === 'CUSTOM_TEXT' ? 'Alpiner Einstieg' : '1',
+  }));
+  const input = {
+    ...original,
+    segments: [{
+      ...original.segments[0],
+      type: 'WALK',
+      length_in_meters: 70,
+      elements,
+    }, {
+      ...original.segments[0],
+      type: 'POOL',
+      length_in_meters: 8,
+      elements: [],
+    }, {
+      ...original.segments[0],
+      type: 'WEIR',
+      length_in_meters: 5,
+      elements: [],
+    }],
+  };
+  const topo = topoFromJson(input);
+  const layout = layoutTopo(topo);
+  const classic = renderTopoSvg(topo, layout, {
+    theme: 'alpiner_classic',
+    interactive: true,
+  });
+
+  assert.equal((classic.match(/class="topo-element"/g) || []).length, ELEMENT_TYPES.length);
+  assert.ok(classic.includes('stop-color="#cbd5d8"'), 'alpiner Terrainfarbton fehlt');
+  assert.ok(classic.includes('fill="#5e8799"'), 'Wasserfarbe fehlt');
+  assert.equal(
+    (classic.match(/fill="#5e8799" stroke="#303a3e" stroke-width="0.1"/g) || []).length,
+    2,
+    'Gumpen und Wehr werden nicht mit dem klassischen Wasserstil gezeichnet',
+  );
+  assert.ok(classic.includes('>RG 1<'), 'Rappel Guide fehlt');
+  assert.ok(classic.includes('font-style="italic"'), 'Freitext ist nicht kursiv');
+  assert.ok(!classic.includes('#1b3fb5'), 'gesättigtes Symbolblau wurde nicht angepasst');
+  assert.equal(/NaN|Infinity/.test(classic), false);
+
+  // Die explizite Farbwahl bleibt exakt der bisherige Default, und S/W wird
+  // durch den zusätzlichen Stil nicht verändert.
+  assert.equal(renderTopoSvg(topo, layout), renderTopoSvg(topo, layout, { theme: 'color' }));
+  const bw = renderTopoSvg(topo, layout, { theme: 'bw' });
+  assert.ok(bw.includes('stop-color="#d8d8d8"'));
+  assert.ok(!bw.includes('stop-color="#cbd5d8"'));
 });
 
 /* ------------------------------------------------------- Rappel Guide (RG) */
@@ -791,7 +853,7 @@ test('Rappel Guide rendert in allen Layoutmodi und Papierformaten ohne NaN', () 
   for (const layout of ['serpentine', 'cascaded', 'linear']) {
     for (const paper of ['screen', 'a4_landscape', 'a4_portrait']) {
       const layoutData = layoutTopo(topo, { layout, paper });
-      for (const theme of ['color', 'bw']) {
+      for (const theme of ['color', 'bw', 'alpiner_classic']) {
         const svg = renderTopoSvg(topo, layoutData, { theme, interactive: true });
         assert.ok(svg.includes('>RG<'), `${layout}/${paper}/${theme}: RG fehlt`);
         assert.equal(/NaN|Infinity/.test(svg), false, `${layout}/${paper}/${theme}: NaN/Infinity`);

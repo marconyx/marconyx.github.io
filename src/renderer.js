@@ -46,12 +46,76 @@ export const THEMES = {
     accent: '#000000',
     background: '#ffffff',
   },
+  alpiner_classic: {
+    label: 'Alpin klassisch',
+    terrainTop: '#cbd5d8',
+    terrainBottom: '#eef1ef',
+    terrainLine: '#303a3e',
+    water: '#5e8799',
+    text: '#252d30',
+    accent: '#303a3e',
+    background: '#fbfbf8',
+    classic: true,
+  },
 };
 
 const LEGEND_LINE_HEIGHT = LEGEND_LINE_HEIGHT_METERS;
 
 const POOL_DEPTH_METERS = 2.2;
 const TERRAIN_DEPTH_METERS = 14;
+const CLASSIC_SYMBOL_COLORS = {
+  '#000': '#303a3e',
+  '#000000': '#303a3e',
+  '#111': '#303a3e',
+  '#111111': '#303a3e',
+  '#14100c': '#303a3e',
+  '#1a1a1a': '#303a3e',
+  '#fff': '#fbfbf8',
+  '#ffffff': '#fbfbf8',
+  '#1b3fb5': '#5e8799',
+  '#1f7a34': '#62766e',
+  '#0b7a45': '#62766e',
+  '#c81e1e': '#76564c',
+  '#c52b24': '#76564c',
+  '#f0b400': '#a18b5d',
+  '#6b3f1d': '#71685d',
+  '#5b4632': '#71685d',
+  '#7a6a58': '#71685d',
+  '#8a7864': '#8a8175',
+  '#b5651d': '#887b68',
+  '#b5451d': '#887b68',
+  '#e8dcb5': '#d7dddc',
+  '#8d8d8d': '#899195',
+  '#9a9a9a': '#899195',
+  '#b9b2a6': '#aeb5b6',
+  '#cfcfcf': '#d7dddc',
+  '#d7d4c9': '#d7dddc',
+  '#92918a': '#aeb5b6',
+  '#bcbab1': '#c5cccb',
+  '#aab9c6': '#aebbc0',
+  '#71889a': '#84979e',
+  '#899eae': '#aebbc0',
+  '#768898': '#84979e',
+  '#52687a': '#677a82',
+  '#7a7a7a': '#899195',
+  '#555': '#56666c',
+  '#777': '#68767b',
+  '#888': '#778388',
+  '#aaa': '#aeb5b6',
+  '#bbb': '#c5cccb',
+  '#ddd': '#d7dddc',
+  '#eee': '#eef1ef',
+};
+
+function classicSymbolStyle(svg) {
+  return svg
+    .replace(/#[\da-f]{3,8}(?=["'])/gi, (color) =>
+      CLASSIC_SYMBOL_COLORS[color.toLowerCase()] || color,
+    )
+    .replace(/stroke-width="([\d.]+)"/g, (_match, value) =>
+      `stroke-width="${Number((Number(value) * 0.82).toFixed(3))}"`,
+    );
+}
 
 function segmentLabelText(segment) {
   const config = SEGMENT_LABELS[segment.type];
@@ -119,8 +183,9 @@ function labelBoxFor(placement, theme) {
   const width = 0.62 * text.length + 0.7;
   return `
     <g transform="translate(${midX},${midY})">
-      <rect x="${-width / 2}" y="-0.85" width="${width}" height="1.7" rx="0.18"
-            fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.09"/>
+      <rect x="${-width / 2}" y="-0.85" width="${width}" height="1.7"
+            rx="${theme.classic ? 0 : 0.18}" fill="${theme.background}"
+            stroke="${theme.terrainLine}" stroke-width="${theme.classic ? 0.07 : 0.09}"/>
       <text x="0" y="0.45" font-size="1.15" text-anchor="middle" fill="${theme.text}">${esc(info.base)}<tspan font-size="0.75" dy="0.25">${esc(info.sub)}</tspan><tspan dy="-0.25">${esc(info.value)}</tspan></text>
     </g>`;
 }
@@ -157,11 +222,22 @@ function renderElement(placed, theme, options = {}) {
 
   if (symbol && symbol.range) {
     if (!endPoint) return '';
-    return `<g${hooks} fill="${theme.text}" stroke-linejoin="round">${symbol.render(point, endPoint, { size, element, color: theme.accent })}</g>`;
+    const drawing = symbol.render(point, endPoint, { size, element, color: theme.accent });
+    const styledDrawing = theme.classic ? classicSymbolStyle(drawing) : drawing;
+    return `<g${hooks} fill="${theme.text}" stroke-linejoin="round">${styledDrawing}</g>`;
   }
-  const body = symbol
-    ? symbol.render(element, options.theme === 'bw' ? 'bw' : 'color')
+  let body = symbol
+    ? symbol.render(
+        element,
+        options.theme === 'bw' ? 'bw' : 'color',
+      )
     : renderUnknownSymbol(element);
+  if (theme.classic) {
+    body = classicSymbolStyle(body);
+    if (element.type === 'CUSTOM_TEXT') {
+      body = body.replace(/<text\b/g, '<text font-style="italic"');
+    }
+  }
   const halo = selected
     ? `<circle cx="0" cy="0" r="${1.6}" fill="none" stroke="#1668dc" stroke-width="0.22"/>`
     : '';
