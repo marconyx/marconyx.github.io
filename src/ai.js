@@ -552,11 +552,11 @@ const EXAMPLE_JSON = `{
   "legend_offset_top": 0,
   "segments": [
     { "type": "WALK", "length_in_meters": 40, "angle_in_degrees": 0,
-      "duration_to_walk_in_min": 10, "wall_distance_in_meters": 0,
+      "duration_to_walk_in_min": 10, "wall_distance_in_meters": 0, "depth_in_meters": null,
       "do_not_cut_row_after_this_segment": false,
       "force_cut_row_after_this_segment": false, "elements": [] },
     { "type": "RAPPEL_WET", "length_in_meters": 25, "angle_in_degrees": 95,
-      "duration_to_walk_in_min": null, "wall_distance_in_meters": 3,
+      "duration_to_walk_in_min": null, "wall_distance_in_meters": 3, "depth_in_meters": null,
       "do_not_cut_row_after_this_segment": false,
       "force_cut_row_after_this_segment": false,
       "elements": [
@@ -584,6 +584,7 @@ const SCHEMA_BLOCK = `{
       "angle_in_degrees": number,          // 0 = flach, 90 = senkrecht, >90 = überhängend
       "duration_to_walk_in_min": number|null,  // nur bei WALK sinnvoll
       "wall_distance_in_meters": number,       // nur bei RAPPEL*, 0 = Seil liegt an der Wand
+      "depth_in_meters": number|null,          // nur bei POOL, null = unbekannt
       "do_not_cut_row_after_this_segment": boolean,
       "force_cut_row_after_this_segment": boolean,
       "elements": [
@@ -621,6 +622,7 @@ Wenn du im Bild folgende Buchstaben/Labels siehst, ordne sie ZWINGEND so zu. Die
 
 C (Cascade) → RAPPEL_WET (Wasserfall-Abseilen/Abfahrt)
 T / TP (Toboggan) → SLIDE (Rutsche)
+Ausnahme: "T 4 m" an einer Gumpe bezeichnet deren Tiefe (POOL, depth_in_meters), keine Rutsche.
 R / Rd / Rw → RAPPEL / RAPPEL_DRY / RAPPEL_WET
 MC (Main-Courante) → Elementtyp ROPE_RAILING_LEFT oder ROPE_RAILING_RIGHT (je nach Lage)
 RG (Rappel Guide) → Elementtyp RAPPEL_GUIDE
@@ -652,6 +654,7 @@ EINHEITEN UND WERTEBEREICHE:
 - length_in_meters: > 0. Abseilstellen typisch 3–120, Sprünge 2–15, Rutschen 3–30, Gehstrecken 5–500.
 - angle_in_degrees: 0 = flach, 90 = senkrecht, >90 = ÜBERHÄNGEND (nur bei RAPPEL* sinnvoll, typisch bis 115).
 - wall_distance_in_meters: nur bei RAPPEL, RAPPEL_DRY, RAPPEL_WET; 0 = Seil liegt an der Wand, sonst typisch 1–10. Bei allen anderen Typen 0.
+- depth_in_meters: nur bei POOL und nur wenn die Tiefe im Topo explizit angegeben ist; Zahl >= 0, sonst null (unbekannt). Bei allen anderen Typen immer null. Nicht aus der gezeichneten Gumpenform oder einem Foto schätzen.
 - duration_to_walk_in_min: beim Segment nur bei WALK, sonst null. Beim Element nur bei ${[...WALK_TIME_ELEMENT_TYPES].join(', ')} – geschätzte Gehzeit in Minuten vom Fluchtweg bis zum sicheren Ort, sonst null.
 - size: 1 = normal, 0.5–2 sind sinnvolle Abweichungen.
 - do_not_cut_row_after_this_segment / force_cut_row_after_this_segment: Zeilenumbruch des Topos. Im Zweifel beide false und NIE beide zugleich true am selben Segment.
@@ -675,7 +678,7 @@ export function buildCompactInstructions() {
 Antworte NUR mit einem JSON-Objekt, ohne Text und ohne Markdown-Codefence.
 
 Schema: canyon_name, author, duration, date ("YYYY-MM-DD"), maximum_walk_length (30), distance_of_single_line (60), legend_offset_top (0), segments[].
-Segment: type, length_in_meters, angle_in_degrees, duration_to_walk_in_min (nur WALK, sonst null), wall_distance_in_meters (nur RAPPEL*, sonst 0), do_not_cut_row_after_this_segment, force_cut_row_after_this_segment, elements[].
+Segment: type, length_in_meters, angle_in_degrees, duration_to_walk_in_min (nur WALK, sonst null), wall_distance_in_meters (nur RAPPEL*, sonst 0), depth_in_meters (number|null, nur POOL), do_not_cut_row_after_this_segment, force_cut_row_after_this_segment, elements[].
 Element: type, horizontal_start_rel_to_segment_start, vertical_start_rel_to_segment_start, horizontal_end_rel_to_segment_start, vertical_end_rel_to_segment_start, size, text, dead, duration_to_walk_in_min.
 
 Segmenttypen: ${SEGMENT_TYPES.join(', ')}.
@@ -684,6 +687,7 @@ Streckenelemente (alle vier Koordinaten als Zahl): ${[...RANGE_ELEMENT_TYPES].jo
 Alle übrigen Elemente setzen beide End-Koordinaten auf null.
 "dead": true nur bei ${[...DEAD_CAPABLE_ELEMENT_TYPES].join(', ')} (kahler, toter Baum).
 "duration_to_walk_in_min" beim Element nur bei ${[...WALK_TIME_ELEMENT_TYPES].join(', ')} (Gehzeit in Minuten bis zum sicheren Ort), sonst null.
+"depth_in_meters": nur bei POOL und nur wenn die Tiefe im Topo explizit angegeben ist; Zahl >= 0, sonst null (unbekannt). Bei allen anderen Typen immer null. Nicht aus Gumpenform oder Foto schätzen. "T 4 m" an einer Gumpe ist eine Tiefe, keine Rutsche.
 
 Regeln: Segmente in Abstiegsreihenfolge. Elementkoordinaten lokal pro Segment in Meter, horizontal entlang, vertical quer (positiv = links der Laufrichtung). angle 0 = flach, 90 = senkrecht, >90 = überhängend. Zahlen aus dem Bild ("R_d10", "J6") übernehmen. Nur Typen aus den Listen, nichts erfinden, im Zweifel weglassen. Kein Topo erkennbar: leeres "segments"-Array.`;
 }

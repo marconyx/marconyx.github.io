@@ -12,6 +12,7 @@
  * wie ein Import (`normalizeTopo`).
  */
 import {
+  DEPTH_SEGMENT_TYPES,
   RANGE_ELEMENT_TYPES,
   SEGMENT_TYPES,
   WALK_TIME_ELEMENT_TYPES,
@@ -251,6 +252,10 @@ export function createRandomTopo(options = {}) {
       wall_distance_in_meters: WALL_DISTANCE_SEGMENT_TYPES.has(type)
         ? between(rng, 0, 7)
         : 0,
+      depth_in_meters:
+        DEPTH_SEGMENT_TYPES.has(type) && chance(rng, 0.5)
+          ? between(rng, 1, 8)
+          : null,
       do_not_cut_row_after_this_segment: false,
       force_cut_row_after_this_segment: false,
       elements: [],

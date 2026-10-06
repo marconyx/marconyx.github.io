@@ -3,6 +3,7 @@
  *   node test/layout.test.mjs
  */
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -26,6 +27,8 @@ import {
   legendPanelTopMeters,
   paperAspectRatio,
   PAPER_PRESETS,
+  poolDepthLabelFor,
+  poolDrawingDepthOf,
 } from '../src/sheet.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -1056,6 +1059,85 @@ test('Serpentine und Linear bleiben vom neuen Modus unberührt', () => {
     // Das Gelände der Serpentine reicht weiterhin über die volle Blattbreite.
     assert.ok(svg.includes(`L ${bounds.maxX} `) && svg.includes(`L ${bounds.minX} `));
   }
+});
+
+test('ohne Gumpentiefe bleiben alle Layouts und Renderstile byte-identisch', () => {
+  const topo = normalizeTopo(example);
+  const layouts = [];
+  const svgs = [];
+  for (const layout of LAYOUT_MODES) {
+    for (const paper of Object.keys(PAPER_PRESETS)) {
+      const data = layoutTopo(topo, { layout, paper });
+      layouts.push(JSON.stringify(data, (key, value) => key === 'segment' ? undefined : value));
+      for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
+        svgs.push(renderTopoSvg(topo, data, { theme, paper }));
+      }
+    }
+  }
+  const hash = (values) => createHash('sha256').update(values.join('\n')).digest('hex');
+  assert.equal(hash(layouts), 'f710d25f6f14cda59838ff8165e55acb454526d09c576151b0e575eff83ac03c');
+  assert.equal(hash(svgs), '83754da120f1d52690ac62246fdafe1c174860c075470b85a103090461e4a904');
+});
+
+test('Gumpen-Zeichentiefe skaliert gedämpft und begrenzt, WEIR bleibt unverändert', () => {
+  for (const [depth, expected] of [[null, 2.2], [0, 1.2], [0.1, 1.2], [2.5, 2], [4, 2.6], [8, 4.2], [10, 5], [100, 5]]) {
+    const topo = flatTopo(1, 8, { 0: { depth_in_meters: depth } });
+    assert.equal(poolDrawingDepthOf(topo.segments[0]), expected);
+    const data = layoutTopo(topo);
+    const p = data.placements[0];
+    const curve = `Q ${(p.start.x + p.end.x) / 2} ${Math.max(p.start.y, p.end.y) + expected} ${p.end.x} ${p.end.y}`;
+    const svg = renderTopoSvg(topo, data);
+    assert.equal(svg.split(curve).length - 1, 3, 'Gelände, Geländelinie und Wasser müssen dieselbe Tiefe verwenden');
+    assert.equal(svg.includes('topo-pool-depth'), depth !== null);
+    if (depth !== null) assert.ok(svg.includes(`>T ${depth} m</text>`));
+  }
+  const weir = flatTopo(1, 8, { 0: { type: 'WEIR', depth_in_meters: 100 } });
+  assert.equal(poolDrawingDepthOf(weir.segments[0]), 2.2);
+  assert.equal(renderTopoSvg(weir, layoutTopo(weir)).includes('topo-pool-depth'), false);
+});
+
+test('Gumpentiefe und Label passen in alle Layout-/Papiermodi ohne Zeilenkollision', () => {
+  for (const mode of LAYOUT_MODES) {
+    for (const paper of Object.keys(PAPER_PRESETS)) {
+      for (const angle of [-20, 0, 20]) {
+        const topo = flatTopo(4, 8, {
+          0: { depth_in_meters: 2.5, angle_in_degrees: angle, force_cut_row_after_this_segment: true },
+          1: { depth_in_meters: 100, angle_in_degrees: angle, force_cut_row_after_this_segment: true },
+          2: { depth_in_meters: 4, angle_in_degrees: angle, force_cut_row_after_this_segment: true },
+          3: { depth_in_meters: 0, angle_in_degrees: angle },
+        });
+        const data = layoutTopo(topo, { layout: mode, paper });
+        const bounds = contentBoundsFor(topo, data);
+        for (const p of data.placements) {
+          const label = poolDepthLabelFor(p);
+          const row = data.rows[p.rowIndex];
+          assert.ok(label.y + 0.3 <= row.bottom + 1e-9, 'Label ragt aus der Zeile');
+          assert.ok(Math.max(p.start.y, p.end.y) + poolDrawingDepthOf(p.segment) / 2 <= row.bottom);
+          assert.ok(label.x - label.halfWidth >= bounds.minX && label.x + label.halfWidth <= bounds.maxX);
+          assert.ok(label.y < bounds.maxY);
+        }
+        if (mode === 'serpentine') {
+          for (let index = 1; index < data.rows.length; index += 1) {
+            assert.ok(data.rows[index - 1].bottom + 14 < data.rows[index].top, 'Gelände ragt in nächste Zeile');
+          }
+        }
+        for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
+          const svg = renderTopoSvg(topo, data, { theme, paper });
+          assert.equal((svg.match(/class="topo-pool-depth"/g) || []).length, 4);
+          for (const text of ['T 2.5 m', 'T 100 m', 'T 4 m', 'T 0 m']) assert.ok(svg.includes(`>${text}</text>`));
+          assert.equal(/NaN|Infinity/.test(svg), false);
+        }
+      }
+    }
+  }
+  const unknown = layoutTopo(flatTopo(2, 8, { 0: { force_cut_row_after_this_segment: true } }));
+  const shallow = layoutTopo(flatTopo(2, 8, { 0: { depth_in_meters: 1, force_cut_row_after_this_segment: true } }));
+  const deep = layoutTopo(flatTopo(2, 8, { 0: { depth_in_meters: 100, force_cut_row_after_this_segment: true } }));
+  assert.ok(deep.rows[1].offsetY > shallow.rows[1].offsetY);
+  assert.ok(shallow.rows[1].offsetY > unknown.rows[1].offsetY);
+  const unknownColumns = layoutTopo(flatTopo(4), { layout: 'cascaded' });
+  const depthColumns = layoutTopo(flatTopo(4, 10, Object.fromEntries([0, 1, 2, 3].map((index) => [index, { depth_in_meters: 8 }]))), { layout: 'cascaded' });
+  assert.ok(depthColumns.height > unknownColumns.height, 'Spaltenhöhenbedarf ignoriert Tiefe');
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);

@@ -7,15 +7,18 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 import {
   ELEMENT_TYPES,
+  DEPTH_SEGMENT_TYPES,
+  SEGMENT_TYPES,
   RANGE_ELEMENT_TYPES,
   WALL_DISTANCE_SEGMENT_TYPES,
   normalizeTopo,
   validateTopo,
 } from '../src/model.js';
-import { topoFromJson, topoToJsonObject } from '../src/io-json.js';
+import { topoFromJson, topoToJson, topoToJsonObject } from '../src/io-json.js';
 import { topoToXml, topoFromXml } from '../src/io-xml.js';
 import { layoutTopo } from '../src/layout.js';
 import { renderTopoSvg, THEMES } from '../src/renderer.js';
@@ -959,6 +962,65 @@ test('Rappel Guide überlebt JSON-, XML- und XSD-Roundtrip', () => {
   if (result.error?.code !== 'ENOENT') {
     assert.equal(result.status, 0, result.stderr);
   }
+});
+
+test('Gumpentiefe ist optional, nicht negativ und nur bei POOL erlaubt', () => {
+  assert.deepEqual([...DEPTH_SEGMENT_TYPES], ['POOL']);
+  for (const type of [...SEGMENT_TYPES, 'UNKNOWN']) {
+    const segment = normalizeTopo({ segments: [{ type, depth_in_meters: '2.5' }] }).segments[0];
+    assert.equal(segment.depth_in_meters, type === 'POOL' ? 2.5 : null, type);
+    assert.equal(segment._extra?.depth_in_meters, undefined);
+    if (type !== 'POOL') {
+      assert.equal('depth_in_meters' in topoToJsonObject({ ...normalizeTopo(original), segments: [segment] }).segments[0], false);
+      assert.equal(topoToXml({ ...normalizeTopo(original), segments: [segment] }).includes('depth_in_meters'), false);
+    }
+  }
+  for (const value of [undefined, null, '', '  ', -1, '-2', 'x', NaN, Infinity, true, [], {}]) {
+    const topo = normalizeTopo({ segments: [{ type: 'POOL', depth_in_meters: value }] });
+    assert.equal(topo.segments[0].depth_in_meters, null, String(value));
+  }
+});
+
+test('Gumpentiefe überlebt JSON/XML/XSD inklusive 0 und Dezimalwerten', () => {
+  assert.match(readFileSync(xsdPath, 'utf8'), /<xs:attribute name="depth_in_meters" type="xs:decimal"\s*\/>/);
+  for (const depth of [0, 2.5, 4, 8]) {
+    const topo = normalizeTopo({
+      ...original,
+      segments: [{ type: 'POOL', length_in_meters: 8, depth_in_meters: depth }],
+    });
+    assert.deepEqual(validateTopo(topo), []);
+    const json = topoToJson(topo);
+    const xml = topoToXml(topo);
+    assert.equal(topoToJsonObject(topo).segments[0].depth_in_meters, depth);
+    assert.match(xml, new RegExp(`depth_in_meters="${depth}"`));
+    assert.equal(topoFromJson(json).segments[0].depth_in_meters, depth);
+    assert.equal(topoFromXml(xml).segments[0].depth_in_meters, depth);
+    assert.equal(topoToJson(topoFromXml(xml)), json);
+    const result = spawnSync('xmllint', ['--noout', '--schema', xsdPath, '-'], {
+      encoding: 'utf8', input: xml,
+    });
+    if (result.error?.code !== 'ENOENT') {
+      assert.equal(result.status, 0, result.stderr);
+    }
+    for (const [type, value, expected] of [
+      ['POOL', '-1', null], ['POOL', 'x', null], ['POOL', '', null],
+      ['POOL', '2.5', 2.5], ['WEIR', '8', null], ['RAPPEL', '4', null],
+    ]) {
+      assert.equal(
+        topoFromXml(xml.replace('type="POOL"', `type="${type}"`).replace(`depth_in_meters="${depth}"`, `depth_in_meters="${value}"`)).segments[0].depth_in_meters,
+        expected,
+      );
+    }
+  }
+});
+
+test('ohne Gumpentiefe bleiben JSON/XML byte-identisch zum bisherigen Export', () => {
+  const topo = normalizeTopo(original);
+  const hash = (text) => createHash('sha256').update(text).digest('hex');
+  assert.equal(hash(topoToJson(topo)), 'df52bf90fa40d86e5ef0f44ebb3bc7a4a515f3d57c6daa8df2357f89baacd8db');
+  assert.equal(hash(topoToXml(topo)), '920a47247cf8c21b2e1f0262f12bd33b547f5c7aff12fadfe4d841f3e336f4bf');
+  assert.equal(topoToJson(topo).includes('depth_in_meters'), false);
+  assert.equal(topoToXml(topo).includes('depth_in_meters'), false);
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);

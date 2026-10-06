@@ -596,6 +596,60 @@ test('ein Typwechsel weg vom Abseilen räumt die Wanddistanz auf', () => {
 
 /* ---------------------------------------------------------------- Gehzeit */
 
+test('Tiefe (m) erscheint nur bei POOL', () => {
+  selectFirstSegmentAs('POOL');
+  assert.ok(inspectorHas('segment-depth'));
+  assert.ok(inspectorHasField('Tiefe (m)'));
+  assert.equal(elementById('segment-depth').type, 'number');
+  assert.equal(elementById('segment-depth').min, '0');
+  for (const type of ['WALK', 'RAPPEL', 'RAPPEL_DRY', 'RAPPEL_WET', 'JUMP', 'SLIDE', 'CLIMB', 'WEIR']) {
+    selectFirstSegmentAs(type);
+    assert.equal(inspectorHas('segment-depth'), false, type);
+  }
+});
+
+test('Tiefe wirkt sofort auf die Gumpe; leer, negativ und ungültig bedeuten unbekannt', () => {
+  selectFirstSegmentAs('POOL');
+  state.topo.segments[0].depth_in_meters = null;
+  elementById('topo-name').dispatch('input');
+  const before = svg();
+  const input = elementById('segment-depth');
+  assert.equal(input.value, '');
+  input.value = '8';
+  input.dispatch('change');
+  assert.equal(state.topo.segments[0].depth_in_meters, 8);
+  assert.ok(svg().includes('>T 8 m</text>'));
+  assert.notEqual(svg().replace(/<text class="topo-pool-depth"[^>]*>.*?<\/text>/g, ''), before);
+  for (const value of ['', '-5', 'x']) {
+    input.value = value;
+    input.dispatch('change');
+    assert.equal(state.topo.segments[0].depth_in_meters, null);
+    assert.equal(svg(), before, 'unbekannte Tiefe muss ursprüngliches Rendering wiederherstellen');
+  }
+  input.value = '0';
+  input.dispatch('change');
+  assert.equal(state.topo.segments[0].depth_in_meters, 0);
+  assert.ok(svg().includes('>T 0 m</text>'));
+});
+
+test('Typwechsel weg von POOL löscht Tiefe auch bei Rückwechsel', () => {
+  selectFirstSegmentAs('POOL');
+  const input = elementById('segment-depth');
+  input.value = '4';
+  input.dispatch('change');
+  const select = elementById('inspector').descendants().find((node) => node.tagName === 'SELECT');
+  select.value = 'WEIR';
+  select.dispatch('change');
+  assert.equal(state.topo.segments[0].depth_in_meters, null);
+  assert.equal(inspectorHas('segment-depth'), false);
+  assert.equal(svg().includes('topo-pool-depth'), false);
+  const back = elementById('inspector').descendants().find((node) => node.tagName === 'SELECT');
+  back.value = 'POOL';
+  back.dispatch('change');
+  assert.equal(state.topo.segments[0].depth_in_meters, null);
+  assert.equal(elementById('segment-depth').value, '');
+});
+
 /** Sucht ein Inspector-Feld über seinen Labeltext (viele Felder haben keine ID). */
 function inspectorHasField(labelText) {
   return elementById('inspector')

@@ -3,6 +3,7 @@
  */
 import {
   DEAD_CAPABLE_ELEMENT_TYPES,
+  DEPTH_SEGMENT_TYPES,
   SEGMENT_TYPES,
   WALK_TIME_ELEMENT_TYPES,
   WALK_TIME_SEGMENT_TYPES,
@@ -306,6 +307,9 @@ function renderInspector() {
           if (!WALL_DISTANCE_SEGMENT_TYPES.has(value)) {
             segment.wall_distance_in_meters = 0;
           }
+          if (!DEPTH_SEGMENT_TYPES.has(value)) {
+            segment.depth_in_meters = null;
+          }
         }),
         true,
       ),
@@ -342,6 +346,22 @@ function renderInspector() {
                 },
                 0.5,
                 { id: 'segment-wall-distance', min: 0 },
+              ),
+            ),
+          ]
+        : []),
+      ...(DEPTH_SEGMENT_TYPES.has(segment.type)
+        ? [
+            field(
+              'Tiefe (m)',
+              numberInput(
+                segment.depth_in_meters,
+                (value) => {
+                  segment.depth_in_meters =
+                    !Number.isFinite(value) || value < 0 ? null : value;
+                },
+                0.5,
+                { id: 'segment-depth', min: 0 },
               ),
             ),
           ]

@@ -126,6 +126,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `angle_in_degrees` | 0 = flach nach rechts, 90 = senkrecht nach unten, > 90 = überhängender Untergrund; bei RAPPEL bleibt der Abseilpfeil senkrecht |
 | `duration_to_walk_in_min` | optionale Gehzeit; im Inspector nur bei `WALK` sichtbar (siehe [Gehzeit](#gehzeit)) |
 | `wall_distance_in_meters` | nur `RAPPEL`, `RAPPEL_DRY`, `RAPPEL_WET`: grösster Abstand zwischen frei hängendem Seil und Wand; 0 = Seil liegt an (siehe [Wanddistanz](#wanddistanz)) |
+| `depth_in_meters` | optionale Gumpentiefe, nur `POOL`: `null` = unbekannt, Zahl >= 0 (siehe [Gumpentiefe](#gumpentiefe)) |
 | `do_not_cut_row_after_this_segment` | harte Keep-Together-Regel: hält dieses und das folgende Segment in derselben Zeile |
 | `force_cut_row_after_this_segment` | harte Trennstelle: die Zeile endet nach diesem Segment |
 | `elements` | Symbole auf diesem Segment |
@@ -301,6 +302,23 @@ abgeschnitten. Der Wert ist nie negativ, und `0` bedeutet „Seil liegt an der
 Wand" – dann wird die Wand wie bisher als Gerade gezeichnet. Nur Werte grösser 0
 werden in JSON/XML geschrieben, ältere Dateien bleiben damit byte-identisch. Ein
 Typwechsel weg vom Abseilen setzt den Wert zurück.
+
+### Gumpentiefe
+
+Bei `POOL` zeigt der Inspector **Tiefe (m)**. Leer bedeutet unbekannt (`null`);
+negative oder ungültige Werte werden ebenfalls `null`, Zahlen als Text werden
+akzeptiert. Ein Typwechsel weg von `POOL` löscht die Tiefe.
+Nur gesetzte Werte (auch `0`) werden in JSON/XML geschrieben; ohne Tiefe bleiben
+Dateien, Zeichnung und Layout unverändert.
+
+Eine bekannte Tiefe wird in allen Stilen als **T 4 m** bzw. **T 2.5 m** unter der
+Gumpe beschriftet. Die Zeichnung skaliert gedämpft: Der Kontrollpunkt der
+Gumpenkurve liegt um `clamp(1 + 0.4 * Tiefe, 1.2, 5)` Meter tiefer; die
+quadratische Kurve selbst ist flacher. Der Platz für Gumpe und Beschriftung wird
+im Layout berücksichtigt. Ohne Angabe bleibt die bisherige Zeichentiefe `2.2`,
+ebenso bei `WEIR`. Die AI übernimmt nur explizit im Topo angegebene Tiefen, sie
+schätzt keine; die historische Prompt-Vorlage bleibt unverändert.
+Zufalls-Topos enthalten gelegentlich Gumpentiefen von 1 bis 8 Metern.
 
 ### XML
 

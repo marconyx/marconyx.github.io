@@ -474,6 +474,26 @@ test('die optimierte Vorlage erklärt die Gehzeit von Segment und Fluchtweg', ()
   assert.match(buildOptimizedInstructions(), /beim Segment nur bei WALK/);
 });
 
+test('AI-Prompts übernehmen nur explizite POOL-Tiefen; Normalisierung erhält das Feld', () => {
+  for (const prompt of [buildOptimizedInstructions(), buildCompactInstructions()]) {
+    assert.match(prompt, /depth_in_meters/);
+    assert.match(prompt, /nur bei POOL und nur wenn die Tiefe im Topo explizit angegeben ist/);
+    assert.match(prompt, /sonst null \(unbekannt\)/);
+    assert.match(prompt, /Bei allen anderen Typen immer null/);
+    assert.match(prompt, /keine Rutsche/);
+  }
+  const topo = sanitizeTopoCandidate({
+    segments: [
+      { type: 'POOL', depth_in_meters: '2.5' },
+      { type: 'POOL', depth_in_meters: 0 },
+      { type: 'POOL', depth_in_meters: -1 },
+      { type: 'POOL' },
+      { type: 'WEIR', depth_in_meters: 4 },
+    ],
+  });
+  assert.deepEqual(topo.segments.map((segment) => segment.depth_in_meters), [2.5, 0, null, null, null]);
+});
+
 test('die optimierte Vorlage erklärt Rolle, Vorgehen, Einheiten und Ausgabe', () => {
   const prompt = buildOptimizedInstructions();
   assert.match(prompt, /Canyoning-Topo-Experte/);

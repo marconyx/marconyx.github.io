@@ -53,6 +53,9 @@ export function topoToJsonObject(topo) {
       if (segment.wall_distance_in_meters > 0) {
         segmentOut.wall_distance_in_meters = segment.wall_distance_in_meters;
       }
+      if (segment.depth_in_meters != null) {
+        segmentOut.depth_in_meters = segment.depth_in_meters;
+      }
       return Object.assign(segmentOut, segment._extra || {});
     }),
   });

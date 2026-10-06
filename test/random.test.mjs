@@ -165,6 +165,24 @@ test('das letzte Segment trägt keine Umbruch-Flags', () => {
   }
 });
 
+test('Zufalls-Gumpentiefen sind gelegentlich gesetzt, nur bei POOL und plausibel', () => {
+  let known = 0;
+  let unknown = 0;
+  for (let seed = 1; seed <= 100; seed += 1) {
+    for (const segment of createRandomTopo({ seed }).segments) {
+      if (segment.type !== 'POOL') {
+        assert.equal(segment.depth_in_meters, null);
+      } else if (segment.depth_in_meters === null) {
+        unknown += 1;
+      } else {
+        known += 1;
+        assert.ok(segment.depth_in_meters >= 1 && segment.depth_in_meters <= 8);
+      }
+    }
+  }
+  assert.ok(known > 0 && unknown > 0, 'bekannte und unbekannte Tiefen müssen vorkommen');
+});
+
 test('Winkel und Wanddistanz bleiben fachlich plausibel', () => {
   let overhangs = 0;
   for (let seed = 1; seed <= 25; seed += 1) {

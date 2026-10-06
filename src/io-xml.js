@@ -83,6 +83,7 @@ export function topoToXml(topo) {
           ? segment.wall_distance_in_meters
           : null,
       ],
+      ['depth_in_meters', segment.depth_in_meters],
       ...SEGMENT_BOOL_FIELDS.map((field) => [field, segment[field]]),
       ...extraAttr(segment),
     ]);
@@ -190,6 +191,7 @@ export function topoFromXml(xml) {
           tag.attributes.wall_distance_in_meters,
         );
       }
+      currentSegment.depth_in_meters = tag.attributes.depth_in_meters;
       for (const field of SEGMENT_BOOL_FIELDS) {
         currentSegment[field] = tag.attributes[field] === 'true';
       }

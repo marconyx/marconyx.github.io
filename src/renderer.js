@@ -13,6 +13,7 @@ import {
   PAPER_PRESETS,
   contentBoundsFor,
   fitBoundsToPaper,
+  formatNumber,
   LEGEND_LINE_HEIGHT_METERS,
   legendEntriesFor,
   legendFooterLinesFor,
@@ -21,6 +22,8 @@ import {
   legendPanelWidthMeters,
   legendTitleWidthMeters,
   paperPreset,
+  poolDepthLabelFor,
+  poolDrawingDepthOf,
 } from './sheet.js';
 
 export { PAPER_PRESETS };
@@ -105,7 +108,6 @@ const MARBLE_PATTERN = `<pattern id="topo-marble" patternUnits="userSpaceOnUse" 
 
 const LEGEND_LINE_HEIGHT = LEGEND_LINE_HEIGHT_METERS;
 
-const POOL_DEPTH_METERS = 2.2;
 const TERRAIN_DEPTH_METERS = 14;
 const CLASSIC_SYMBOL_COLORS = {
   '#000': '#303a3e',
@@ -171,10 +173,6 @@ function segmentLabelText(segment) {
   };
 }
 
-function formatNumber(value) {
-  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(1)));
-}
-
 function groundPathFor(row) {
   const commands = [];
   row.placements.forEach((placement, index) => {
@@ -182,7 +180,7 @@ function groundPathFor(row) {
     if (index === 0) commands.push(`M ${start.x} ${start.y}`);
     if (WATER_SEGMENT_TYPES.has(placement.segment.type)) {
       const midX = (start.x + end.x) / 2;
-      const midY = Math.max(start.y, end.y) + POOL_DEPTH_METERS;
+      const midY = Math.max(start.y, end.y) + poolDrawingDepthOf(placement.segment);
       commands.push(`Q ${midX} ${midY} ${end.x} ${end.y}`);
     } else if (placement.wallBulge) {
       // Frei hängendes Abseilen: die Wand weicht gerundet zurück.
@@ -198,7 +196,7 @@ function groundPathFor(row) {
 function waterShapeFor(placement) {
   const { start, end } = placement;
   const midX = (start.x + end.x) / 2;
-  const midY = Math.max(start.y, end.y) + POOL_DEPTH_METERS;
+  const midY = Math.max(start.y, end.y) + poolDrawingDepthOf(placement.segment);
   const surfaceY = Math.min(start.y, end.y);
   return `M ${start.x} ${start.y} Q ${midX} ${midY} ${end.x} ${end.y} L ${end.x} ${surfaceY} L ${start.x} ${surfaceY} Z`;
 }
@@ -207,6 +205,12 @@ function cascadePathFor(placement) {
   const { start, end, wallBulge } = placement;
   if (wallBulge) return `M ${start.x} ${start.y} Q ${wallBulge.control.x} ${wallBulge.control.y} ${end.x} ${end.y}`;
   return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+}
+
+function depthLabelFor(placement, theme) {
+  const label = poolDepthLabelFor(placement);
+  if (!label) return '';
+  return `<text class="topo-pool-depth" x="${label.x}" y="${label.y}" font-size="0.85" text-anchor="middle" fill="${theme.text}"${theme.classic ? ' font-style="italic"' : ''} stroke="${theme.background}" stroke-width="${theme.eauFroide ? 0.3 : 0.2}" paint-order="stroke">${esc(label.text)}</text>`;
 }
 
 function arrowFor(placement, theme) {
@@ -456,7 +460,9 @@ export function renderTopoSvg(topo, layout, options = {}) {
         .join('');
 
       const labels = row.placements
-        .map((placement) => labelBoxFor(placement, theme))
+        .map(
+          (placement) => labelBoxFor(placement, theme) + depthLabelFor(placement, theme),
+        )
         .join('');
 
       const brackets = row.placements

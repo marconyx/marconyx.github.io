@@ -27,6 +27,30 @@ export function paperAspectRatio(key) {
 
 export const MARGIN_METERS = 6;
 
+export function formatNumber(value) {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(1)));
+}
+
+/** Kontrollpunkt-Tiefe der Wasserlinie; unbekannte Gumpen und Wehre bleiben unverändert. */
+export function poolDrawingDepthOf(segment) {
+  return segment.type === 'POOL' && segment.depth_in_meters != null
+    ? Math.min(5, Math.max(1.2, 1 + 0.4 * segment.depth_in_meters))
+    : 2.2;
+}
+
+/** Gemeinsame Labelgeometrie für Renderer und Layout, nur bei bekannter Tiefe. */
+export function poolDepthLabelFor(placement) {
+  const { segment, start, end } = placement;
+  if (segment.type !== 'POOL' || segment.depth_in_meters == null) return null;
+  const text = `T ${formatNumber(segment.depth_in_meters)} m`;
+  return {
+    text,
+    x: (start.x + end.x) / 2,
+    y: Math.max(start.y, end.y) + poolDrawingDepthOf(segment) / 2 + 1.1,
+    halfWidth: text.length * 0.28 + 0.3,
+  };
+}
+
 const LEGEND_TITLE_CHAR_METERS = 1.08;
 const LEGEND_ENTRY_CHAR_METERS = 0.55;
 const LEGEND_MIN_WIDTH_METERS = 16;

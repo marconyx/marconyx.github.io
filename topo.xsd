@@ -28,6 +28,7 @@
     <xs:attribute name="duration_to_walk_in_min" type="xs:decimal"/>
     <!-- Erweiterung: Abstand der Wand zum frei hängenden Seil (nur RAPPEL*). -->
     <xs:attribute name="wall_distance_in_meters" type="xs:decimal" default="0"/>
+    <xs:attribute name="depth_in_meters" type="xs:decimal"/>
     <xs:attribute name="do_not_cut_row_after_this_segment" type="xs:boolean" default="false"/>
     <xs:attribute name="force_cut_row_after_this_segment" type="xs:boolean" default="false"/>
     <xs:attribute name="extra" type="xs:string"/>

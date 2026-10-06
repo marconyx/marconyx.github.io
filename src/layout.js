@@ -34,7 +34,13 @@
  *    zusätzlich aus; alte Dateien bleiben dadurch trotzdem lesbar.
  */
 import { WATER_SEGMENT_TYPES } from './model.js';
-import { contentBoundsFor, paperAspectRatio, wallBulgeFor } from './sheet.js';
+import {
+  contentBoundsFor,
+  paperAspectRatio,
+  poolDepthLabelFor,
+  poolDrawingDepthOf,
+  wallBulgeFor,
+} from './sheet.js';
 
 const ROW_GAP_METERS = 14;
 const ROW_PADDING_METERS = 4;
@@ -130,7 +136,10 @@ function segmentMetricsFor(topo, maximumWalkLength) {
       // oben bzw. unten aus und kostet dann Höhe statt Breite.
       verticalSpan:
         Math.abs(dir.y * drawn) +
-        Math.abs(dir.x) * (segment.wall_distance_in_meters || 0),
+        Math.abs(dir.x) * (segment.wall_distance_in_meters || 0) +
+        (segment.type === 'POOL' && segment.depth_in_meters != null
+          ? poolDrawingDepthOf(segment) / 2 + 1.4
+          : 0),
     };
   });
 }
@@ -343,6 +352,13 @@ function placeTracks(metrics, assignment) {
     row.placements.push(placement);
 
     const trackedPoints = [start, end, ...placement.elements.map((e) => e.point)];
+    const depthLabel = poolDepthLabelFor(placement);
+    if (depthLabel) {
+      trackedPoints.push(
+        { x: depthLabel.x - depthLabel.halfWidth, y: depthLabel.y + 0.3 },
+        { x: depthLabel.x + depthLabel.halfWidth, y: depthLabel.y + 0.3 },
+      );
+    }
     if (placement.wallBulge) trackedPoints.push(placement.wallBulge.apex);
     for (const element of placement.elements) {
       if (element.endPoint) trackedPoints.push(element.endPoint);
