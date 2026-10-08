@@ -384,6 +384,45 @@ test('SVG-Doppelbruch sitzt exakt in der geometrischen Mitte der Linie', () => {
   }
 });
 
+test('Doppelbruch hat immer feste 45-Grad-SVG-Richtung, auch auf gespiegelten Segmenten', () => {
+  const topo = normalizeTopo({
+    length_shortening_threshold_meters: 30,
+    segments: [0, 90, 30, -45, 135, 180, -90].map((angle) => ({
+      type: 'WALK', length_in_meters: 80, angle_in_degrees: angle,
+    })),
+  });
+  for (const mode of LAYOUT_MODES) {
+    for (const paper of Object.keys(PAPER_PRESETS)) {
+      const layout = layoutTopo(topo, { layout: mode, paper });
+      for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
+        const svg = renderTopoSvg(topo, layout, { theme, paper });
+        const markers = [...svg.matchAll(
+          /<g class="topo-shortening-break"[^>]*><path d="([^"]+)"/g,
+        )];
+        assert.equal(markers.length, topo.segments.length);
+        for (const marker of markers) {
+          const lines = [...marker[1].matchAll(/M (\S+) (\S+) L (\S+) (\S+)/g)]
+            .map((line) => line.slice(1).map(Number));
+          assert.equal(lines.length, 2);
+          const centers = lines.map(([x1, y1, x2, y2]) => {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            assert.ok(dx > 0 && dy < 0, `${mode}/${paper}/${theme}: //-Richtung`);
+            assert.equal(dx, -dy, 'Steigung exakt -1 in SVG-Koordinaten');
+            return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+          });
+          assert.equal(centers[0].x + centers[1].x, 0);
+          assert.equal(centers[0].y + centers[1].y, 0);
+          const separation = Math.hypot(
+            centers[1].x - centers[0].x, centers[1].y - centers[0].y,
+          );
+          assert.ok(separation > 0.34, 'Striche bleiben selbst mit Halo getrennt');
+        }
+      }
+    }
+  }
+});
+
 test('Pool-Tiefe bleibt als separat stilisierte Tiefe erhalten', () => {
   const topo = normalizeTopo({
     length_shortening_threshold_meters: 30,

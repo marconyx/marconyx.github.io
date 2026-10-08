@@ -229,7 +229,7 @@ function arrowFor(placement, theme) {
 
 function shorteningMarkerFor(placement, theme) {
   if (!placement.shortened) return '';
-  const { start, end, dir, perp, segment, wallBulge } = placement;
+  const { start, end, segment, wallBulge } = placement;
   let center;
   if (wallBulge) {
     center = {
@@ -256,15 +256,9 @@ function shorteningMarkerFor(placement, theme) {
   const gap = 0.18 * scale;
   const slashHalf = 0.32 * scale;
   const paths = [-gap, gap]
-    .map((along) => {
-      const startAlong = along - slashHalf;
-      const endAlong = along + slashHalf;
-      const x1 = dir.x * startAlong - perp.x * slashHalf;
-      const y1 = dir.y * startAlong - perp.y * slashHalf;
-      const x2 = dir.x * endAlong + perp.x * slashHalf;
-      const y2 = dir.y * endAlong + perp.y * slashHalf;
-      return `M ${x1} ${y1} L ${x2} ${y2}`;
-    })
+    // Feste SVG-Richtung; senkrechter Abstand hält auch parallele Segmente lesbar.
+    .map((offset) =>
+      `M ${offset - slashHalf} ${offset + slashHalf} L ${offset + slashHalf} ${offset - slashHalf}`)
     .join(' ');
   return `<g class="topo-shortening-break" data-seg="${placement.index}" data-center-x="${center.x}" data-center-y="${center.y}" transform="translate(${center.x},${center.y})"><path d="${paths}" fill="none" stroke="${theme.background}" stroke-width="0.34" stroke-linecap="round"/><path d="${paths}" fill="none" stroke="${theme.accent}" stroke-width="0.16" stroke-linecap="round"/></g>`;
 }

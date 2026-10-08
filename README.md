@@ -356,8 +356,12 @@ Legenden-Offsets über **Segmente verkürzen ab (m)** eingegeben. Die Änderung 
 bereits während der Eingabe live auf das Topo; eine zusammenhängende Eingabe bildet
 einen Undo-Schritt. Für Segmente über dem positiven Schwellenwert nutzt
 das Layout die gekappte Länge; die Werte bis einschliesslich Schwelle bleiben
-unverändert. Das mittige Doppelbruchzeichen liegt quer über dem Segment, während
-das Label die Original-Länge zeigt. Bereichselemente werden mit dem Segment
+unverändert. Das Doppelbruchzeichen bleibt auf der geometrischen Segmentmitte;
+seine Striche laufen immer als `//` von links unten nach rechts oben (45° im
+SVG), unabhängig von Segmentrichtung, Stil oder Layout. Die Striche sind
+symmetrisch senkrecht zu ihrer eigenen Richtung versetzt, damit sie auch auf
+parallel steigenden Segmenten erkennbar bleiben. Das Label zeigt weiterhin
+die Original-Länge. Bereichselemente werden mit dem Segment
 proportional mitskaliert.
 
 Die Einstellung ist optional und standardmässig leer; `0` und leer deaktivieren
