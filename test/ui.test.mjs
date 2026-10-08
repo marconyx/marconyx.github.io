@@ -630,23 +630,40 @@ test('eine Eingabe ergibt genau einen Undo-Schritt', () => {
 
 test('die Verkürzungsschwelle ist leer deaktiviert und Undo/Redo-fähig', () => {
   const input = elementById('topo-length-shortening-threshold');
+  const segment = state.topo.segments[0];
+  const originalSegment = structuredClone(segment);
+  segment.type = 'RAPPEL';
+  segment.length_in_meters = 80;
+  segment.angle_in_degrees = 90;
+  segment.elements = [];
   state.topo.length_shortening_threshold_meters = null;
   input.value = '';
   input.dispatch('input');
   assert.equal(state.topo.length_shortening_threshold_meters, null);
 
+  input.value = '3';
+  input.dispatch('input');
+  assert.equal(state.topo.length_shortening_threshold_meters, 3);
+  assert.match(svg(), /class="topo-shortening-break"/, 'input-Event rendert die Kürzung sofort');
+  assert.match(svg(), /> ?80<\/tspan>/, 'Beschriftung zeigt weiter die echte Länge');
+
   input.value = '30';
   input.dispatch('input');
-  input.dispatch('change');
   assert.equal(state.topo.length_shortening_threshold_meters, 30);
+  assert.match(svg(), /class="topo-shortening-break"/, 'Folge-Input rendert ebenfalls live');
   assert.equal(JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1'))
     .topo.length_shortening_threshold_meters, 30);
 
   elementById('btn-undo').dispatch('click');
   assert.equal(state.topo.length_shortening_threshold_meters, null);
   assert.equal(input.value, '');
+  assert.doesNotMatch(svg(), /topo-shortening-break/);
   elementById('btn-redo').dispatch('click');
   assert.equal(state.topo.length_shortening_threshold_meters, 30);
+  Object.assign(segment, originalSegment);
+  state.topo.length_shortening_threshold_meters = null;
+  input.value = '';
+  input.dispatch('input');
 });
 
 /* ------------------------------------------------------- Format und Layout */

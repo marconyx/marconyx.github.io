@@ -930,18 +930,6 @@ function bindTopoFields() {
     ['topo-max-walk', 'maximum_walk_length', Number],
     ['topo-line-distance', 'distance_of_single_line', Number],
     ['topo-legend-offset', 'legend_offset_top', Number],
-    [
-      'topo-length-shortening-threshold',
-      'length_shortening_threshold_meters',
-      (value) => {
-        const threshold = Number(value);
-        return value.trim() === '' ||
-          !Number.isFinite(threshold) ||
-          threshold < 0
-          ? null
-          : threshold;
-      },
-    ],
   ];
   for (const [id, key, transform] of bindings) {
     const input = $(id);
@@ -968,6 +956,35 @@ function bindTopoFields() {
       render();
     });
   }
+
+  const thresholdInput = $('topo-length-shortening-threshold');
+  let thresholdEditRecorded = false;
+  const thresholdValue = (value) => {
+    const threshold = Number(value);
+    return value.trim() === '' ||
+      !Number.isFinite(threshold) ||
+      threshold < 0
+      ? null
+      : threshold;
+  };
+  thresholdInput.addEventListener('input', (event) => {
+    const next = thresholdValue(event.target.value);
+    if (!thresholdEditRecorded && state.topo.length_shortening_threshold_meters !== next) {
+      pushHistory();
+      thresholdEditRecorded = true;
+    }
+    state.topo.length_shortening_threshold_meters = next;
+    render();
+  });
+  thresholdInput.addEventListener('change', (event) => {
+    const next = thresholdValue(event.target.value);
+    if (!thresholdEditRecorded && state.topo.length_shortening_threshold_meters !== next) {
+      pushHistory();
+    }
+    thresholdEditRecorded = false;
+    state.topo.length_shortening_threshold_meters = next;
+    render();
+  });
 }
 
 function syncTopoFields() {

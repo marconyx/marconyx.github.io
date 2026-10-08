@@ -248,7 +248,7 @@ test('Topo-Metadaten und Abseillängen-Label stehen in der UI', () => {
   assert.match(html, /Max\. Abseillänge \(m\)\s*<input[^>]+id="topo-max-walk"/);
   assert.match(
     html,
-    /Verkürzung ab \(m\):\s*<input type="number" id="topo-length-shortening-threshold" min="0"/,
+    /Segmente verkürzen ab \(m\):\s*<input type="number" id="topo-length-shortening-threshold" min="0"/,
   );
   assert.equal(html.includes('Max. Walk-Länge'), false);
 });

@@ -22,7 +22,7 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
   Bildschirm / A4 quer / A4 hoch. In der Serpentine bestimmt das Format die
   nutzbare Zeilenbreite, bei Kaskadiert die Spaltenhöhe — siehe
   [Zeilenumbruch](#zeilenumbruch) und [Kaskadiert (Spalten)](#kaskadiert-spalten).
-- **Lange Strecken kürzen**: Unter *Topo* lässt sich bei „Verkürzung ab (m)“ ein
+- **Lange Strecken kürzen**: Unter *Topo* lässt sich bei „Segmente verkürzen ab (m)“ ein
   Schwellenwert setzen. Längen darüber werden in der Zeichnung auf den Schwellenwert
   gekappt und mit einem Doppelbruch markiert; Beschriftungen zeigen weiterhin das
   echte Mass. Leer oder `0` schaltet die Funktion aus. Gumpentiefen bleiben davon
@@ -352,7 +352,9 @@ Dateien, Zeichnung und Layout unverändert.
 ### Verkürzung langer Strecken
 
 `length_shortening_threshold_meters` wird in der UI im Abschnitt *Topo* bei den
-Legenden-Offsets eingegeben. Für Segmente über dem positiven Schwellenwert nutzt
+Legenden-Offsets über **Segmente verkürzen ab (m)** eingegeben. Die Änderung wirkt
+bereits während der Eingabe live auf das Topo; eine zusammenhängende Eingabe bildet
+einen Undo-Schritt. Für Segmente über dem positiven Schwellenwert nutzt
 das Layout die gekappte Länge; die Werte bis einschliesslich Schwelle bleiben
 unverändert. Das mittige Doppelbruchzeichen liegt quer über dem Segment, während
 das Label die Original-Länge zeigt. Bereichselemente werden mit dem Segment
