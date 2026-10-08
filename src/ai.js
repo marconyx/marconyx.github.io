@@ -577,7 +577,7 @@ const SCHEMA_BLOCK = `{
   "author": string,                        // "" wenn nicht erkennbar
   "duration": string,                      // freie Angabe, z. B. "3-4 h"
   "date": "YYYY-MM-DD",
-  "maximum_walk_length": number,           // gezeichnete Maximallänge von Gehstrecken, üblich 30
+  "maximum_walk_length": number,           // optionale maximale Abseillänge; nur in der Legende
   "distance_of_single_line": number,       // Zeilenbreite vor dem Umbruch, üblich 60
   "legend_offset_top": number,             // üblich 0
   "length_shortening_threshold_meters": number|null, // null = ausgeschaltet; nicht aus dem Bild ableiten
@@ -720,7 +720,7 @@ ${measuredValuesText()}
 
 Antworte NUR mit einem JSON-Objekt, ohne Text und ohne Markdown-Codefence.
 
-Schema: canyon_name, author, duration, date ("YYYY-MM-DD"), maximum_walk_length (30), distance_of_single_line (60), legend_offset_top (0), length_shortening_threshold_meters (null = ausgeschaltet), segments[].
+Schema: canyon_name, author, duration, date ("YYYY-MM-DD"), maximum_walk_length (30, nur Legende, keine Kürzung von WALK-Segmenten), distance_of_single_line (60), legend_offset_top (0), length_shortening_threshold_meters (null = ausgeschaltet), segments[].
 Segment: type, length_in_meters, angle_in_degrees, duration_to_walk_in_min (nur WALK, sonst null), wall_distance_in_meters (nur RAPPEL*, sonst 0), depth_in_meters (number|null, nur POOL), do_not_cut_row_after_this_segment, force_cut_row_after_this_segment, elements[].
 Element: type, horizontal_start_rel_to_segment_start, vertical_start_rel_to_segment_start, horizontal_end_rel_to_segment_start, vertical_end_rel_to_segment_start, size, text, dead, duration_to_walk_in_min.
 

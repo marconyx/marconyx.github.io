@@ -149,7 +149,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `author` | optionaler Autor als Freitext |
 | `duration` | optionale Gesamtdauer als Freitext, z. B. `3-4 h` |
 | `date` | Datum (ISO, `YYYY-MM-DD`) |
-| `maximum_walk_length` | maximale **gezeichnete** Länge eines WALK-Segments in Metern; längere Gehstrecken werden gestaucht und erhalten eine Dauer-Klammer |
+| `maximum_walk_length` | optionale maximale Abseillänge in Metern; reine Legendenangabe, beeinflusst Zeichnung und Layout nicht |
 | `distance_of_single_line` | Zeilenbreite in Metern für das Format *Bildschirm* (bei *Kaskadiert* als Zielhöhe einer Spalte); bei A4 wird das Mass aus dem Format abgeleitet |
 | `legend_offset_top` | vertikaler Versatz der Legende in Metern |
 | `length_shortening_threshold_meters` | optionaler Schwellenwert für zeichnerisch verkürzte Segmentlängen; nur bei aktivierter Verkürzung exportiert |
@@ -366,6 +366,11 @@ Autosaves sowie Undo/Redo und bleibt in JSON/XML erhalten, wenn sie aktiviert is
 Die Tiefe von `POOL`-Segmenten bleibt separat skaliert und wird nicht gekürzt:
 ihre gezeichnete Beckenform ist eine stilisierte Darstellung und kein linearer
 Meter-Massstab.
+
+`maximum_walk_length` wird aus Kompatibilitätsgründen weiterhin im Modell sowie
+in JSON/XML gespeichert. Es beeinflusst weder Geometrie noch Skalierung oder
+Segmentdarstellung und erscheint bei positivem Wert nur als **Max. Abseil**
+unter **Dauer** in der Legende.
 
 Eine bekannte Tiefe wird in allen Stilen als **T 4 m** bzw. **T 2.5 m** unter der
 Gumpe beschriftet. Die Zeichnung skaliert gedämpft: Der Kontrollpunkt der

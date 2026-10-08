@@ -69,10 +69,10 @@ function exitRegressionTopo(types) {
 
 test('Fluchtweg links und Standard bleiben bytegenau unverändert', () => {
   const baselines = {
-    color: '709cf610435b40838576c01d96ec3b867101ef6d35eb45822192369ae298ecc2',
-    bw: 'bd9ca751d2211442083abef5bb2a9ea5c75adc14b25ee1080d9f3b75fc4b68b7',
-    alpiner_classic: '174122c53cbe50dd99c774b513a29f0e794d2f3e2342c4f29a0e7863fac0f8b1',
-    eau_froide: 'c492ea63b285356ae18105590ca3216af56e301aba7a7599d1d1628df4c25b8b',
+    color: 'ce25b8f38f349bb39d0da07b464c9d124902de16644df81cc2a0e82ea82267f7',
+    bw: 'ce200bc64930cfde5bce4d4e7ece6d1724c75ea742e732eee915b4024fe30fd3',
+    alpiner_classic: '625c9842af412b971cc3895c2817ecb1bae547197d913d49ec941a3dbb85a9f2',
+    eau_froide: '0492aef12d9b76fa4640b817d14871af11dac1cf47ce1a3052d7cf5429d7d13f',
   };
   for (const [theme, baseline] of Object.entries(baselines)) {
     const topo = exitRegressionTopo(theme === 'eau_froide'
@@ -166,6 +166,17 @@ test('Author und Dauer bleiben im App-Modell sowie JSON/XML erhalten', () => {
   assert.equal(topo.duration, input.duration);
   assert.deepEqual(topoToJsonObject(topoFromJson(topoToJsonObject(topo))), input);
   assert.deepEqual(topoToJsonObject(topoFromXml(topoToXml(topo))), input);
+});
+
+test('maximale Abseillänge bleibt als Metadatum im JSON- und XML-Roundtrip erhalten', () => {
+  const input = { ...original, maximum_walk_length: 45 };
+  const topo = normalizeTopo(input);
+  assert.equal(topoToJsonObject(topo).maximum_walk_length, 45);
+  assert.equal(topoToJsonObject(topoFromJson(topoToJson(topo))).maximum_walk_length, 45);
+  assert.equal(
+    topoToJsonObject(topoFromXml(topoToXml(topo))).maximum_walk_length,
+    45,
+  );
 });
 
 test('alte Dateien ohne Author und Dauer bleiben kompatibel', () => {

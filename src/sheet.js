@@ -92,13 +92,21 @@ export function formatLegendDate(value) {
 }
 
 /**
- * Kopfdaten der Legende: direkt unter dem Titel. Nur die Dauer – Author und
- * Datum stehen bewusst am Ende der Legende, unter den Abkürzungen.
+ * Kopfdaten der Legende: direkt unter dem Titel. Author und Datum stehen
+ * bewusst am Ende der Legende, unter den Abkürzungen.
  */
 export function legendHeadLinesFor(topo) {
   const lines = [];
   const duration = trimmed(topo?.duration);
   if (duration) lines.push({ key: 'duration', label: 'Dauer', value: duration });
+  const maximumWalkLength = Number(topo?.maximum_walk_length);
+  if (Number.isFinite(maximumWalkLength) && maximumWalkLength > 0) {
+    lines.push({
+      key: 'maximum_walk_length',
+      label: 'Max. Abseil',
+      value: `${formatNumber(maximumWalkLength)} m`,
+    });
+  }
   return lines;
 }
 
@@ -115,7 +123,7 @@ export function legendFooterLinesFor(topo) {
   return lines;
 }
 
-/** Author und Dauer als beschriftete Zeilen – unabhängig von ihrer Position. */
+/** Kopfdaten sowie Author als beschriftete Zeilen. */
 export function legendMetaLinesFor(topo) {
   return [
     ...legendHeadLinesFor(topo),
@@ -163,7 +171,7 @@ export function legendReservedWidthMeters(topo) {
 export const LEGEND_LINE_HEIGHT_METERS = 1.4;
 
 /**
- * Höhe des Legendenkastens. Kopfzeilen (Dauer), Abkürzungen und Fusszeilen
+ * Höhe des Legendenkastens. Kopfzeilen, Abkürzungen und Fusszeilen
  * (Author, Datum) zählen gleichermassen – sonst würden die unteren Zeilen aus
  * dem Kasten laufen.
  */
