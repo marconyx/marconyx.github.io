@@ -13,6 +13,7 @@ import { topoFromJson, topoToJsonObject } from '../src/io-json.js';
 import { topoFromXml, topoToXml } from '../src/io-xml.js';
 import {
   LAYOUT_MODES,
+  drawnLengthOf,
   layoutTopo,
   rowBreakRulesFor,
   worldToLocal,
@@ -133,6 +134,125 @@ test('jede Zeile startet links und läuft nach rechts', () => {
     const last = row.placements[row.placements.length - 1];
     assert.ok(last.end.x > row.placements[0].start.x);
   }
+});
+
+test('Verkürzungsschwelle spart proportional Platz und ist standardmässig aus', () => {
+  const rappel = normalizeTopo({
+    maximum_walk_length: 30,
+    length_shortening_threshold_meters: 30,
+    segments: [{
+      type: 'RAPPEL',
+      length_in_meters: 80,
+      angle_in_degrees: 90,
+      elements: [{
+        type: 'PATH',
+        horizontal_start_rel_to_segment_start: 10,
+        vertical_start_rel_to_segment_start: 0,
+        horizontal_end_rel_to_segment_start: 70,
+        vertical_end_rel_to_segment_start: 0,
+      }],
+    }],
+  });
+  const placement = layoutTopo(rappel).placements[0];
+  assert.equal(drawnLengthOf(rappel.segments[0], 30), 80);
+  assert.equal(placement.drawnLength, 30);
+  assert.equal(placement.realLength, 80);
+  assert.equal(placement.shortened, true);
+  assert.equal(placement.scaleAlong, 30 / 80);
+  assert.ok(
+    Math.abs(
+      Math.hypot(
+        placement.elements[0].endPoint.x - placement.elements[0].point.x,
+        placement.elements[0].endPoint.y - placement.elements[0].point.y,
+      ) - 22.5,
+    ) < 1e-9,
+    'Streckenelemente werden proportional mitskaliert',
+  );
+  assert.equal(
+    layoutTopo(normalizeTopo({
+      maximum_walk_length: 30,
+      segments: [{ type: 'RAPPEL', length_in_meters: 80 }],
+    })).placements[0].drawnLength,
+    80,
+    'ohne Einstellung bleibt die Abseilstrecke unverändert',
+  );
+  assert.equal(
+    drawnLengthOf(
+      normalizeTopo({ segments: [{ type: 'POOL', length_in_meters: 30 }] }).segments[0],
+      30,
+      30,
+    ),
+    30,
+    'Werte bis einschliesslich Schwelle bleiben unverändert',
+  );
+});
+
+test('alle Segmenttypen nutzen die Verkürzungsschwelle', () => {
+  const types = [
+    'WALK',
+    'POOL',
+    'RAPPEL',
+    'RAPPEL_DRY',
+    'RAPPEL_WET',
+    'JUMP',
+    'SLIDE',
+    'CLIMB',
+    'WEIR',
+  ];
+  const topo = normalizeTopo({
+    maximum_walk_length: 1000,
+    length_shortening_threshold_meters: 30,
+    segments: types.map((type) => ({
+      type,
+      length_in_meters: 80,
+      angle_in_degrees: 0,
+    })),
+  });
+  const layout = layoutTopo(topo);
+  for (const placement of layout.placements) {
+    assert.equal(placement.drawnLength, 30, placement.segment.type);
+    assert.equal(placement.shortened, true, placement.segment.type);
+  }
+});
+
+test('Doppelbruch erscheint für verkürzte Strecken in allen Stilen, nicht auf Labels', () => {
+  const topo = normalizeTopo({
+    length_shortening_threshold_meters: 30,
+    segments: [{
+      type: 'RAPPEL',
+      length_in_meters: 80,
+      angle_in_degrees: 90,
+    }],
+  });
+  for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
+    const svg = renderTopoSvg(topo, layoutTopo(topo), { theme });
+    assert.equal((svg.match(/class="topo-shortening-break"/g) || []).length, 1, theme);
+    assert.match(svg, /> ?80<\/tspan>/, `${theme}: echtes Mass fehlt`);
+  }
+
+  topo.length_shortening_threshold_meters = null;
+  assert.doesNotMatch(
+    renderTopoSvg(topo, layoutTopo(topo)),
+    /topo-shortening-break/,
+    'ohne aktive Schwelle wird kein Bruchzeichen gezeichnet',
+  );
+});
+
+test('Pool-Tiefe bleibt als separat stilisierte Tiefe erhalten', () => {
+  const topo = normalizeTopo({
+    length_shortening_threshold_meters: 30,
+    segments: [{
+      type: 'POOL',
+      length_in_meters: 80,
+      depth_in_meters: 80,
+      angle_in_degrees: 0,
+    }],
+  });
+  const placement = layoutTopo(topo).placements[0];
+  const svg = renderTopoSvg(topo, layoutTopo(topo));
+  assert.equal(placement.drawnLength, 30, 'die horizontale Beckenstrecke wird verkürzt');
+  assert.equal(poolDrawingDepthOf(topo.segments[0]), 5);
+  assert.match(svg, />T 80 m</, 'die echte Gumpentiefe bleibt beschriftet');
 });
 
 /* ---------------------------------------------------------------- Formate */

@@ -48,6 +48,8 @@ import {
   saveAiSettings,
 } from './ai.js';
 import { isPdfFile, openPdf } from './pdf.js';
+import { initPanelSections } from './panel-sections.js';
+import { initResponsive } from './responsive.js';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -678,6 +680,8 @@ function svgPoint(event) {
 let drag = null;
 
 function onPointerDown(event) {
+  // Zweiter Finger (Pinch) startet keine neue Auswahl und keinen Drag.
+  if (event.isPrimary === false) return;
   const elementNode = event.target.closest('.topo-element');
   const segmentNode = event.target.closest('.topo-segment-hit');
 
@@ -717,6 +721,7 @@ function onPointerDown(event) {
                   element.vertical_start_rel_to_segment_start,
               },
         moved: false,
+        pointerId: event.pointerId,
       };
       elementNode.setPointerCapture?.(event.pointerId);
     }
@@ -739,6 +744,7 @@ function onPointerDown(event) {
 
 function onPointerMove(event) {
   if (!drag) return;
+  if (drag.pointerId != null && event.pointerId != null && event.pointerId !== drag.pointerId) return;
   const point = svgPoint(event);
   if (!point) return;
   const local = worldToLocal(drag.placement, point);
@@ -765,8 +771,9 @@ function round(value) {
   return Math.round(value * 4) / 4;
 }
 
-function onPointerUp() {
+function onPointerUp(event) {
   if (!drag) return;
+  if (drag.pointerId != null && event?.pointerId != null && event.pointerId !== drag.pointerId) return;
   const moved = drag.moved;
   drag = null;
   // Erst jetzt darf sich das Layout wieder an den neuen Stand anpassen.
@@ -923,6 +930,18 @@ function bindTopoFields() {
     ['topo-max-walk', 'maximum_walk_length', Number],
     ['topo-line-distance', 'distance_of_single_line', Number],
     ['topo-legend-offset', 'legend_offset_top', Number],
+    [
+      'topo-length-shortening-threshold',
+      'length_shortening_threshold_meters',
+      (value) => {
+        const threshold = Number(value);
+        return value.trim() === '' ||
+          !Number.isFinite(threshold) ||
+          threshold < 0
+          ? null
+          : threshold;
+      },
+    ],
   ];
   for (const [id, key, transform] of bindings) {
     const input = $(id);
@@ -959,6 +978,8 @@ function syncTopoFields() {
   $('topo-max-walk').value = state.topo.maximum_walk_length;
   $('topo-line-distance').value = state.topo.distance_of_single_line;
   $('topo-legend-offset').value = state.topo.legend_offset_top;
+  $('topo-length-shortening-threshold').value =
+    state.topo.length_shortening_threshold_meters ?? '';
 }
 
 function bindToolbar() {
@@ -1375,6 +1396,7 @@ function bindCanvas() {
   host.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
 
   window.addEventListener('keydown', (event) => {
     const typing = /INPUT|SELECT|TEXTAREA/.test(event.target.tagName);
@@ -1411,6 +1433,8 @@ function bindCanvas() {
 /* -------------------------------------------------------------------- Start */
 
 function init() {
+  initPanelSections();
+  initResponsive();
   const restored = restore();
   bindToolbar();
   bindTopoFields();

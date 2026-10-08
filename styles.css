@@ -39,8 +39,24 @@ body {
 
 .toolbar__brand {
   display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.toolbar__logo {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 1rem;
+}
+
+.toolbar__brand-text {
+  display: flex;
   flex-direction: column;
-  min-width: 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .toolbar__hint {
@@ -50,8 +66,11 @@ body {
 
 .toolbar__group {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .toolbar__group label {
@@ -60,6 +79,12 @@ body {
   gap: 0.3rem;
   font-size: 0.78rem;
   color: var(--muted);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.toolbar__group select {
+  min-width: 0;
 }
 
 button,
@@ -105,6 +130,7 @@ input[type='date'] {
 }
 
 .panel {
+  min-width: 0;
   overflow-y: auto;
   background: var(--panel);
   border-right: 1px solid var(--border);
@@ -118,17 +144,70 @@ input[type='date'] {
 .panel__section {
   padding: 0.9rem 1rem;
   border-bottom: 1px solid var(--border);
+}
+
+.panel__content > .panel__section {
+  min-width: 0;
+  padding: 0 0 0 0.75rem;
+  border-bottom: none;
+}
+
+.panel__section > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 4px;
+}
+
+.panel__section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel__section > summary:hover {
+  background: var(--accent-soft);
+}
+
+.panel__section > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.panel__arrow {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.panel__arrow::before {
+  content: '▶';
+}
+
+.panel__section[open] > summary .panel__arrow::before {
+  content: '◀';
+}
+
+.panel__content {
+  padding-top: 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.panel__section h2 {
+.panel__section h2,
+.panel__section h3 {
   margin: 0;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
+}
+
+.panel__section h3 {
+  font-size: 0.74rem;
 }
 
 .panel__section label {
@@ -174,9 +253,15 @@ input[type='date'] {
   padding-top: 0.5rem;
 }
 
-#ai-settings summary {
+#ai-settings summary,
+#panel-ai > summary h3 {
   cursor: pointer;
+  font-family: inherit;
   font-size: 0.78rem;
+  font-weight: normal;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: normal;
   color: var(--muted);
 }
 
@@ -298,6 +383,8 @@ input[type='date'] {
 
 .topo-element {
   cursor: grab;
+  /* Ziehen per Touch verschiebt das Element statt die Seite/Zeichenfläche. */
+  touch-action: none;
 }
 
 .topo-element:active {
@@ -416,4 +503,178 @@ input[type='date'] {
 .field-with-button button {
   white-space: nowrap;
   flex: none;
+}
+
+/* ---------------------------------------------------------------- Responsiv */
+
+/* Nur auf Smartphones sichtbar (siehe unten). */
+.toolbar__menu,
+.view-switch {
+  display: none;
+}
+
+/* Tablet hoch/quer: Zeichenfläche breit oben, Seitenleisten zweispaltig darunter. */
+@media screen and (min-width: 768px) and (max-width: 1199.98px) {
+  html,
+  body {
+    height: auto;
+  }
+
+  body {
+    min-height: 100%;
+  }
+
+  .workspace {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'canvas canvas'
+      'left right';
+  }
+
+  .canvas {
+    grid-area: canvas;
+    height: clamp(22rem, 68vh, 56rem);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel--left {
+    grid-area: left;
+  }
+
+  .panel--right {
+    grid-area: right;
+  }
+}
+
+/* Smartphone: einspaltig, Kopfzeile kompakt, Bereiche per Tabs umschaltbar. */
+@media screen and (max-width: 767.98px) {
+  .toolbar {
+    flex: none;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .toolbar__brand {
+    flex: 1 1 12rem;
+  }
+
+  .toolbar__menu {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .toolbar:not(.is-menu-open) .toolbar__group:not(.toolbar__group--history) {
+    display: none;
+  }
+
+  .toolbar.is-menu-open {
+    max-height: 75vh;
+    overflow-y: auto;
+  }
+
+  .toolbar.is-menu-open .toolbar__group:not(.toolbar__group--history) {
+    flex-basis: 100%;
+  }
+
+  .view-switch {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .view-switch [role='tab'] {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .view-switch [role='tab'][aria-selected='true'] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .view-switch [role='tab']:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .workspace {
+    flex: 1 1 auto;
+    min-height: 20rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .workspace > * {
+    grid-area: 1 / 1;
+  }
+
+  .workspace[data-view='edit'] > :not(.panel--left),
+  .workspace[data-view='topo'] > :not(.canvas),
+  .workspace[data-view='symbols'] > :not(.panel--right) {
+    display: none;
+  }
+
+  .panel,
+  .panel--right {
+    border: none;
+  }
+
+  .canvas {
+    padding: 0.75rem;
+  }
+}
+
+/* Touch: Zielflächen ≥ 44px. */
+@media (pointer: coarse) {
+  button,
+  .button,
+  .panel__section > summary,
+  #ai-settings > summary {
+    min-height: 44px;
+  }
+
+  button,
+  .button {
+    min-width: 44px;
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #ai-settings > summary {
+    line-height: 44px;
+  }
+
+  select,
+  input[type='text'],
+  input[type='number'],
+  input[type='date'],
+  input[type='password'] {
+    min-height: 44px;
+  }
+
+  input[type='range'] {
+    min-height: 32px;
+  }
+}
+
+/* Kein iOS-Auto-Zoom beim Fokussieren von Eingabefeldern. */
+@media screen and (max-width: 767.98px), (pointer: coarse) {
+  select,
+  input,
+  textarea,
+  input[type='text'],
+  input[type='number'],
+  input[type='date'],
+  input[type='password'] {
+    font-size: 16px;
+  }
 }

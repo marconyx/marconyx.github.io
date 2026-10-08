@@ -9,11 +9,22 @@
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
-        <strong>Canyoning Topo Generator</strong>
-        <span class="toolbar__hint" id="status">bereit</span>
+        <img class="toolbar__logo" src="assets/bachab-logo.png" alt="bachab" width="400" height="133" />
+        <div class="toolbar__brand-text">
+          <strong>Canyoning Topo Generator</strong>
+          <span class="toolbar__hint" id="status">bereit</span>
+        </div>
       </div>
 
-      <div class="toolbar__group">
+      <button
+        type="button"
+        class="toolbar__menu"
+        id="btn-menu"
+        aria-expanded="false"
+        aria-controls="toolbar-file toolbar-export toolbar-view"
+      >☰ Menü</button>
+
+      <div class="toolbar__group" id="toolbar-file">
         <button type="button" id="btn-new">Neu</button>
         <button type="button" id="btn-example">Beispiel</button>
         <button type="button" id="btn-random" title="Zufälliges Topo mit allen Segmenttypen und Symbolen">Zufall</button>
@@ -21,7 +32,7 @@
         <input type="file" id="file-open" accept=".json,.xml,application/json,text/xml" hidden />
       </div>
 
-      <div class="toolbar__group">
+      <div class="toolbar__group" id="toolbar-export">
         <button type="button" id="btn-save-json">JSON speichern</button>
         <button type="button" id="btn-save-xml">XML speichern</button>
         <button type="button" id="btn-export-svg">SVG</button>
@@ -29,12 +40,12 @@
         <button type="button" id="btn-print">Drucken / PDF</button>
       </div>
 
-      <div class="toolbar__group">
+      <div class="toolbar__group toolbar__group--history">
         <button type="button" id="btn-undo" title="Rückgängig (Cmd/Ctrl+Z)">↶</button>
         <button type="button" id="btn-redo" title="Wiederholen (Cmd/Ctrl+Shift+Z)">↷</button>
       </div>
 
-      <div class="toolbar__group">
+      <div class="toolbar__group" id="toolbar-view">
         <label>Layout
           <select id="select-layout">
             <option value="serpentine">Serpentine (Zeilen)</option>
@@ -60,121 +71,136 @@
       </div>
     </header>
 
-    <main class="workspace">
-      <aside class="panel panel--left">
-        <section class="panel__section">
-          <h2>Topo</h2>
-          <label>Name <input type="text" id="topo-name" /></label>
-          <label>Author <input type="text" id="topo-author" /></label>
-          <label>Dauer <input type="text" id="topo-duration" /></label>
-          <label>Datum <input type="date" id="topo-date" /></label>
-          <label>Max. Abseillänge (m) <input type="number" id="topo-max-walk" min="1" step="1" /></label>
-          <label title="Serpentine: Zeilenbreite · Kaskadiert: Spaltenhöhe (Format Bildschirm)">Zeilenbreite (m) <input type="number" id="topo-line-distance" min="5" step="1" /></label>
-          <label>Legende Offset (m) <input type="number" id="topo-legend-offset" step="1" /></label>
-          <button type="button" id="btn-renumber">Nummern neu vergeben</button>
-        </section>
+    <div class="view-switch" role="tablist" aria-label="Ansicht">
+      <button type="button" role="tab" id="view-tab-edit" aria-controls="panel-left" aria-selected="false" tabindex="-1">Bearbeiten</button>
+      <button type="button" role="tab" id="view-tab-topo" aria-controls="canvas" aria-selected="true">Topo</button>
+      <button type="button" role="tab" id="view-tab-symbols" aria-controls="panel-right" aria-selected="false" tabindex="-1">Symbole</button>
+    </div>
 
-        <section class="panel__section">
-          <h2>Segmente</h2>
-          <div class="segment-add">
-            <select id="select-new-segment"></select>
-            <button type="button" id="btn-add-segment">+ hinzufügen</button>
+    <main class="workspace" id="workspace" data-view="topo">
+      <aside class="panel panel--left" id="panel-left" aria-label="Topo, Segmente und Foto-Referenz">
+        <details class="panel__section" id="panel-topo" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2>Topo</h2></summary>
+          <div class="panel__content">
+            <label>Name <input type="text" id="topo-name" /></label>
+            <label>Author <input type="text" id="topo-author" /></label>
+            <label>Dauer <input type="text" id="topo-duration" /></label>
+            <label>Datum <input type="date" id="topo-date" /></label>
+            <label>Max. Abseillänge (m) <input type="number" id="topo-max-walk" min="1" step="1" /></label>
+            <label title="Serpentine: Zeilenbreite · Kaskadiert: Spaltenhöhe (Format Bildschirm)">Zeilenbreite (m) <input type="number" id="topo-line-distance" min="5" step="1" /></label>
+            <label>Legende Offset (m) <input type="number" id="topo-legend-offset" step="1" /></label>
+            <label>Verkürzung ab (m): <input type="number" id="topo-length-shortening-threshold" min="0" step="1" /></label>
+            <button type="button" id="btn-renumber">Nummern neu vergeben</button>
           </div>
-          <ol class="segment-list" id="segment-list"></ol>
-        </section>
+        </details>
 
-        <section class="panel__section">
-          <h2>Foto-Referenz</h2>
-          <p class="hint">Foto oder PDF als Hintergrund einblenden und Topo darüber nachzeichnen.</p>
-          <label class="button" for="file-photo">Foto oder PDF wählen…</label>
-          <input
-            type="file"
-            id="file-photo"
-            accept="image/*,application/pdf,.pdf"
-            hidden
-          />
-          <label id="photo-page-row" hidden>
-            PDF-Seite
-            <span class="row">
-              <button type="button" id="btn-photo-page-prev" title="Vorherige Seite">◀</button>
-              <input type="number" id="photo-page" min="1" value="1" />
-              <button type="button" id="btn-photo-page-next" title="Nächste Seite">▶</button>
-            </span>
-            <span class="hint" id="photo-page-info"></span>
-          </label>
-          <label>Deckkraft <input type="range" id="photo-opacity" min="0" max="100" value="45" /></label>
-          <label>Größe <input type="range" id="photo-scale" min="20" max="300" value="100" /></label>
-          <label>Horizontal <input type="range" id="photo-x" min="-100" max="100" value="0" /></label>
-          <label>Vertikal <input type="range" id="photo-y" min="-100" max="100" value="0" /></label>
-          <button type="button" id="btn-photo-clear">Referenz entfernen</button>
-        </section>
-
-        <section class="panel__section">
-          <h2>AI-Erkennung</h2>
-          <p class="hint">
-            Erzeugt aus dem geladenen Bild bzw. der PDF-Seite ein Topo. Der Aufruf läuft
-            direkt aus deinem Browser zum Modell — blockiert ein Gateway das (CORS),
-            springt automatisch der lokale Proxy ein, sofern er läuft (<code>npm start</code>).
-          </p>
-          <button type="button" id="btn-photo-ai">Aus Foto erzeugen (AI)</button>
-          <button type="button" id="btn-ai-cancel" hidden>Abbrechen</button>
-          <p class="hint" id="ai-status"></p>
-
-          <details id="ai-settings">
-            <summary>Einstellungen</summary>
-            <div class="stack">
-              <label>
-                Anbieter
-                <select id="ai-provider"></select>
-              </label>
-              <p class="hint" id="ai-provider-hint"></p>
-              <label>
-                Endpoint
-                <input type="text" id="ai-endpoint" spellcheck="false" placeholder="https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1" />
-              </label>
-              <div id="ai-model-row">
-                <label for="ai-model">Modell</label>
-                <div class="field-with-button">
-                  <input
-                    type="text"
-                    id="ai-model"
-                    spellcheck="false"
-                    placeholder="qwen/qwen3.6-35b-a3b"
-                    list="ai-model-options"
-                    autocomplete="off"
-                  />
-                  <button type="button" id="btn-ai-models">Modelle laden</button>
-                </div>
-                <datalist id="ai-model-options"></datalist>
-                <p class="hint" id="ai-model-hint"></p>
-              </div>
-              <label id="ai-key-row">
-                API-Key
-                <input type="password" id="ai-key" spellcheck="false" autocomplete="off" placeholder="sk-…" />
-              </label>
-              <label>
-                Prompt-Vorlage
-                <select id="ai-prompt-template"></select>
-              </label>
-              <p class="hint" id="ai-prompt-hint"></p>
-              <label id="ai-prompt-custom-row" hidden>
-                Eigener Prompt
-                <textarea id="ai-prompt-custom" rows="8" spellcheck="false"></textarea>
-              </label>
-              <label>
-                Zusatzinfo für das Modell (optional)
-                <input type="text" id="ai-notes" placeholder="z. B. Gerätebezeichnungen, Sprache, Region" />
-              </label>
-              <p class="hint">
-                Der Key wird nur im <code>localStorage</code> dieses Browsers gespeichert und
-                ausschließlich an den angegebenen Endpoint gesendet. Auf gemeinsam genutzten
-                Rechnern besser einen eigenen Proxy verwenden.
-              </p>
-              <button type="button" id="btn-ai-forget">Key löschen</button>
-              <p class="hint" id="ai-proxy-state"></p>
+        <details class="panel__section" id="panel-segments" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2>Segmente</h2></summary>
+          <div class="panel__content">
+            <div class="segment-add">
+              <select id="select-new-segment"></select>
+              <button type="button" id="btn-add-segment">+ hinzufügen</button>
             </div>
-          </details>
-        </section>
+            <ol class="segment-list" id="segment-list"></ol>
+          </div>
+        </details>
+
+        <details class="panel__section" id="panel-photo" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2>Foto-Referenz</h2></summary>
+          <div class="panel__content">
+            <p class="hint">Foto oder PDF als Hintergrund einblenden und Topo darüber nachzeichnen.</p>
+            <label class="button" for="file-photo">Foto oder PDF wählen…</label>
+            <input
+              type="file"
+              id="file-photo"
+              accept="image/*,application/pdf,.pdf"
+              hidden
+            />
+            <label id="photo-page-row" hidden>
+              PDF-Seite
+              <span class="row">
+                <button type="button" id="btn-photo-page-prev" title="Vorherige Seite">◀</button>
+                <input type="number" id="photo-page" min="1" value="1" />
+                <button type="button" id="btn-photo-page-next" title="Nächste Seite">▶</button>
+              </span>
+              <span class="hint" id="photo-page-info"></span>
+            </label>
+            <label>Deckkraft <input type="range" id="photo-opacity" min="0" max="100" value="45" /></label>
+            <label>Größe <input type="range" id="photo-scale" min="20" max="300" value="100" /></label>
+            <label>Horizontal <input type="range" id="photo-x" min="-100" max="100" value="0" /></label>
+            <label>Vertikal <input type="range" id="photo-y" min="-100" max="100" value="0" /></label>
+            <button type="button" id="btn-photo-clear">Referenz entfernen</button>
+
+            <details class="panel__section" id="panel-ai" open>
+              <summary><span class="panel__arrow" aria-hidden="true"></span><h3>AI-Erkennung</h3></summary>
+              <div class="panel__content">
+                <p class="hint">
+                  Erzeugt aus dem geladenen Bild bzw. der PDF-Seite ein Topo. Der Aufruf läuft
+                  direkt aus deinem Browser zum Modell — blockiert ein Gateway das (CORS),
+                  springt automatisch der lokale Proxy ein, sofern er läuft (<code>npm start</code>).
+                </p>
+                <button type="button" id="btn-photo-ai">Aus Foto erzeugen (AI)</button>
+                <button type="button" id="btn-ai-cancel" hidden>Abbrechen</button>
+                <p class="hint" id="ai-status"></p>
+
+                <details id="ai-settings">
+                  <summary>Einstellungen</summary>
+                  <div class="stack">
+                    <label>
+                      Anbieter
+                      <select id="ai-provider"></select>
+                    </label>
+                    <p class="hint" id="ai-provider-hint"></p>
+                    <label>
+                      Endpoint
+                      <input type="text" id="ai-endpoint" spellcheck="false" placeholder="https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1" />
+                    </label>
+                    <div id="ai-model-row">
+                      <label for="ai-model">Modell</label>
+                      <div class="field-with-button">
+                        <input
+                          type="text"
+                          id="ai-model"
+                          spellcheck="false"
+                          placeholder="qwen/qwen3.6-35b-a3b"
+                          list="ai-model-options"
+                          autocomplete="off"
+                        />
+                        <button type="button" id="btn-ai-models">Modelle laden</button>
+                      </div>
+                      <datalist id="ai-model-options"></datalist>
+                      <p class="hint" id="ai-model-hint"></p>
+                    </div>
+                    <label id="ai-key-row">
+                      API-Key
+                      <input type="password" id="ai-key" spellcheck="false" autocomplete="off" placeholder="sk-…" />
+                    </label>
+                    <label>
+                      Prompt-Vorlage
+                      <select id="ai-prompt-template"></select>
+                    </label>
+                    <p class="hint" id="ai-prompt-hint"></p>
+                    <label id="ai-prompt-custom-row" hidden>
+                      Eigener Prompt
+                      <textarea id="ai-prompt-custom" rows="8" spellcheck="false"></textarea>
+                    </label>
+                    <label>
+                      Zusatzinfo für das Modell (optional)
+                      <input type="text" id="ai-notes" placeholder="z. B. Gerätebezeichnungen, Sprache, Region" />
+                    </label>
+                    <p class="hint">
+                      Der Key wird nur im <code>localStorage</code> dieses Browsers gespeichert und
+                      ausschließlich an den angegebenen Endpoint gesendet. Auf gemeinsam genutzten
+                      Rechnern besser einen eigenen Proxy verwenden.
+                    </p>
+                    <button type="button" id="btn-ai-forget">Key löschen</button>
+                    <p class="hint" id="ai-proxy-state"></p>
+                  </div>
+                </details>
+              </div>
+            </details>
+          </div>
+        </details>
       </aside>
 
       <section class="canvas" id="canvas">
@@ -190,22 +216,28 @@
         </div>
       </section>
 
-      <aside class="panel panel--right">
-        <section class="panel__section">
-          <h2>Auswahl</h2>
-          <div id="inspector"><p class="hint">Segment oder Symbol im Topo anklicken.</p></div>
-        </section>
+      <aside class="panel panel--right" id="panel-right" aria-label="Auswahl, Symbole und Prüfung">
+        <details class="panel__section" id="panel-selection" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2>Auswahl</h2></summary>
+          <div class="panel__content">
+            <div id="inspector"><p class="hint">Segment oder Symbol im Topo anklicken.</p></div>
+          </div>
+        </details>
 
-        <section class="panel__section">
-          <h2>Symbole</h2>
-          <p class="hint">Auf ein ausgewähltes Segment klicken, um ein Symbol hinzuzufügen.</p>
-          <div id="symbol-palette"></div>
-        </section>
+        <details class="panel__section" id="panel-symbols" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2>Symbole</h2></summary>
+          <div class="panel__content">
+            <p class="hint">Auf ein ausgewähltes Segment klicken, um ein Symbol hinzuzufügen.</p>
+            <div id="symbol-palette"></div>
+          </div>
+        </details>
 
-        <section class="panel__section">
-          <h2>Prüfung</h2>
-          <ul class="issues" id="issues"></ul>
-        </section>
+        <details class="panel__section" id="panel-validation" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2>Prüfung</h2></summary>
+          <div class="panel__content">
+            <ul class="issues" id="issues"></ul>
+          </div>
+        </details>
       </aside>
     </main>
 

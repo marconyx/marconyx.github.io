@@ -52,6 +52,98 @@ function test(name, fn) {
 
 console.log('Topo-Generator Tests');
 
+function exitRegressionTopo(types) {
+  return normalizeTopo({
+    canyon_name: 'Exit regression',
+    // Fixes Datum: sonst landet "heute" in der Legende und die Hashes kippen täglich.
+    date: '2026-10-07',
+    segments: [{
+      type: 'WALK',
+      length_in_meters: 10,
+      elements: types.map((type) => ({
+        type, position: 0.5, text: 'Weg & Ort', duration_to_walk_in_min: 12,
+      })),
+    }],
+  });
+}
+
+test('Fluchtweg links und Standard bleiben bytegenau unverändert', () => {
+  const baselines = {
+    color: '709cf610435b40838576c01d96ec3b867101ef6d35eb45822192369ae298ecc2',
+    bw: 'bd9ca751d2211442083abef5bb2a9ea5c75adc14b25ee1080d9f3b75fc4b68b7',
+    alpiner_classic: '174122c53cbe50dd99c774b513a29f0e794d2f3e2342c4f29a0e7863fac0f8b1',
+    eau_froide: 'c492ea63b285356ae18105590ca3216af56e301aba7a7599d1d1628df4c25b8b',
+  };
+  for (const [theme, baseline] of Object.entries(baselines)) {
+    const topo = exitRegressionTopo(theme === 'eau_froide'
+      ? ['ESCAPE_EXIT_LEFT', 'ESCAPE_EXIT_RIGHT'] : ['ESCAPE_EXIT_LEFT']);
+    const renders = [false, true].map((interactive) =>
+      renderTopoSvg(topo, layoutTopo(topo), { theme, interactive }));
+    assert.equal(createHash('sha256').update(JSON.stringify(renders)).digest('hex'), baseline, theme);
+  }
+});
+
+test('Fluchtweg rechts hat einen vollständigen Läufer links und getrennten Rechtspfeil', () => {
+  assert.equal(THEMES.eau_froide.label, 'Standard');
+  assert.match(html, /<option value="eau_froide">Standard<\/option>/);
+  assert.ok(symbolOptions().some((group) =>
+    group.symbols.some((symbol) => symbol.type === 'ESCAPE_EXIT_RIGHT')));
+  const element = { text: 'Weg & Ort', duration_to_walk_in_min: 12 };
+  const right = SYMBOLS.ESCAPE_EXIT_RIGHT.render(element);
+  assert.doesNotMatch(right, /transform=|clip-path=/);
+  assert.match(right, /<\/g>\s*<text[^>]+>Weg &amp; Ort<\/text>\s*<text[^>]+>12 min<\/text>$/);
+  const head = /<circle cx="([^"]+)" cy="([^"]+)" r="([^"]+)"/.exec(right);
+  assert.ok(head, 'echter geschlossener Kreis statt fast vollständigem Bogen');
+  const [cx, cy, radius] = head.slice(1).map(Number);
+  const paths = [...right.matchAll(/<path d="([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(paths.length, 4, 'Rumpf, zwei Arme, zwei Beine, Pfeil');
+  const points = (path) => [...path.matchAll(/[ML](-?[\d.]+),(-?[\d.]+)/g)]
+    .map((match) => match.slice(1).map(Number));
+  const limbs = paths.slice(0, 3).map(points);
+  assert.deepEqual(limbs.map((part) => part.length), [2, 6, 6]);
+  assert.equal((paths[1].match(/M/g) || []).length, 2, 'zwei getrennte Armzüge');
+  assert.equal((paths[2].match(/M/g) || []).length, 2, 'zwei getrennte Beinzüge');
+  const halfStroke = 0.115 / 2;
+  const runnerPoints = limbs.flat();
+  const runnerLeft = Math.min(cx - radius, ...runnerPoints.map(([x]) => x - halfStroke));
+  const runnerRight = Math.max(cx + radius, ...runnerPoints.map(([x]) => x + halfStroke));
+  const runnerTop = Math.min(cy - radius, ...runnerPoints.map(([, y]) => y - halfStroke));
+  const runnerBottom = Math.max(cy + radius, ...runnerPoints.map(([, y]) => y + halfStroke));
+  assert.ok(runnerRight < 0, 'Person vollständig auf der linken Schildhälfte');
+  assert.ok(runnerLeft > -1.3 + 0.1 && runnerTop > -1.05 + 0.1 &&
+    runnerBottom < 0.15 - 0.08, 'inklusive runder Strichenden kein Clipping am Schild');
+  const shoulderTop = Math.min(...limbs.slice(0, 2).flat().map(([, y]) => y)) - halfStroke;
+  assert.ok(shoulderTop - (cy + radius) > 0.06, 'Kopf berührt keine Schulter/Arme');
+  const arrowPoints = points(paths[3]);
+  assert.ok(paths[3].endsWith('Z'), 'geschlossener Pfeil');
+  const arrowLeft = Math.min(...arrowPoints.map(([x]) => x));
+  const arrowRight = Math.max(...arrowPoints.map(([x]) => x));
+  assert.ok(arrowLeft - runnerRight > 0.3, 'sichtbare Lücke zwischen Hand und Pfeil');
+  assert.ok(arrowRight < 1.3 - 0.1, 'Pfeilspitze innerhalb des Schilds');
+  assert.deepEqual(arrowPoints.filter(([x]) => x === arrowRight), [[1.15, -0.45]],
+    'einzige Pfeilspitze zeigt nach rechts');
+  assert.ok(arrowPoints.every(([, y]) => y > -1.05 && y < 0.15));
+  const topo = exitRegressionTopo(['ESCAPE_EXIT_RIGHT']);
+  const colors = { color: ['#0b7a45', '#fff'], bw: ['#0b7a45', '#fff'],
+    alpiner_classic: ['#62766e', '#fbfbf8'] };
+  for (const theme of Object.keys(THEMES).filter((key) => key !== 'eau_froide')) {
+    for (const interactive of [false, true]) {
+      const svg = renderTopoSvg(topo, layoutTopo(topo), { theme, interactive });
+      for (const path of paths) assert.ok(svg.includes(`d="${path}"`), `${theme}: gleiche Geometrie`);
+      assert.ok(svg.includes(`<circle cx="${cx}" cy="${cy}" r="${radius}"/>`));
+      assert.ok(svg.includes(`rx="0.08" fill="${colors[theme][0]}"`));
+      assert.ok(svg.includes(`<g fill="${colors[theme][1]}" stroke="none">`));
+      assert.doesNotMatch(svg, /scale\(-1,1\)/);
+      assert.match(svg, /<\/g>\s*<text[^>]+>Weg &amp; Ort<\/text>\s*<text[^>]+>12 min<\/text>/);
+    }
+  }
+  for (const minutes of [undefined, 0]) {
+    const withoutTime = SYMBOLS.ESCAPE_EXIT_RIGHT.render({ duration_to_walk_in_min: minutes });
+    assert.ok(!withoutTime.includes('<text'));
+    assert.ok(withoutTime.includes('<circle'));
+  }
+});
+
 test('JSON round-trip ist strukturell identisch', () => {
   const topo = topoFromJson(JSON.stringify(original));
   assert.deepEqual(topoToJsonObject(topo), original);
@@ -89,6 +181,43 @@ test('alte Dateien ohne Author und Dauer bleiben kompatibel', () => {
   assert.deepEqual(topoToJsonObject(topoFromXml(legacyXml)), legacy);
 });
 
+test('Verkürzungsschwelle bleibt im Modell sowie JSON und XML erhalten', () => {
+  const topo = normalizeTopo({
+    ...original,
+    length_shortening_threshold_meters: 30,
+  });
+  const json = topoToJsonObject(topo);
+  assert.equal(json.length_shortening_threshold_meters, 30);
+  assert.equal(
+    topoToJsonObject(topoFromJson(JSON.stringify(json)))
+      .length_shortening_threshold_meters,
+    30,
+  );
+
+  const xml = topoToXml(topo);
+  assert.match(xml, /length_shortening_threshold_meters="30"/);
+  assert.equal(
+    topoToJsonObject(topoFromXml(xml)).length_shortening_threshold_meters,
+    30,
+  );
+  assert.match(
+    readFileSync(xsdPath, 'utf8'),
+    /name="length_shortening_threshold_meters" type="xs:decimal"/,
+  );
+
+  for (const value of [null, 0, '']) {
+    const disabled = topoToJsonObject(normalizeTopo({
+      ...original,
+      length_shortening_threshold_meters: value,
+    }));
+    assert.equal(
+      Object.hasOwn(disabled, 'length_shortening_threshold_meters'),
+      false,
+      `deaktivierte Einstellung ${String(value)} bleibt exportseitig ausgelassen`,
+    );
+  }
+});
+
 test('XSD validiert das XML mit den neuen Metadaten', () => {
   const resultWithMetadata = spawnSync(
     'xmllint',
@@ -117,6 +246,10 @@ test('Topo-Metadaten und Abseillängen-Label stehen in der UI', () => {
     /Name\s*<input[^>]+id="topo-name"[\s\S]*Author\s*<input[^>]+id="topo-author"[\s\S]*Dauer\s*<input[^>]+id="topo-duration"/,
   );
   assert.match(html, /Max\. Abseillänge \(m\)\s*<input[^>]+id="topo-max-walk"/);
+  assert.match(
+    html,
+    /Verkürzung ab \(m\):\s*<input type="number" id="topo-length-shortening-threshold" min="0"/,
+  );
   assert.equal(html.includes('Max. Walk-Länge'), false);
 });
 

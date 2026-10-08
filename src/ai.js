@@ -24,6 +24,8 @@ import {
   SEGMENT_LABELS,
   SEGMENT_TYPES,
   WALK_TIME_ELEMENT_TYPES,
+  defaultAngleFor,
+  defaultLengthFor,
   normalizeTopo,
   todayIso,
 } from './model.js';
@@ -315,7 +317,7 @@ export function badKeyCharacter(key) {
 /**
  * Wählbare Prompt-Vorlagen.
  *
- * Der Prompt entscheidet über die Qualität der Erkennung mehr als das Modell.
+ * Der Prompt steuert Vorgehen und Ausgabe der Erkennung.
  * Deshalb ist er wählbar: Die optimierte Vorlage erklärt Rolle, Vorgehen,
  * Typkatalog und Ausgabeformat ausführlich, die kompakte spart Kontext für
  * kleine Modelle, "legacy" bleibt als Vergleichsmassstab wortgleich erhalten
@@ -325,7 +327,7 @@ export const PROMPT_TEMPLATES = [
   {
     id: 'optimized',
     label: 'Optimiert (empfohlen)',
-    hint: 'Ausführliche Anleitung mit Typkatalog, Vorgehen und Beispiel.',
+    hint: 'Vorlagengetreue Rekonstruktion mit Symbolzuordnung, Lesereihenfolge und belegten Angaben.',
   },
   {
     id: 'compact',
@@ -550,6 +552,7 @@ const EXAMPLE_JSON = `{
   "maximum_walk_length": 30,
   "distance_of_single_line": 60,
   "legend_offset_top": 0,
+  "length_shortening_threshold_meters": null,
   "segments": [
     { "type": "WALK", "length_in_meters": 40, "angle_in_degrees": 0,
       "duration_to_walk_in_min": 10, "wall_distance_in_meters": 0, "depth_in_meters": null,
@@ -577,6 +580,7 @@ const SCHEMA_BLOCK = `{
   "maximum_walk_length": number,           // gezeichnete Maximallänge von Gehstrecken, üblich 30
   "distance_of_single_line": number,       // Zeilenbreite vor dem Umbruch, üblich 60
   "legend_offset_top": number,             // üblich 0
+  "length_shortening_threshold_meters": number|null, // null = ausgeschaltet; nicht aus dem Bild ableiten
   "segments": [
     {
       "type": string,                      // nur Werte aus der Segmentliste
@@ -604,21 +608,46 @@ const SCHEMA_BLOCK = `{
   ]
 }`;
 
+function drawingDefaultsText() {
+  return SEGMENT_TYPES.map(
+    (type) => `${type}: Länge ${defaultLengthFor(type)}, Winkel ${defaultAngleFor(type)}`,
+  ).join('; ');
+}
+
+const RECONSTRUCTION_RULES = `VORLAGENTREUE (Vorrang vor generischer Canyon-Plausibilität):
+- Rekonstruiere die tatsächlich sichtbare Vorlage möglichst vollständig; erzeuge keinen neuen, nur plausiblen Canyon. Die Bildvorlage und ihre Legende haben Vorrang vor allgemeinen Symbolkonventionen; Nutzerhinweise ergänzen nur, sie ersetzen keine sichtbaren Befunde.
+- Scanne die gesamte Seite einschliesslich aller Spalten, Ränder, Detailausschnitte, Fortsetzungspfeile, Beschriftungen und Legende. Die Legende dient nur der Zuordnung: ihre Muster-Symbole sind keine Routenelemente. Übersichts-/Detailbilder derselben Stelle nicht doppelt als Route erfassen.
+- Erfasse jede erkennbare Symbolinstanz in Segmentnähe einzeln. Wiederholte gleichartige Symbole nicht deduplizieren. Ordne sie anhand von Verbindungslinien, Position und Beschriftung dem richtigen Segment zu, nicht pauschal dem nächsten Abschnitt.
+- Unbekannte Symbole nicht willkürlich approximieren: nur bei belegbarem semantischem Match auf einen echten ELEMENT_TYPES-Wert aus dem Katalog mappen. Keine Standplätze, Gefahren, Bäume oder Geometrien aus Landschaftsfotos erfinden. Ohne erkennbare Topo-Skizze keine Route konstruieren.
+- Erhalte lesbare Originalbeschriftungen, Einheiten, Dezimalwerte und Nummern. Nutze "text" am passenden Symbol, wenn es dort angezeigt wird; freie Beschriftung als CUSTOM_TEXT im passenden Segment. WARNING_AND_TEXT nur bei tatsächlich vorhandenem Warndreieck, nicht für jede Notiz.
+- ROPE_RAILING_LEFT/RIGHT, PATH und ROAD zeigen keinen freien Text: ihre Beschriftungen separat als CUSTOM_TEXT platzieren. ELEMENT_NUMBER wird von der App neu nummeriert; eine abweichende Originalnummer zusätzlich als CUSTOM_TEXT erhalten. Segment-Kurzlabels werden automatisch erzeugt; abweichende Originalnotation (z. B. C25) als CUSTOM_TEXT erhalten, identische Labels nicht doppelt zeichnen.
+- Das bestehende Ausgabeformat unterstützt keine warnings/evidence-Felder. Füge keine solchen Felder hinzu. Unsicherheit, unlesbare Zuordnung oder nicht darstellbare Details ausdrücklich als CUSTOM_TEXT mit Präfix "AI-Hinweis:" beim betroffenen Segment kennzeichnen; solche Hinweise klar von Originaltext unterscheiden und keine unlesbaren Texte vervollständigen.`;
+
+function measuredValuesText() {
+  return `BELEGTE WERTE UND DARSTELLUNG:
+- Länge/Höhe, Gehzeit, Gumpentiefe und Wanddistanz nur aus lesbaren, eindeutig zugeordneten Angaben übernehmen; Einheiten korrekt in Meter bzw. Minuten umrechnen. Keine typischen Canyonwerte oder Beispielwerte als Befund verwenden.
+- Unbekannte duration_to_walk_in_min und depth_in_meters bleiben null, nicht 0. Winkel nur aus einer Zahl oder der eindeutig gezeichneten Segmentneigung ableiten, nicht aus vermeintlich typischem Gelände.
+- length_in_meters, angle_in_degrees und wall_distance_in_meters erlauben im bestehenden Schema kein null. Fehlt die Grundlage, verwende ausschliesslich die App-Darstellungsdefaults: ${drawingDefaultsText()}; Wanddistanz 0. Kennzeichne jedes solche unbekannte Feld als CUSTOM_TEXT, z. B. "AI-Hinweis: Länge unbekannt; Darstellungswert 10 m". Diese Defaults sind KEINE erkannten Messwerte. Ein sichtbarer freier Seilabstand ohne Massangabe belegt keine Meterzahl.
+- Bewahre Vorlagenproportionen, Symbolabstände und Abschnittsanordnung soweit mit dem Format abbildbar. Die Zeichnung ist nicht zwingend massstäblich: niemals absolute Pixelkoordinaten als Meter oder relative Werte ausgeben. Ohne belegten Massstab keine Längen aus Pixelabständen ableiten. Unbekannte Masse nicht zugunsten optischer Ähnlichkeit erfinden.`;
+}
+
 /** Die ausführliche Anleitung – als System-Nachricht gedacht. */
 export function buildOptimizedInstructions() {
-  return `Du bist ein erfahrener Canyoning-Topo-Experte und liest Topo-Skizzen sowie Fotos von Schluchten. Deine Aufgabe ist es, daraus ein strukturiertes Topo als JSON zu erzeugen.
+  return `Du bist ein erfahrener Canyoning-Topo-Experte. Deine Aufgabe ist die möglichst genaue Rekonstruktion eines abgebildeten Canyon-Topos aus einem Foto oder einer gerenderten PDF-Seite als strukturiertes JSON, nicht die Erzeugung eines generischen Canyons.
+
+${RECONSTRUCTION_RULES}
 
 VORGEHEN (in dieser Reihenfolge):
-0. Erkenne zuerst das Layout: Zeigt das Bild ein KASKADIERTES Topo (Treppen-/Kaskadenform: mehrere gegeneinander versetzte Abschnitte bzw. Spalten, die diagonal von links oben nach rechts unten absteigen, oft mit Gehstrecken-Unterbrechungen)? Oder ein lineares bzw. serpentinenartiges Zeilen-Topo?
-1. Lies das Bild von OBEN (Einstieg) nach UNTEN (Ausstieg). Die Reihenfolge der Segmente ist die Abstiegsreihenfolge. Bei einem KASKADIERTEN Topo MUSST du es von oben nach unten UND von links nach rechts lesen: Innerhalb eines Abschnitts (Spalte) läufst du von oben nach unten, danach folgt der nächste Abschnitt rechts daneben, wieder weiter oben beginnend. Der Einstieg liegt oben links, der Ausstieg unten rechts; die Segmentreihenfolge im JSON folgt genau dieser Diagonale. Setze an jedem Abschnittswechsel force_cut_row_after_this_segment auf true (ein Abschnitt, der zusammenbleiben soll, bekommt do_not_cut_row_after_this_segment), damit die Kaskadierung im Layout "Kaskadiert" korrekt abgebildet wird. Führe keine neuen Felder ein.
-2. Zerlege den Abstieg in zusammenhängende Abschnitte – jeder Abschnitt wird ein Segment.
+0. Erkenne zuerst das Layout der gesamten Seite: KASKADIERTES Topo (Treppen-/Kaskadenform, mehrere versetzte Spalten), lineares oder serpentinenartiges Zeilen-Topo? Trenne die Route von Legende, Übersicht und dekorativen Zeichnungen.
+1. Lies das Bild in Abstiegsreihenfolge von OBEN (Einstieg) nach UNTEN (Ausstieg). Bei einem KASKADIERTEN Topo lies von oben nach unten UND von links nach rechts: erst eine Spalte vollständig, dann die nächste rechts, wieder oben beginnend. Explizite Fortsetzungen, Pfeile und übereinstimmende Anschlussmarken haben Vorrang vor dieser Standardleserichtung. Bildsprünge/Zeilenumbrüche sind keine zusätzlichen WALK-Segmente; nur eingezeichnete Gehstrecken übernehmen. Verbinde alle Abschnitte in EIN geordnetes segments-Array, ohne Auslassen, Wiederholung oder Sortieren nach Höhe. Setze am letzten Segment vor jedem belegten Spalten-/Zeilenwechsel force_cut_row_after_this_segment auf true, nicht erst im nächsten Abschnitt. Innerhalb eines ausdrücklich zusammengehörigen Abschnitts hält do_not_cut_row_after_this_segment das Segment mit dem folgenden zusammen. Diese Flags steuern Umbrüche, wählen aber keinen Layoutmodus; keine neuen Felder für Spalten oder absolute Seitenpositionen einführen.
+2. Zerlege die Route an tatsächlich sichtbaren Übergängen in Segmente. Jede eigenständige Abseilstelle, Gumpe, Gehstrecke, Rutsche, Sprung- oder Kletterstelle bleibt erhalten; keine zusammenfassen oder ergänzen. Ein Sprungpfeil ins Wasser ist JUMP, ein Fortsetzungspfeil ist kein JUMP. Alternative Sprung-/Rutschmöglichkeiten nicht als zusätzliche hintereinander zu begehende Hauptstrecke erfinden; erkennbare Alternativen als Originaltext beim betreffenden Segment erhalten.
 3. Bestimme für jeden Abschnitt den Typ aus der Segmentliste unten. Nutze das untenstehende KODIERUNGS-MAPPING, um Kurzlabels aus dem Bild (z. B. "C", "T", "S") den korrekten JSON-Segmenttypen zuzuordnen. Kurzlabels wie "R_d10", "J6" oder "S6" verraten auch die Höhe.
-4. Schätze Länge/Höhe in Metern und den Winkel. Steht eine Zahl im Bild, übernimm sie unverändert.
-5. Ordne die sichtbaren Symbole dem Segment zu, in dem sie stehen, und setze ihre lokalen Koordinaten.
-6. Lies die Metadaten aus Titel und Legende: Name, Author, Dauer, Datum. Was nicht dasteht, bleibt leer.
+4. Übernimm belegte Werte nach BELEGTE WERTE UND DARSTELLUNG unten, keine frei geschätzten Messwerte.
+5. Ordne alle erkennbaren Routensymbole mit Beschriftungen, Seite, Grösse und gegebenenfalls Start-/Endpunkt ihrem tatsächlichen Segment zu.
+6. Lies Name, Author, Dauer und Datum aus Titel/Metadaten. Was nicht dasteht, bleibt leer (Datum: heutiges Datum als App-Default, nicht als erkannter Befund).
 
 KODIERUNGS-MAPPING (Priorität!):
-Wenn du im Bild folgende Buchstaben/Labels siehst, ordne sie ZWINGEND so zu. Diese Regeln haben Vorrang vor Kurzlabels und Erkennungsmerkmalen in der Segmentliste:
+Prüfe zuerst die Legende und den lokalen Kontext der Vorlage. Wenn sie keine abweichende Bedeutung belegen, gilt folgendes Mapping mit Vorrang vor Kurzlabels und Erkennungsmerkmalen in der Segmentliste. Ein einzelner Buchstabe ohne Kontext reicht nicht für eine sichere Zuordnung:
 
 C (Cascade) → RAPPEL_WET (Wasserfall-Abseilen/Abfahrt)
 T / TP (Toboggan) → SLIDE (Rutsche)
@@ -649,35 +678,49 @@ KOORDINATENSYSTEM DER ELEMENTE (wichtig):
 - "vertical_*" misst QUER dazu, positiv = links der Laufrichtung (bei flachem Gelände oberhalb), negativ = rechts/unterhalb.
 - Beispiel: ein Block am Boden einer Gehstrecke liegt bei vertical 0, eine Brücke darüber bei etwa vertical 4, eine Höhle darunter bei etwa -0.5.
 - Bohrhaken am Kopf einer Abseilstelle liegen nahe horizontal 0.
+- Links/rechts und Standplatzseite beziehen sich auf die Abstiegsrichtung, NICHT auf die Bildschirmseite. Bei senkrechtem Abstieg zeigt positives vertical nach Bildschirm-rechts; eine Spaltenverschiebung ändert die Seite nicht. Unklare Standplatzseite: BOLT statt geratenem BOLT_LEFT/RIGHT.
+- Position entlang des Segments aus dem sichtbaren Anteil ableiten (z. B. halbe Strecke = horizontal 0.5 * length_in_meters), nicht alle Symbole bei 0 sammeln. Querabstände anhand desselben lokalen Massstabs und der Lage zur Route abbilden; ohne Massstab nur vorsichtige Darstellungsabstände mit AI-Hinweis, keine behaupteten Messungen.
+- Bei gestauchten WALK-Strecken beziehen sich entlang-Koordinaten auf die ungekürzte length_in_meters; die App staucht sie mit. Niemals globale Seiten-/Spaltenkoordinaten übertragen.
+- Bei ${[...RANGE_ELEMENT_TYPES].join(', ')} Start UND Ende relativ zum SELBEN Segmentanfang angeben, auch wenn das Ende optisch bei einer anderen Stelle liegt. Sichtbare Streckenrichtung erhalten; RAPPEL_GUIDE-Pfeil zeigt zum Endpunkt. Keine Endkoordinaten aus einem anderen Segmentkoordinatensystem mischen.
+- size ist ein dimensionsloser Skalierungsfaktor (1 = normale Symbolgrösse), keine Pixelgrösse. Das Format unterstützt keine freie Rotation/Spiegelung für Punktelemente: Orientierung nur über passende LEFT/RIGHT-Typen bzw. Streckenendpunkte erhalten; nicht darstellbare Drehungen als AI-Hinweis benennen, keine rotate-Felder erfinden.
+
+${measuredValuesText()}
 
 EINHEITEN UND WERTEBEREICHE:
-- length_in_meters: > 0. Abseilstellen typisch 3–120, Sprünge 2–15, Rutschen 3–30, Gehstrecken 5–500.
+- length_in_meters: > 0; belegte Werte nicht auf typische Grössen beschränken.
 - angle_in_degrees: 0 = flach, 90 = senkrecht, >90 = ÜBERHÄNGEND (nur bei RAPPEL* sinnvoll, typisch bis 115).
-- wall_distance_in_meters: nur bei RAPPEL, RAPPEL_DRY, RAPPEL_WET; 0 = Seil liegt an der Wand, sonst typisch 1–10. Bei allen anderen Typen 0.
+- wall_distance_in_meters: nur bei RAPPEL, RAPPEL_DRY, RAPPEL_WET; belegte 0 = Seil liegt an der Wand. Unbekannt: Darstellungsdefault 0 mit AI-Hinweis. Bei allen anderen Typen 0.
 - depth_in_meters: nur bei POOL und nur wenn die Tiefe im Topo explizit angegeben ist; Zahl >= 0, sonst null (unbekannt). Bei allen anderen Typen immer null. Nicht aus der gezeichneten Gumpenform oder einem Foto schätzen.
-- duration_to_walk_in_min: beim Segment nur bei WALK, sonst null. Beim Element nur bei ${[...WALK_TIME_ELEMENT_TYPES].join(', ')} – geschätzte Gehzeit in Minuten vom Fluchtweg bis zum sicheren Ort, sonst null.
+- duration_to_walk_in_min: beim Segment nur bei WALK, sonst null. Beim Element nur bei ${[...WALK_TIME_ELEMENT_TYPES].join(', ')} – explizit angegebene Gehzeit in Minuten vom Fluchtweg bis zum sicheren Ort, unbekannt oder sonst null. Keine Gehzeit schätzen.
 - size: 1 = normal, 0.5–2 sind sinnvolle Abweichungen.
 - do_not_cut_row_after_this_segment / force_cut_row_after_this_segment: Zeilenumbruch des Topos. Im Zweifel beide false und NIE beide zugleich true am selben Segment.
 
 UMGANG MIT UNSICHERHEIT:
-- Lieber ein Detail weglassen als raten. Ein plausibles kurzes Topo ist besser als ein langes erfundenes.
+- Keine sichtbaren, sicher zugeordneten Details zugunsten eines kürzeren Topos weglassen. Unsichere Details nicht als sicher ausgeben; vorhandene lesbare Beschriftung erhalten und AI-Hinweis ergänzen.
 - Erfinde keine Typen, Werte oder Beschriftungen, die im Bild nicht stehen.
 - Nicht erkennbare Metadaten bleiben leer ("" bzw. das heutige Datum).
 - Ein kahler, toter Baum ohne Laub bzw. Nadeln ist LEAF_TREE oder CONIFER_TREE mit "dead": true – er trägt als Verankerung nicht.
-- Beschriftungen aus dem Bild gehören als CUSTOM_TEXT (bzw. WARNING_AND_TEXT bei Gefahrenhinweisen) ins passende Segment.
+- Beschriftungen und Hinweise nach VORLAGENTREUE im passenden Segment erhalten.
 - Ist gar kein Topo erkennbar, gib ein leeres "segments"-Array zurück.
 
-BEISPIEL (Form, nicht Inhalt):
+INTERNE VOLLSTÄNDIGKEITSPRÜFUNG VOR DER ANTWORT:
+Prüfe still alle Spalten und Übergänge, die Anzahl und Zuordnung sichtbarer Segment-/Symbolinstanzen, Wiederholungen, Originaltexte, Standplatzseiten, belegte Werte und markierte Ungewissheit. Prüfe gültiges JSON nach Schema: nur echte Typen, Zahlen statt Strings, null nur in erlaubten Feldern, keine NaN/Infinity, vollständige Streckenendpunkte, Punkte-Enden null, NIE beide Umbruchflags true. Gib keine Chain-of-thought, Analyse oder Prüfliste aus, nur das JSON.
+
+BEISPIEL (nur Form, nicht Inhalt; keine Namen, Werte oder Symbole daraus kopieren):
 ${EXAMPLE_JSON}`;
 }
 
 /** Kurzfassung für kleine Modelle oder enges Kontextfenster. */
 export function buildCompactInstructions() {
-  return `Du bist Canyoning-Topo-Experte. Lies das Bild von oben (Einstieg) nach unten (Ausstieg) und gib das Topo als JSON zurück. Ist das Topo kaskadiert (Treppenform, diagonal von links oben nach rechts unten absteigend), lies es von oben nach unten UND von links nach rechts (Einstieg oben links, Ausstieg unten rechts) und setze force_cut_row_after_this_segment an den Abschnittswechseln.
+  return `Du bist Canyoning-Topo-Experte. Rekonstruiere die sichtbare Vorlage, keinen generischen Canyon. Scanne die ganze Seite. Lies ein kaskadiertes Topo spaltenweise von oben nach unten und von links nach rechts; explizite Fortsetzungspfeile/Anschlussmarken haben Vorrang. Alle Abschnitte in EIN geordnetes segments-Array; Bildsprünge nicht als Gehstrecken erfinden. force_cut_row_after_this_segment am letzten Segment vor dem belegten Abschnittswechsel; nie beide Umbruchflags true.
+
+${RECONSTRUCTION_RULES}
+
+${measuredValuesText()}
 
 Antworte NUR mit einem JSON-Objekt, ohne Text und ohne Markdown-Codefence.
 
-Schema: canyon_name, author, duration, date ("YYYY-MM-DD"), maximum_walk_length (30), distance_of_single_line (60), legend_offset_top (0), segments[].
+Schema: canyon_name, author, duration, date ("YYYY-MM-DD"), maximum_walk_length (30), distance_of_single_line (60), legend_offset_top (0), length_shortening_threshold_meters (null = ausgeschaltet), segments[].
 Segment: type, length_in_meters, angle_in_degrees, duration_to_walk_in_min (nur WALK, sonst null), wall_distance_in_meters (nur RAPPEL*, sonst 0), depth_in_meters (number|null, nur POOL), do_not_cut_row_after_this_segment, force_cut_row_after_this_segment, elements[].
 Element: type, horizontal_start_rel_to_segment_start, vertical_start_rel_to_segment_start, horizontal_end_rel_to_segment_start, vertical_end_rel_to_segment_start, size, text, dead, duration_to_walk_in_min.
 
@@ -689,12 +732,14 @@ Alle übrigen Elemente setzen beide End-Koordinaten auf null.
 "duration_to_walk_in_min" beim Element nur bei ${[...WALK_TIME_ELEMENT_TYPES].join(', ')} (Gehzeit in Minuten bis zum sicheren Ort), sonst null.
 "depth_in_meters": nur bei POOL und nur wenn die Tiefe im Topo explizit angegeben ist; Zahl >= 0, sonst null (unbekannt). Bei allen anderen Typen immer null. Nicht aus Gumpenform oder Foto schätzen. "T 4 m" an einer Gumpe ist eine Tiefe, keine Rutsche.
 
-Regeln: Segmente in Abstiegsreihenfolge. Elementkoordinaten lokal pro Segment in Meter, horizontal entlang, vertical quer (positiv = links der Laufrichtung). angle 0 = flach, 90 = senkrecht, >90 = überhängend. Zahlen aus dem Bild ("R_d10", "J6") übernehmen. Nur Typen aus den Listen, nichts erfinden, im Zweifel weglassen. Kein Topo erkennbar: leeres "segments"-Array.`;
+Regeln: Legende/Kontext zuerst, sonst C (Cascade) = RAPPEL_WET, T/TP (Toboggan) = SLIDE, R/Rd/Rw = RAPPEL/RAPPEL_DRY/RAPPEL_WET, MC = ROPE_RAILING_LEFT/RIGHT, RG = RAPPEL_GUIDE.
+Elementkoordinaten lokal pro Segment in Meter, horizontal entlang, vertical quer (positiv = links der Laufrichtung, nicht Bildschirm-links; bei senkrechtem Abstieg Bildschirm-rechts). Standplatzseite unbekannt: BOLT. Positionen entlang proportional zur Segmentlänge; WALK-Koordinaten vor Stauchung. Streckenstart und -ende relativ zum selben Segmentanfang, Richtung erhalten. size dimensionslos, keine Pixel-/Rotationsfelder. angle 0 = flach, 90 = senkrecht, >90 = überhängend.
+Prüfe intern Vollständigkeit, Originaltexte, Symbolinstanzen, Seiten und gültiges JSON; keine Chain-of-thought ausgeben. Kein Topo erkennbar: leeres "segments"-Array.`;
 }
 
 /** Kurze Aufgabenstellung samt Nutzerhinweisen – als User-Nachricht zum Bild. */
 export function buildTaskText(hints = {}) {
-  const lines = ['Erzeuge aus diesem Bild das Topo als JSON nach den Vorgaben.'];
+  const lines = ['Erzeuge aus diesem Bild das vorlagengetreue Topo als JSON nach den Vorgaben; übernimm die erkennbaren Routensymbole und Beschriftungen.'];
   if (hints.canyonName) lines.push(`Der Canyon heißt "${hints.canyonName}".`);
   if (hints.notes) lines.push(`Zusatzinfo vom Nutzer: ${hints.notes}`);
   return lines.join('\n');

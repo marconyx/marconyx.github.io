@@ -15,6 +15,12 @@ export function topoToJsonObject(topo) {
     maximum_walk_length: topo.maximum_walk_length,
     distance_of_single_line: topo.distance_of_single_line,
     legend_offset_top: topo.legend_offset_top,
+    ...(topo.length_shortening_threshold_meters > 0
+      ? {
+          length_shortening_threshold_meters:
+            topo.length_shortening_threshold_meters,
+        }
+      : {}),
     segments: topo.segments.map((segment) => {
       const segmentOut = {
         type: segment.type,

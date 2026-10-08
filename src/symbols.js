@@ -96,15 +96,28 @@ function walkTimeLabel(minutes) {
 }
 
 function exitSign(direction, text, minutes) {
-  const arrow =
-    direction === 'left'
-      ? '<path d="M-0.75,-0.75 L-1.15,-0.45 L-0.75,-0.15 L-0.75,-0.35 L-0.3,-0.35 L-0.3,-0.55 L-0.75,-0.55 Z" fill="#fff"/>'
-      : '<path d="M0.75,-0.75 L1.15,-0.45 L0.75,-0.15 L0.75,-0.35 L0.3,-0.35 L0.3,-0.55 L0.75,-0.55 Z" fill="#fff"/>';
-  return `
+  if (direction === 'right') {
+    return `
+    <rect x="-1.3" y="-1.05" width="2.6" height="1.2" rx="0.08" fill="#0b7a45"/>
+    <g fill="#fff" stroke="none">
+      <circle cx="-0.55" cy="-0.84" r="0.1"/>
+      <g fill="none" stroke="#fff" stroke-width="0.115" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M-0.6,-0.62 L-0.76,-0.3"/>
+        <path d="M-0.61,-0.59 L-0.34,-0.42 L-0.18,-0.58 M-0.64,-0.57 L-0.87,-0.49 L-1.02,-0.62"/>
+        <path d="M-0.76,-0.3 L-0.47,-0.16 L-0.3,0.01 M-0.76,-0.3 L-0.91,-0.03 L-1.1,-0.03"/>
+      </g>
+      <path d="M0.75,-0.75 L1.15,-0.45 L0.75,-0.15 L0.75,-0.35 L0.2,-0.35 L0.2,-0.55 L0.75,-0.55 Z"/>
+    </g>
+    ${label(text, 0, -1.25)}
+    ${walkTimeLabel(minutes)}`;
+  }
+  const arrow = '<path d="M-0.75,-0.75 L-1.15,-0.45 L-0.75,-0.15 L-0.75,-0.35 L-0.3,-0.35 L-0.3,-0.55 L-0.75,-0.55 Z" fill="#fff"/>';
+  const graphic = `
     <rect x="-1.3" y="-1.05" width="2.6" height="1.2" rx="0.08" fill="#0b7a45"/>
     ${arrow}
     <path d="M0.55,-0.95 a0.11,0.11 0 1,0 0.01,0 Z" fill="#fff"/>
-    <path d="M0.45,-0.8 L0.75,-0.65 L0.62,-0.4 L0.8,-0.2 L0.68,-0.15 L0.5,-0.4 L0.35,-0.15 L0.24,-0.22 L0.4,-0.5 Z" fill="#fff"/>
+    <path d="M0.45,-0.8 L0.75,-0.65 L0.62,-0.4 L0.8,-0.2 L0.68,-0.15 L0.5,-0.4 L0.35,-0.15 L0.24,-0.22 L0.4,-0.5 Z" fill="#fff"/>`;
+  return `${graphic}
     ${label(text, 0, -1.25)}
     ${walkTimeLabel(minutes)}`;
 }

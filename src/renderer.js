@@ -227,6 +227,38 @@ function arrowFor(placement, theme) {
   return `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${theme.accent}" stroke-width="0.14" marker-end="url(#topo-arrow)"/>`;
 }
 
+function shorteningMarkerFor(placement, theme) {
+  if (!placement.shortened) return '';
+  const { start, end, dir, perp, segment, wallBulge } = placement;
+  let center = {
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2,
+  };
+  if (wallBulge) {
+    center = {
+      x: (start.x + 2 * wallBulge.control.x + end.x) / 4,
+      y: (start.y + 2 * wallBulge.control.y + end.y) / 4,
+    };
+  } else if (segment.type === 'POOL') {
+    center.y += poolDrawingDepthOf(segment) / 2;
+  }
+  const markerScale = Math.min(1, placement.drawnLength / 0.86);
+  const paths = [-0.18, 0.18]
+    .map((along) => {
+      const x1 =
+        center.x + dir.x * (along - 0.24 * markerScale) - perp.x * 0.34 * markerScale;
+      const y1 =
+        center.y + dir.y * (along - 0.24 * markerScale) - perp.y * 0.34 * markerScale;
+      const x2 =
+        center.x + dir.x * (along + 0.24 * markerScale) + perp.x * 0.34 * markerScale;
+      const y2 =
+        center.y + dir.y * (along + 0.24 * markerScale) + perp.y * 0.34 * markerScale;
+      return `M ${x1} ${y1} L ${x2} ${y2}`;
+    })
+    .join(' ');
+  return `<path class="topo-shortening-break" d="${paths}" fill="none" stroke="${theme.background}" stroke-width="0.34" stroke-linecap="round"/><path d="${paths}" fill="none" stroke="${theme.accent}" stroke-width="0.16" stroke-linecap="round"/>`;
+}
+
 function labelBoxFor(placement, theme) {
   const info = segmentLabelText(placement.segment);
   if (!info) return '';
@@ -459,6 +491,10 @@ export function renderTopoSvg(topo, layout, options = {}) {
         .map((placement) => arrowFor(placement, theme))
         .join('');
 
+      const shorteningMarkers = row.placements
+        .map((placement) => shorteningMarkerFor(placement, theme))
+        .join('');
+
       const labels = row.placements
         .map(
           (placement) => labelBoxFor(placement, theme) + depthLabelFor(placement, theme),
@@ -483,7 +519,8 @@ export function renderTopoSvg(topo, layout, options = {}) {
         ${theme.eauFroide ? `<path d="${terrain}" fill="url(#topo-marble)" stroke="none"/>` : ''}
         <path d="${ground}" fill="none" stroke="${theme.terrainLine}" stroke-width="0.14" stroke-linejoin="round"/>
         ${cascades}
-        ${water}
+        ${water}${shorteningMarkers ? `
+        ${shorteningMarkers}` : ''}
         ${arrows}
         ${hits}
         ${elements}

@@ -3,6 +3,8 @@
 Statische Web-App zum Erstellen, Bearbeiten und Exportieren von Canyoning-Topos.
 Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten bleiben im Browser.
 
+Die responsive App-Kopfzeile zeigt das bachab-Logo neben dem App-Titel.
+Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 
 ## Funktionen
@@ -20,14 +22,44 @@ Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten b
   Bildschirm / A4 quer / A4 hoch. In der Serpentine bestimmt das Format die
   nutzbare Zeilenbreite, bei Kaskadiert die Spaltenhöhe — siehe
   [Zeilenumbruch](#zeilenumbruch) und [Kaskadiert (Spalten)](#kaskadiert-spalten).
+- **Lange Strecken kürzen**: Unter *Topo* lässt sich bei „Verkürzung ab (m)“ ein
+  Schwellenwert setzen. Längen darüber werden in der Zeichnung auf den Schwellenwert
+  gekappt und mit einem Doppelbruch markiert; Beschriftungen zeigen weiterhin das
+  echte Mass. Leer oder `0` schaltet die Funktion aus. Gumpentiefen bleiben davon
+  unberührt, da sie separat und bewusst nicht linear als Wasserbeckenform gezeichnet
+  werden.
 - **Foto-/PDF-Referenz**: Bild **oder PDF** als halbtransparenten Hintergrund einblenden und
   das Topo darüber nachzeichnen (Deckkraft, Größe, Position regelbar). Bei mehrseitigen PDFs
   lässt sich die Seite auswählen.
-- **AI-Erkennung**: Foto oder PDF-Seite per Vision-Modell in ein Topo umwandeln
+- **AI-Erkennung unter Foto-Referenz**: Foto oder PDF-Seite per Vision-Modell in ein Topo umwandeln
   (OpenAI-kompatibel, Anthropic oder eigener Proxy), mit wählbarer Prompt-Vorlage — siehe unten
 - **Speichern**: JSON (kompatibel zum Canyon-Explore-Format) und XML (mit XSD)
 - **Export**: SVG, PNG, Druck/PDF über den Browser-Druckdialog
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
+- **Klappbare Seitenleisten**: Topo, Segmente, Foto-Referenz, Auswahl,
+  Symbole und Prüfung lassen sich einzeln per Klick auf die Überschrift oder mit
+  Tab und Enter/Leertaste öffnen und schliessen. ◀ bedeutet offen, ▶ geschlossen.
+  Anfangs sind alle Abschnitte offen; der individuelle Zustand bleibt in diesem
+  Browser über `localStorage` erhalten, unabhängig von Topo-Daten und Exporten.
+  AI-Erkennung ist ein eingerückter, separat klappbarer Unterabschnitt von
+  Foto-Referenz; ihre Überschrift hat dieselbe Schrift wie „Einstellungen“ darunter.
+  Das Schliessen der Foto-Referenz versteckt auch AI-Erkennung;
+  beim erneuten Öffnen bleibt deren eigener Klappzustand erhalten.
+  Auch bei einer neuen Auswahl oder einem neuen Topo bleiben geschlossene Abschnitte
+  geschlossen. Ist Browserspeicher nicht verfügbar, funktioniert das Klappen
+  weiterhin, aber ohne Speicherung.
+- **Responsiv (Smartphone, Tablet, Desktop)**: Ab 1200 px bleibt das dreispaltige
+  Desktop-Layout unverändert. Auf Tablets (768–1199 px, hoch und quer) steht die
+  Zeichenfläche in voller Breite oben, die beiden Seitenleisten zweispaltig darunter.
+  Auf Smartphones (unter 768 px) ist alles einspaltig: Die Leiste
+  *Bearbeiten | Topo | Symbole* schaltet zwischen linker Seitenleiste, Zeichenfläche
+  und rechter Seitenleiste um (Tabs, per Pfeiltasten/Pos1/Ende bedienbar); der Knopf
+  *☰ Menü* klappt Datei-, Export- und Ansichtsaktionen ein und aus, Undo/Redo bleiben
+  immer sichtbar. Auf Touchgeräten sind Knöpfe und Abschnittsüberschriften mindestens
+  44 px hoch, Eingabefelder nutzen 16 px Schrift (kein iOS-Auto-Zoom). Die Zeichenfläche
+  arbeitet mit Pointer Events: Antippen wählt aus, Ziehen verschiebt Elemente ohne die
+  Seite zu scrollen; ausserhalb der Elemente scrollt und zoomt der Browser normal.
+  Druck und Exporte sind davon nicht betroffen.
 - **Zufall**: Knopf *Zufall* erzeugt per Klick ein vollständiges Demo-Topo — mit
   jedem Segmenttyp und jedem Symbol der Palette mindestens einmal
 
@@ -46,6 +78,11 @@ Blöcke mit Schattierung, braune Holzkreuze (`#993300`), dunkelrote Strassen/Pfa
 (`#800000`), Hütte mit rotem Dach, rot-weisses Warndreieck, Läufer-Piktogramm sowie ein
 Titelkasten mit grauem Schlagschatten. Auch dieser Stil ist nur eine Ansichtspräferenz
 im Autosave und ändert JSON/XML nicht.
+
+In Farbe, Schwarz/Weiß und Alpin klassisch zeigt das rechte Fluchtweg-Schild
+eine nach rechts laufende Person links und einen getrennten Rechtspfeil rechts.
+Kopf, Arme und Beine bleiben klar erkennbar; Beschriftung und Gehzeit stehen
+aufrecht. Das linke Schild und Standard (`eau_froide`) bleiben unverändert.
 
 ## Schnellstart
 
@@ -115,6 +152,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `maximum_walk_length` | maximale **gezeichnete** Länge eines WALK-Segments in Metern; längere Gehstrecken werden gestaucht und erhalten eine Dauer-Klammer |
 | `distance_of_single_line` | Zeilenbreite in Metern für das Format *Bildschirm* (bei *Kaskadiert* als Zielhöhe einer Spalte); bei A4 wird das Mass aus dem Format abgeleitet |
 | `legend_offset_top` | vertikaler Versatz der Legende in Metern |
+| `length_shortening_threshold_meters` | optionaler Schwellenwert für zeichnerisch verkürzte Segmentlängen; nur bei aktivierter Verkürzung exportiert |
 | `segments` | Liste der Abschnitte, von oben nach unten |
 
 ### Segment
@@ -311,6 +349,22 @@ akzeptiert. Ein Typwechsel weg von `POOL` löscht die Tiefe.
 Nur gesetzte Werte (auch `0`) werden in JSON/XML geschrieben; ohne Tiefe bleiben
 Dateien, Zeichnung und Layout unverändert.
 
+### Verkürzung langer Strecken
+
+`length_shortening_threshold_meters` wird in der UI im Abschnitt *Topo* bei den
+Legenden-Offsets eingegeben. Für Segmente über dem positiven Schwellenwert nutzt
+das Layout die gekappte Länge; die Werte bis einschliesslich Schwelle bleiben
+unverändert. Das mittige Doppelbruchzeichen liegt quer über dem Segment, während
+das Label die Original-Länge zeigt. Bereichselemente werden mit dem Segment
+proportional mitskaliert.
+
+Die Einstellung ist optional und standardmässig leer; `0` und leer deaktivieren
+die Kürzung und werden im JSON/XML nicht exportiert. Sie ist Teil des Topo-Modells,
+Autosaves sowie Undo/Redo und bleibt in JSON/XML erhalten, wenn sie aktiviert ist.
+Die Tiefe von `POOL`-Segmenten bleibt separat skaliert und wird nicht gekürzt:
+ihre gezeichnete Beckenform ist eine stilisierte Darstellung und kein linearer
+Meter-Massstab.
+
 Eine bekannte Tiefe wird in allen Stilen als **T 4 m** bzw. **T 2.5 m** unter der
 Gumpe beschriftet. Die Zeichnung skaliert gedämpft: Der Kontrollpunkt der
 Gumpenkurve liegt um `clamp(1 + 0.4 * Tiefe, 1.2, 5)` Meter tiefer; die
@@ -342,7 +396,7 @@ als JSON in das Attribut `extra`.
 
 ## AI-Erkennung: Foto/PDF → Topo
 
-Der Button **„Aus Foto erzeugen (AI)“** schickt das geladene Referenzbild an ein
+Unter **Foto-Referenz → AI-Erkennung** schickt der Button **„Aus Foto erzeugen (AI)“** das geladene Referenzbild an ein
 Vision-Modell und baut aus der Antwort ein Topo.
 
 GitHub Pages liefert nur statische Dateien — es gibt also keinen Server, der einen
@@ -358,7 +412,7 @@ Browsers und wird nie ins Repository übertragen.
 | **Anthropic (Claude)** | Claude Messages API | ja |
 | **Eigener Proxy** | Firmen-Gateways ohne CORS, geteilte Deployments — `tools/proxy.mjs` liegt bei | nein |
 
-Einstellen unter *AI-Erkennung → Einstellungen*. Der Button bleibt gesperrt, solange
+Einstellen unter *Foto-Referenz → AI-Erkennung → Einstellungen*. Der Button bleibt gesperrt, solange
 etwas fehlt, und nennt im Tooltip den Grund.
 
 Vorbelegt ist „OpenAI-kompatibel" mit dem Endpoint
@@ -387,23 +441,48 @@ ein Dauerfeuer auf die API. Nach einer Korrektur läuft es von selbst wieder, un
 
 ### Prompt-Vorlagen
 
-Der Prompt entscheidet über die Erkennungsqualität mehr als das Modell. Unter
-*AI-Erkennung → Einstellungen → Prompt-Vorlage* lässt er sich deshalb auswählen:
+Der Prompt steuert Vorgehen und Ausgabe der Erkennung. Unter
+*Foto-Referenz → AI-Erkennung → Einstellungen → Prompt-Vorlage* lässt er sich deshalb auswählen:
 
 | Vorlage | Wofür |
 |---|---|
-| **Optimiert (empfohlen)** | Standard. Rolle, Schritt-für-Schritt-Vorgehen, priorisiertes Kodierungs-Mapping, vollständiger Typkatalog mit Erkennungsmerkmalen, Layout-Erkennung (bei kaskadierten Topos von oben nach unten und von links nach rechts lesen), Einheiten und Wertebereiche, Regeln bei Unsicherheit, Beispiel-JSON. |
+| **Optimiert (empfohlen)** | Standard. Vorlagengetreue Rekonstruktion: ganze Seite und Legende prüfen, Spalten/Fortsetzungen in eine Abstiegsfolge bringen, jede erkennbare Symbolinstanz samt Beschriftung und lokaler Geometrie erfassen; nur belegte Messwerte übernehmen. Vollständiger Typkatalog, Strukturprüfung und Beispiel-JSON. |
 | **Kompakt** | Kurzfassung für kleine Modelle oder enges Kontextfenster, inkl. Kurzregel zu kaskadierten Topos. |
 | **Bisheriger Prompt** | Der Prompt vor der Überarbeitung — zum Vergleichen. Seine Typlisten sind eingefroren, damit er als Massstab wortgleich bleibt; neue Symbole stehen nur in den aktiven Vorlagen. |
 | **Eigener Prompt** | Freitext, vorbelegt mit der optimierten Vorlage. |
+
+Die Erkennung verarbeitet ein Foto oder die **ausgewählte, gerenderte PDF-Seite**,
+nicht automatisch das gesamte PDF. Die Legende erklärt Symbole, wird aber nicht
+als Route übernommen. Wiederholte Symbole bleiben erhalten; Links/Rechts gilt in
+Abstiegsrichtung. Explizite Fortsetzungen haben Vorrang vor der üblichen
+Spaltenleserichtung. Umbruchflags erhalten Abschnittsgrenzen; den passenden
+Layoutmodus (z. B. *Kaskadiert*) wählt man weiterhin in der Darstellung.
+
+Unbekannte Gehzeiten und Gumpentiefen bleiben `null`. Das bestehende Format hat
+für Länge, Winkel und Wanddistanz keine unbekannten Zahlenwerte und keinen
+`warnings`-/`evidence`-Vertrag: notwendige App-Darstellungsdefaults werden daher
+mit `CUSTOM_TEXT` und dem Präfix **AI-Hinweis:** ausdrücklich gekennzeichnet,
+nicht als erkannte Messwerte ausgegeben. Auch nicht darstellbare Details werden
+so benannt. Keine Pixelkoordinaten als Meter, keine erfundenen Routen aus reinen
+Landschaftsfotos. Originaltexte bleiben in passenden Textfeldern; bei Symbolen
+ohne sichtbaren Textslot oder automatisch neu nummerierten Markern hilft
+zusätzlicher Freitext.
+
+Ein Prompt garantiert **keine exakte Bildrekonstruktion**: Lesbarkeit,
+Modellqualität, schematische Massstäbe und das Format (z. B. keine freie
+Punktsymbolrotation/Seitenpositionierung) begrenzen das Ergebnis. Gegen die
+Vorlage prüfen; Darstellungsdefaults sind keine Planungs- oder Sicherheitsdaten.
+Lokale Regressiontests prüfen Regeln, Schema und Provider-Weitergabe, nicht die
+Erkennungsqualität eines Modells anhand eines Bildbenchmarks.
 
 Die Listen der gültigen Segment- und Symboltypen erzeugt `src/ai.js` aus
 `src/model.js` und `src/symbols.js`. Neue Typen stehen damit automatisch in den
 Vorlagen *Optimiert* und *Kompakt* — nichts ist doppelt gepflegt. Nur die Vorlage
 *Bisheriger Prompt* führt ihre historischen Listen fest mit, damit der Vergleich
 byte-identisch bleibt; der Import erkennt die neuen Typen unabhängig davon.
-Das Kodierungs-Mapping der optimierten Vorlage hat Vorrang vor den Kurzlabels
-im Katalog: `C` als Cascade bedeutet `RAPPEL_WET` (nicht `CLIMB`),
+Die Legende und der lokale Kontext der Vorlage haben Vorrang. Ohne abweichenden
+Beleg gilt das Kodierungs-Mapping vor den Kurzlabels im Katalog:
+`C` als Cascade bedeutet `RAPPEL_WET` (nicht `CLIMB`),
 `T`/`TP` als Toboggan bedeutet `SLIDE`, `R`/`Rd`/`Rw` entsprechen
 `RAPPEL`/`RAPPEL_DRY`/`RAPPEL_WET` und `MC` (Main-Courante) wird je nach
 Lage als `ROPE_RAILING_LEFT` oder `ROPE_RAILING_RIGHT` erfasst.
@@ -463,7 +542,7 @@ damit laufen App und API auf demselben Origin und CORS entfällt vollständig.
 npm start
 ```
 
-Dann **http://127.0.0.1:8787/** öffnen und unter *AI-Erkennung → Einstellungen*
+Dann **http://127.0.0.1:8787/** öffnen und unter *Foto-Referenz → AI-Erkennung → Einstellungen*
 Anbieter, Endpoint, Modell und Key eintragen. Mehr nicht — **keine
 Umgebungsvariablen, kein Neustart, kein Anbieterwechsel.**
 
@@ -629,6 +708,8 @@ src/exporters.js      SVG-/PNG-/Druck-Export
 src/ai.js             Foto/PDF → Topo per Vision-Modell (+ Antwort-Sanitizing)
 src/pdf.js            PDF-Seiten als Referenzbild rendern (pdf.js)
 src/app.js            Editor-Logik und UI-Bindings
+src/panel-sections.js Klappbare Seitenleisten-Abschnitte mit Persistenz
+src/responsive.js     Smartphone-Ansichtsumschaltung (Tabs) und Toolbar-Menü
 tools/proxy.mjs       Lokaler AI-Proxy (löst CORS) + serviert die App
 tools/worker.js       Derselbe Proxy als Cloudflare Worker
 tools/autostart.sh    Proxy ab Login mitlaufen lassen (LaunchAgent/systemd)

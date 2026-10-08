@@ -14,6 +14,7 @@
       <xs:attribute name="maximum_walk_length" type="xs:decimal" default="30"/>
       <xs:attribute name="distance_of_single_line" type="xs:decimal" default="60"/>
       <xs:attribute name="legend_offset_top" type="xs:decimal" default="0"/>
+      <xs:attribute name="length_shortening_threshold_meters" type="xs:decimal"/>
       <xs:attribute name="extra" type="xs:string"/>
     </xs:complexType>
   </xs:element>

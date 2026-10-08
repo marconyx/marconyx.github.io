@@ -14,6 +14,7 @@ const ROOT_NUMBER_FIELDS = [
   'maximum_walk_length',
   'distance_of_single_line',
   'legend_offset_top',
+  'length_shortening_threshold_meters',
 ];
 const SEGMENT_NUMBER_FIELDS = ['length_in_meters', 'angle_in_degrees'];
 const SEGMENT_BOOL_FIELDS = [

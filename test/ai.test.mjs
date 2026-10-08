@@ -36,8 +36,12 @@ import {
   RANGE_ELEMENT_TYPES,
   SEGMENT_TYPES,
   WALK_TIME_ELEMENT_TYPES,
+  defaultAngleFor,
+  defaultLengthFor,
+  normalizeTopo,
   validateTopo,
 } from '../src/model.js';
+import { SYMBOLS } from '../src/symbols.js';
 import { layoutTopo } from '../src/layout.js';
 import { renderTopoSvg } from '../src/renderer.js';
 
@@ -524,6 +528,144 @@ test('die kompakte Vorlage nennt ebenfalls jeden Typ, bleibt aber kürzer', () =
   assert.ok(compact.length < buildPrompt({}, { template: 'optimized' }).length);
 });
 
+test('aktive Vorlagen priorisieren die ganze Vorlage, Legende und jede Symbolinstanz', () => {
+  for (const prompt of [buildOptimizedInstructions(), buildCompactInstructions()]) {
+    assert.match(prompt, /keinen (?:neuen, nur plausiblen|generischen) Canyon/);
+    assert.match(prompt, /gesamte Seite einschliesslich aller Spalten/);
+    assert.match(prompt, /Legende dient nur der Zuordnung/);
+    assert.match(prompt, /Muster-Symbole sind keine Routenelemente/);
+    assert.match(prompt, /Wiederholte gleichartige Symbole nicht deduplizieren/);
+    assert.match(prompt, /belegbarem semantischem Match/);
+    assert.match(prompt, /Keine Standplätze, Gefahren, Bäume oder Geometrien aus Landschaftsfotos erfinden/);
+    assert.match(prompt, /ROPE_RAILING_LEFT\/RIGHT, PATH und ROAD zeigen keinen freien Text/);
+    assert.match(prompt, /ELEMENT_NUMBER wird von der App neu nummeriert/);
+    assert.match(prompt, /WARNING_AND_TEXT nur bei tatsächlich vorhandenem Warndreieck/);
+    assert.ok(prompt.length <= MAX_PROMPT_CHARS);
+    assert.doesNotMatch(prompt, /Ein plausibles kurzes Topo|Schätze Länge|geschätzte Gehzeit/);
+  }
+});
+
+test('Spaltenfortsetzungen und Umbrüche erhalten eine einzige Abstiegsfolge', () => {
+  const prompt = buildOptimizedInstructions();
+  assert.match(prompt, /erst eine Spalte vollständig, dann die nächste rechts/);
+  assert.match(prompt, /Fortsetzungen, Pfeile und übereinstimmende Anschlussmarken haben Vorrang/);
+  assert.match(prompt, /EIN geordnetes segments-Array/);
+  assert.match(prompt, /Bildsprünge\/Zeilenumbrüche sind keine zusätzlichen WALK-Segmente/);
+  assert.match(prompt, /letzten Segment vor jedem belegten Spalten-\/Zeilenwechsel/);
+  assert.match(prompt, /Fortsetzungspfeil ist kein JUMP/);
+  assert.match(prompt, /Alternativen als Originaltext/);
+  assert.match(prompt, /wählen aber keinen Layoutmodus/);
+});
+
+test('unknown bleibt explizit; numerische Darstellungsdefaults stammen aus dem Modell', () => {
+  for (const prompt of [buildOptimizedInstructions(), buildCompactInstructions()]) {
+    for (const type of SEGMENT_TYPES) {
+      assert.ok(prompt.includes(
+        `${type}: Länge ${defaultLengthFor(type)}, Winkel ${defaultAngleFor(type)}`,
+      ));
+    }
+    assert.match(prompt, /Unbekannte duration_to_walk_in_min und depth_in_meters bleiben null, nicht 0/);
+    assert.match(prompt, /Defaults sind KEINE erkannten Messwerte/);
+    assert.match(prompt, /AI-Hinweis: Länge unbekannt; Darstellungswert 10 m/);
+    assert.match(prompt, /unterstützt keine warnings\/evidence-Felder/);
+    assert.match(prompt, /keine unlesbaren Texte vervollständigen/);
+    assert.match(prompt, /niemals absolute Pixelkoordinaten als Meter oder relative Werte/);
+  }
+});
+
+test('Symbolgeometrie entspricht den wirklichen Feldern, Typen und Renderkonventionen', () => {
+  const prompt = buildOptimizedInstructions();
+  const catalog = prompt.split('ELEMENTTYPEN (nur diese Werte sind gültig):')[1].split('\nPunktelemente')[0];
+  assert.deepEqual(
+    [...catalog.matchAll(/^- ([A-Z_]+) \(/gm)].map((match) => match[1]),
+    ELEMENT_TYPES,
+  );
+  for (const type of ELEMENT_TYPES) {
+    assert.ok(catalog.includes(`${type} (${SYMBOLS[type].label})`));
+    assert.equal(!!SYMBOLS[type].range, RANGE_ELEMENT_TYPES.has(type));
+  }
+  assert.match(prompt, /positives vertical nach Bildschirm-rechts/);
+  assert.match(prompt, /BOLT statt geratenem BOLT_LEFT\/RIGHT/);
+  assert.match(prompt, /halbe Strecke = horizontal 0.5 \* length_in_meters/);
+  assert.match(prompt, /auf die ungekürzte length_in_meters/);
+  assert.match(prompt, /relativ zum SELBEN Segmentanfang/);
+  assert.match(prompt, /RAPPEL_GUIDE-Pfeil zeigt zum Endpunkt/);
+  assert.match(prompt, /keine freie Rotation\/Spiegelung/);
+  assert.match(prompt, /size ist ein dimensionsloser Skalierungsfaktor/);
+});
+
+test('optimiertes Ausgabeschema bleibt exakt beim normalisierten Topo-Vertrag', () => {
+  const schema = buildOptimizedInstructions().split('Exakt dieses Schema, alle Felder vorhanden:\n')[1]
+    .split('\nSEGMENTTYPEN')[0];
+  const fields = [...schema.matchAll(/"([a-z_]+)":/g)].map((match) => match[1]);
+  const normalized = normalizeTopo({ segments: [{ type: 'WALK', elements: [{ type: 'STONE' }] }] });
+  assert.deepEqual(fields, [
+    ...Object.keys(normalized),
+    ...Object.keys(normalized.segments[0]),
+    ...Object.keys(normalized.segments[0].elements[0]),
+  ]);
+  const prompt = buildOptimizedInstructions();
+  assert.match(prompt, /INTERNE VOLLSTÄNDIGKEITSPRÜFUNG VOR DER ANTWORT/);
+  assert.match(prompt, /keine NaN\/Infinity/);
+  assert.match(prompt, /keine Chain-of-thought/);
+  assert.match(prompt, /nur das JSON/);
+});
+
+test('rekonstruierte Kaskaden behalten Reihenfolge, Mehrfachsymbole, Text und lokale Endpunkte', () => {
+  const element = (type, along, across, extra = {}) => ({
+    type, horizontal_start_rel_to_segment_start: along,
+    vertical_start_rel_to_segment_start: across,
+    horizontal_end_rel_to_segment_start: null, vertical_end_rel_to_segment_start: null,
+    size: 1, text: '', dead: false, duration_to_walk_in_min: null, ...extra,
+  });
+  const candidate = {
+    canyon_name: 'Vorlage',
+    segments: [
+      { type: 'RAPPEL_WET', length_in_meters: 25, angle_in_degrees: 90,
+        force_cut_row_after_this_segment: true, elements: [
+          element('BOLT_LEFT', 0, 1, { text: '2x10' }),
+          element('BOLT_LEFT', 0.5, 1),
+          element('CUSTOM_TEXT', 12.5, -2, { text: 'C25' }),
+        ] },
+      { type: 'POOL', length_in_meters: 8, depth_in_meters: null, elements: [
+        element('CUSTOM_TEXT', 4, 2, { text: 'AI-Hinweis: Länge unbekannt; Darstellungswert 8 m' }),
+      ] },
+      { type: 'WALK', length_in_meters: 80, duration_to_walk_in_min: 15, elements: [
+        element('PATH', 20, 3, {
+          horizontal_end_rel_to_segment_start: 60, vertical_end_rel_to_segment_start: -2,
+        }),
+        element('ESCAPE_EXIT_RIGHT', 40, -2, { duration_to_walk_in_min: null }),
+      ] },
+    ],
+  };
+  const report = [];
+  const topo = sanitizeTopoCandidate(extractJsonObject(JSON.stringify(candidate)), report);
+  assert.deepEqual(report, []);
+  assert.deepEqual(validateTopo(topo), []);
+  assert.deepEqual(topo.segments.map((segment) => segment.type), ['RAPPEL_WET', 'POOL', 'WALK']);
+  assert.deepEqual(topo.segments[0].elements, candidate.segments[0].elements);
+  assert.equal(topo.segments[0].force_cut_row_after_this_segment, true);
+  assert.equal(topo.segments[1].depth_in_meters, null);
+  assert.equal(topo.segments[2].elements[1].duration_to_walk_in_min, null);
+  const layout = layoutTopo(topo, { layout: 'cascaded' });
+  assert.deepEqual(layout.columnAssignment, [0, 1, 1]);
+  const rappel = layout.placements[0];
+  assert.ok(Math.abs(rappel.elements[0].point.x - rappel.start.x - 1) < 1e-8);
+  const path = layout.placements[2].elements[0];
+  assert.ok(Math.abs(path.endPoint.x - path.point.x - 15) < 1e-8);
+  assert.ok(Math.abs(path.endPoint.y - path.point.y - 5) < 1e-8);
+  assert.equal(topo.segments[2].elements[0].horizontal_end_rel_to_segment_start, 60);
+  assert.match(renderTopoSvg(topo, layout), /C25/);
+});
+
+test('Foto und ausgewählte PDF-Seite verwenden denselben AI-Einstieg und die gespeicherte Auswahl', () => {
+  const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+  assert.match(app, /state\.photo\.src = await pdfDoc\.renderPage\(target\)/);
+  assert.match(app, /await photoToTopo\(state\.photo\.src,/);
+  assert.match(app, /promptSelect\.value = promptTemplateById\(saved\.promptTemplate\)\.id/);
+  assert.match(app, /saveAiSettings\(patch\)/);
+});
+
 test('der bisherige Prompt ist byte-identisch zum alten Aufbau', () => {
   const expected = readFileSync(new URL('./fixtures/legacy-prompt.txt', import.meta.url), 'utf8');
   const actual = buildPrompt(
@@ -767,7 +909,7 @@ await testAsync('OpenAI bekommt System-Nachricht, niedrige Temperatur und JSON-M
   assert.ok(AI_TEMPERATURE <= 0.2, 'die Temperatur soll niedrig bleiben');
   assert.deepEqual(body.response_format, { type: 'json_object' });
   assert.equal(body.messages[0].role, 'system');
-  assert.match(body.messages[0].content, /Canyoning-Topo-Experte/);
+  assert.equal(body.messages[0].content, buildOptimizedInstructions());
   assert.equal(body.messages[1].role, 'user');
   assert.equal(body.messages[1].content[0].type, 'text');
   assert.match(body.messages[1].content[0].text, /Boggera/);
@@ -862,7 +1004,7 @@ await testAsync('Anthropic bekommt die Anweisung im system-Feld', async () => {
   const { calls, handler } = recorder();
   await withFetch(handler, () => photoToTopo('data:image/png;base64,AAAA'));
   const body = calls[0].body;
-  assert.match(body.system, /Canyoning-Topo-Experte/);
+  assert.equal(body.system, buildOptimizedInstructions());
   assert.equal(body.temperature, AI_TEMPERATURE);
   assert.equal(body.response_format, undefined, 'Anthropic kennt response_format nicht');
   assert.equal(body.messages[0].content[0].type, 'image');
@@ -889,7 +1031,7 @@ await testAsync('der Proxy-Pfad bekommt Prompt, System und die Vorlagen-Id', asy
   await withFetch(handler, () => photoToTopo(IMAGE, { hints: { canyonName: 'Boggera' } }));
   const body = calls[0].body;
   assert.equal(body.promptTemplate, 'optimized');
-  assert.match(body.system, /Canyoning-Topo-Experte/);
+  assert.equal(body.system, buildOptimizedInstructions());
   assert.match(body.prompt, /Boggera/);
   assert.equal(body.image, IMAGE);
 });
@@ -909,6 +1051,25 @@ await testAsync('die Vorlage aus den Einstellungen gilt ohne Zutun des Aufrufers
   assert.equal(buildPromptParts({}).template, 'compact');
   useOpenAi();
   assert.equal(buildPromptParts({}).template, 'optimized');
+});
+
+await testAsync('CORS-Fallback reicht die gewählte optimierte Vorlage und das Seitenbild exakt durch', async () => {
+  useOpenAi({ promptTemplate: 'legacy' });
+  const calls = [];
+  await withFetch((url, init) => {
+    if (url.endsWith('/api/health')) {
+      return jsonResponse({ ok: true, acceptsClientConfig: true, acceptsSystemPrompt: true });
+    }
+    if (url.endsWith('/chat/completions')) throw new TypeError('Mock CORS');
+    assert.equal(url, 'http://127.0.0.1:8787/api/topo');
+    calls.push(JSON.parse(init.body));
+    return jsonResponse({ canyon_name: 'PDF-Seite', segments: [{ type: 'WALK' }] });
+  }, () => photoToTopo(IMAGE, { promptTemplate: 'optimized' }));
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].promptTemplate, 'optimized');
+  assert.equal(calls[0].system, buildOptimizedInstructions());
+  assert.equal(calls[0].image, IMAGE);
+  useOpenAi();
 });
 
 await testAsync('Denkmodelle bekommen chat_template_kwargs mit', async () => {

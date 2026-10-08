@@ -185,6 +185,34 @@ import { readFileSync } from 'node:fs';
 import { PROMPT_TEMPLATES, getAiSettings, providerById } from '../src/ai.js';
 import { SEGMENT_TYPES, validateTopo, createEmptyTopo } from '../src/model.js';
 import { symbolOptions } from '../src/symbols.js';
+import { topoToJson } from '../src/io-json.js';
+import { topoToXml } from '../src/io-xml.js';
+import { initPanelSections, PANEL_SECTION_IDS, PANEL_STORAGE_KEY } from '../src/panel-sections.js';
+import { initResponsive, MOBILE_QUERY, VIEWS, DEFAULT_VIEW } from '../src/responsive.js';
+
+const markup = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const panelHeaders = [...markup.matchAll(
+  /<details class="panel__section" id="([^"]+)" open>\s*<summary>(.*?)<\/summary>\s*<div class="panel__content">/gs,
+)];
+const markupRoot = new FakeNode('root');
+const markupNodes = new Map();
+const markupStack = [markupRoot];
+for (const [tag] of markup.matchAll(/<\/?(?:aside|details|summary|div)\b[^>]*>/g)) {
+  if (tag.startsWith('</')) {
+    markupStack.pop();
+    continue;
+  }
+  const node = new FakeNode(/^<(\w+)/.exec(tag)[1]);
+  node._id = /\bid="([^"]+)"/.exec(tag)?.[1] || '';
+  markupStack.at(-1).appendChild(node);
+  markupStack.push(node);
+  if (node.id) markupNodes.set(node.id, node);
+}
+for (const [, id] of panelHeaders) {
+  const node = new FakeNode('details');
+  node.id = id;
+  node.open = true;
+}
 
 const app = await import('../src/app.js');
 const { state } = app;
@@ -216,6 +244,245 @@ function type(id, text, { commit = false } = {}) {
 }
 
 console.log('UI-Tests (DOM)');
+
+test('bachab-Logo steht nur in der responsiven App-Kopfzeile neben Titel und Status', () => {
+  const header = /<header class="toolbar">([\s\S]*?)<\/header>/.exec(markup)?.[1];
+  assert.ok(header);
+  assert.match(header, /<div class="toolbar__brand">\s*<img class="toolbar__logo" src="assets\/bachab-logo\.png" alt="bachab" width="400" height="133" \/>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<span class="toolbar__hint" id="status">bereit<\/span>/);
+  assert.equal((markup.match(/assets\/bachab-logo\.png/g) || []).length, 1);
+  const image = readFileSync(new URL('../assets/bachab-logo.png', import.meta.url));
+  assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(image.readUInt32BE(16), 400);
+  assert.equal(image.readUInt32BE(20), 133);
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.toolbar\s*\{[^}]*flex-wrap: wrap;/);
+  assert.match(css, /\.toolbar__brand\s*\{[^}]*align-items: center;[^}]*min-width: 0;[^}]*max-width: 100%;/);
+  assert.match(css, /\.toolbar__logo\s*\{[^}]*flex: none;[^}]*width: auto;[^}]*height: 1rem;/);
+  assert.match(css, /\.toolbar__brand-text\s*\{[^}]*min-width: 0;[^}]*overflow-wrap: anywhere;/);
+  assert.match(css, /\.toolbar__group\s*\{[^}]*flex-wrap: wrap;[^}]*max-width: 100%;/);
+  for (const id of ['btn-new', 'btn-save-json', 'btn-export-svg', 'btn-export-png', 'btn-print', 'btn-undo']) {
+    assert.ok(header.includes(`id="${id}"`), `${id} bleibt in der Kopfzeile`);
+  }
+  assert.doesNotMatch(svg(), /bachab-logo|alt="bachab"/, 'kein Logo im Topo-Export');
+});
+
+test('alle sieben Abschnitte haben native, fokussierbare summary-Überschriften und offene Defaults', () => {
+  assert.deepEqual(panelHeaders.map((entry) => entry[1]), PANEL_SECTION_IDS);
+  assert.equal((markup.match(/class="panel__section"/g) || []).length, 7);
+  assert.deepEqual(panelHeaders.map((entry) => /<h[23]>(.*?)<\/h[23]>/.exec(entry[2])?.[1]),
+    ['Topo', 'Segmente', 'Foto-Referenz', 'AI-Erkennung', 'Auswahl', 'Symbole', 'Prüfung']);
+  for (const [, id, summary] of panelHeaders) {
+    const heading = id === 'panel-ai' ? 'h3' : 'h2';
+    assert.ok(summary.startsWith(`<span class="panel__arrow" aria-hidden="true"></span><${heading}>`));
+    assert.equal(elementById(id).open, true, id);
+    assert.equal(elementById(id).listeners.has('keydown'), false, 'Tastatur bleibt nativ');
+    assert.equal(elementById(id).listeners.has('click'), false, 'Klick bleibt nativ');
+  }
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.panel__arrow::before\s*\{\s*content: '▶';/);
+  assert.match(css, /\.panel__section\[open\] > summary \.panel__arrow::before\s*\{\s*content: '◀';/);
+  assert.match(css, /\.panel__section > summary:focus-visible/);
+  assert.match(css, /\.panel__section > summary:hover/);
+  assert.doesNotMatch(css, /\.panel__section\s*\{[^}]*display:/, 'details bleibt nativ, nicht flex');
+});
+
+test('AI ist ein eingerückter Unterabschnitt der Foto-Referenz, nicht der Seitenleiste', () => {
+  const photo = markupNodes.get('panel-photo');
+  const ai = markupNodes.get('panel-ai');
+  assert.equal(photo.parentNode.tagName, 'ASIDE');
+  assert.equal(ai.parentNode.tagName, 'DIV');
+  assert.equal(ai.parentNode.parentNode, photo);
+  assert.equal(ai.children[0].tagName, 'SUMMARY');
+  assert.equal(markupNodes.get('ai-settings').parentNode.parentNode, ai);
+  assert.equal(photo.parentNode.children.filter((node) => node.tagName === 'DETAILS').length, 3);
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.panel__content > \.panel__section\s*\{[^}]*min-width: 0;[^}]*padding: 0 0 0 0\.75rem;[^}]*border-bottom: none;/);
+  assert.match(css, /\.panel__section h3\s*\{[^}]*font-size: 0\.74rem;/);
+});
+
+test('AI-Erkennung und Einstellungen verwenden exakt dieselbe gezielte Typografie', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const shared = /#ai-settings summary,\s*#panel-ai > summary h3\s*\{([^}]+)\}/.exec(css);
+  assert.ok(shared, 'gemeinsame Regel statt globaler h3-Änderung');
+  for (const declaration of [
+    'font-family: inherit', 'font-size: 0.78rem', 'font-weight: normal',
+    'font-style: normal', 'text-transform: none', 'letter-spacing: normal',
+  ]) {
+    assert.ok(shared[1].includes(`${declaration};`), declaration);
+  }
+  assert.match(markup, /<summary><span class="panel__arrow" aria-hidden="true"><\/span><h3>AI-Erkennung<\/h3><\/summary>/);
+});
+
+function freshPanels() {
+  const nodes = new Map(PANEL_SECTION_IDS.map((id) => {
+    const node = new FakeNode('details');
+    // Nicht in die Registry der laufenden App eintragen.
+    node._id = id;
+    node.open = true;
+    return [id, node];
+  }));
+  const photoContent = new FakeNode('div');
+  nodes.get('panel-photo').appendChild(photoContent);
+  photoContent.appendChild(nodes.get('panel-ai'));
+  initPanelSections({ getElementById: (id) => nodes.get(id) });
+  return [...nodes.values()];
+}
+
+test('jeder Abschnitt lässt sich unabhängig schliessen, wieder öffnen und nach Reload wiederherstellen', () => {
+  const beforeTopo = storage.get('canyon-topo-generator/state/v1');
+  const beforeJson = topoToJson(state.topo);
+  const beforeXml = topoToXml(state.topo);
+  for (const id of PANEL_SECTION_IDS) {
+    const section = elementById(id);
+    section.open = false;
+    section.dispatch('toggle');
+    assert.equal(JSON.parse(storage.get(PANEL_STORAGE_KEY))[id], false);
+    assert.equal(freshPanels().find((node) => node.id === id).open, false);
+    for (const otherId of PANEL_SECTION_IDS.filter((other) => other !== id)) {
+      assert.equal(elementById(otherId).open, true, otherId);
+    }
+    section.open = true;
+    section.dispatch('toggle');
+    assert.equal(JSON.parse(storage.get(PANEL_STORAGE_KEY))[id], true);
+    assert.ok(freshPanels().every((node) => node.open));
+  }
+  assert.equal(storage.get('canyon-topo-generator/state/v1'), beforeTopo);
+  assert.equal(topoToJson(state.topo), beforeJson);
+  assert.equal(topoToXml(state.topo), beforeXml);
+  assert.equal('panels' in state, false);
+});
+
+test('Foto-Zuklappen versteckt AI und erhält deren unabhängig gespeicherten Zustand nach Reload', () => {
+  const beforeAiSettings = getAiSettings();
+  const aiContentVisible = (ai) => {
+    for (let node = ai; node; node = node.parentNode) {
+      if (node.tagName === 'DETAILS' && !node.open) return false;
+    }
+    return true;
+  };
+  try {
+    for (const aiOpen of [true, false]) {
+      storage.delete(PANEL_STORAGE_KEY);
+      let sections = freshPanels();
+      let photo = sections.find((node) => node.id === 'panel-photo');
+      let ai = sections.find((node) => node.id === 'panel-ai');
+      ai.open = aiOpen;
+      ai.dispatch('toggle');
+      photo.open = false;
+      photo.dispatch('toggle');
+      assert.equal(ai.open, aiOpen);
+      assert.equal(aiContentVisible(ai), false);
+      assert.equal(JSON.parse(storage.get(PANEL_STORAGE_KEY))['panel-ai'], aiOpen);
+      sections = freshPanels();
+      photo = sections.find((node) => node.id === 'panel-photo');
+      ai = sections.find((node) => node.id === 'panel-ai');
+      assert.equal(photo.open, false);
+      assert.equal(ai.open, aiOpen);
+      assert.equal(aiContentVisible(ai), false);
+      photo.open = true;
+      photo.dispatch('toggle');
+      assert.equal(ai.open, aiOpen);
+      assert.equal(aiContentVisible(ai), aiOpen);
+      assert.equal(JSON.parse(storage.get(PANEL_STORAGE_KEY))['panel-photo'], true);
+      assert.equal(freshPanels().find((node) => node.id === 'panel-ai').open, aiOpen);
+    }
+    assert.deepEqual(getAiSettings(), beforeAiSettings);
+  } finally {
+    storage.delete(PANEL_STORAGE_KEY);
+  }
+});
+
+test('partielle Einstellungen beachten nur boolesche Werte und bekannte IDs', () => {
+  storage.set(PANEL_STORAGE_KEY, JSON.stringify({
+    'panel-topo': false,
+    'panel-segments': 'false',
+    'panel-photo': true,
+    'unknown-panel': false,
+  }));
+  assert.deepEqual(freshPanels().map((node) => node.open), [false, true, true, true, true, true, true]);
+  storage.delete(PANEL_STORAGE_KEY);
+  assert.ok(freshPanels().every((node) => node.open));
+});
+
+test('ungültige oder gesperrte Speicherung meldet das Problem, ohne das Klappen zu verhindern', () => {
+  const originalWarn = console.warn;
+  const originalStorage = globalThis.localStorage;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    for (const value of ['{', 'null', '[]', 'false']) {
+      storage.set(PANEL_STORAGE_KEY, value);
+      assert.ok(freshPanels().every((node) => node.open));
+    }
+    globalThis.localStorage = {
+      getItem() { throw new Error('Speicher gesperrt'); },
+      setItem() { throw new Error('Speicher voll'); },
+    };
+    const sections = freshPanels();
+    for (const section of sections) {
+      section.open = false;
+      section.dispatch('toggle');
+      assert.equal(section.open, false);
+    }
+    assert.equal(warnings.length, 12);
+  } finally {
+    console.warn = originalWarn;
+    globalThis.localStorage = originalStorage;
+    storage.delete(PANEL_STORAGE_KEY);
+  }
+});
+
+test('bestehende Felder bleiben in ihrem Abschnitt und AI-Einstellungen separat klappbar', () => {
+  const expected = [
+    [
+      'topo-name',
+      'topo-author',
+      'topo-duration',
+      'topo-date',
+      'topo-length-shortening-threshold',
+      'btn-renumber',
+    ],
+    ['select-new-segment', 'btn-add-segment', 'segment-list'],
+    ['file-photo', 'photo-page-row', 'photo-opacity', 'photo-scale', 'photo-x', 'photo-y', 'btn-photo-clear'],
+    ['btn-photo-ai', 'btn-ai-cancel', 'ai-status', 'ai-settings', 'ai-provider', 'ai-model', 'ai-key'],
+    ['inspector'],
+    ['symbol-palette'],
+    ['issues'],
+  ];
+  for (const [index, header] of panelHeaders.entries()) {
+    const end = panelHeaders[index + 1]?.index ?? markup.length;
+    const content = markup.slice(header.index, end);
+    for (const id of expected[index]) {
+      assert.ok(content.includes(`id="${id}"`), `${header[1]}: ${id}`);
+      assert.equal(markup.split(`id="${id}"`).length - 1, 1, `eindeutige ID ${id}`);
+    }
+  }
+  assert.match(markup, /<details id="ai-settings">\s*<summary>Einstellungen<\/summary>/);
+  // Die vorhandenen Editor-/Inspector-/AI-Tests laufen auch bei geschlossenen Abschnitten.
+  for (const id of PANEL_SECTION_IDS) {
+    elementById(id).open = false;
+    elementById(id).dispatch('toggle');
+  }
+});
+
+test('Foto-Funktionen und ein neues Topo ändern keine Klappzustände', () => {
+  for (const [id, key, value] of [
+    ['photo-opacity', 'opacity', 60],
+    ['photo-scale', 'scale', 120],
+    ['photo-x', 'x', 15],
+    ['photo-y', 'y', -10],
+  ]) {
+    elementById(id).value = String(value);
+    elementById(id).dispatch('input');
+    assert.equal(state.photo[key], value);
+  }
+  elementById('btn-photo-clear').dispatch('click');
+  assert.equal(state.photo.src, null);
+  elementById('btn-new').dispatch('click');
+  assert.ok(svg().startsWith('<svg'));
+  assert.ok(PANEL_SECTION_IDS.every((id) => !elementById(id).open));
+  assert.ok(freshPanels().every((node) => !node.open));
+});
 
 test('der Zufall-Knopf erzeugt ein neues, vollständiges Topo', () => {
   const before = JSON.stringify(state.topo);
@@ -359,6 +626,27 @@ test('eine Eingabe ergibt genau einen Undo-Schritt', () => {
   elementById('btn-redo').dispatch('click');
   assert.equal(state.topo.author, 'Team');
   elementById('btn-undo').dispatch('click');
+});
+
+test('die Verkürzungsschwelle ist leer deaktiviert und Undo/Redo-fähig', () => {
+  const input = elementById('topo-length-shortening-threshold');
+  state.topo.length_shortening_threshold_meters = null;
+  input.value = '';
+  input.dispatch('input');
+  assert.equal(state.topo.length_shortening_threshold_meters, null);
+
+  input.value = '30';
+  input.dispatch('input');
+  input.dispatch('change');
+  assert.equal(state.topo.length_shortening_threshold_meters, 30);
+  assert.equal(JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1'))
+    .topo.length_shortening_threshold_meters, 30);
+
+  elementById('btn-undo').dispatch('click');
+  assert.equal(state.topo.length_shortening_threshold_meters, null);
+  assert.equal(input.value, '');
+  elementById('btn-redo').dispatch('click');
+  assert.equal(state.topo.length_shortening_threshold_meters, 30);
 });
 
 /* ------------------------------------------------------- Format und Layout */
@@ -904,5 +1192,205 @@ async function restoredAppWith(view, tag) {
     assert.ok(svg().startsWith('<svg'));
   });
 }
+
+test('Auswahl, Symbolpalette, AI-Einstellungen, Rendering und Reloads öffnen keinen Abschnitt automatisch', () => {
+  assert.ok(PANEL_SECTION_IDS.every((id) => !elementById(id).open));
+  assert.ok(freshPanels().every((node) => !node.open));
+});
+
+/* ------------------------------------------------------------- Responsiv */
+
+const responsiveCss = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+const appSource = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+
+function cssBlock(prelude) {
+  const start = responsiveCss.indexOf(`${prelude} {`);
+  assert.ok(start >= 0, `Media Query fehlt: ${prelude}`);
+  let depth = 0;
+  for (let index = responsiveCss.indexOf('{', start); index < responsiveCss.length; index += 1) {
+    if (responsiveCss[index] === '{') depth += 1;
+    if (responsiveCss[index] === '}' && --depth === 0) return responsiveCss.slice(start, index + 1);
+  }
+  throw new Error(`unvollständiger Block: ${prelude}`);
+}
+
+test('Viewport-Meta erlaubt Zoom und nutzt Gerätebreite', () => {
+  assert.match(markup, /<meta name="viewport" content="width=device-width, initial-scale=1" \/>/);
+  assert.doesNotMatch(markup, /maximum-scale|user-scalable/);
+});
+
+test('Ansichtsumschaltung ist eine zugängliche Tab-Liste für genau die drei Bereiche', () => {
+  const list = /<div class="view-switch" role="tablist" aria-label="Ansicht">([\s\S]*?)<\/div>/.exec(markup);
+  assert.ok(list, 'tablist fehlt');
+  const tabs = [...list[1].matchAll(/<button type="button" role="tab" id="([^"]+)" aria-controls="([^"]+)" aria-selected="(true|false)"[^>]*>([^<]+)<\/button>/g)];
+  assert.deepEqual(tabs.map((tab) => [tab[1], tab[2], tab[4]]), [
+    ['view-tab-edit', 'panel-left', 'Bearbeiten'],
+    ['view-tab-topo', 'canvas', 'Topo'],
+    ['view-tab-symbols', 'panel-right', 'Symbole'],
+  ]);
+  assert.deepEqual(VIEWS.map((entry) => [entry.tab, entry.panel]), tabs.map((tab) => [tab[1], tab[2]]));
+  assert.deepEqual(tabs.map((tab) => tab[3]), ['false', 'true', 'false']);
+  assert.equal(DEFAULT_VIEW, 'topo');
+  assert.match(markup, /<main class="workspace" id="workspace" data-view="topo">/);
+  assert.match(markup, /<aside class="panel panel--left" id="panel-left"/);
+  assert.match(markup, /<section class="canvas" id="canvas">/);
+  assert.match(markup, /<aside class="panel panel--right" id="panel-right"/);
+  assert.ok(markup.indexOf('class="view-switch"') < markup.indexOf('<main'), 'Tabs stehen vor dem Inhalt');
+});
+
+test('Menü-Knopf steuert die Toolbar-Gruppen, Undo/Redo bleibt immer sichtbar', () => {
+  const button = /<button\s+type="button"\s+class="toolbar__menu"\s+id="btn-menu"\s+aria-expanded="false"\s+aria-controls="([^"]+)"\s*>[^<]*Menü<\/button>/.exec(markup);
+  assert.ok(button, 'Menü-Knopf fehlt');
+  for (const id of button[1].split(' ')) {
+    assert.match(markup, new RegExp(`<div class="toolbar__group" id="${id}">`), id);
+  }
+  assert.match(markup, /<div class="toolbar__group toolbar__group--history">\s*<button type="button" id="btn-undo"/);
+  const header = /<header class="toolbar">([\s\S]*?)<\/header>/.exec(markup)[1];
+  for (const id of ['btn-new', 'btn-example', 'btn-random', 'file-open', 'btn-save-json', 'btn-save-xml',
+    'btn-export-svg', 'btn-export-png', 'btn-print', 'btn-undo', 'btn-redo', 'select-layout', 'select-theme', 'select-paper']) {
+    assert.ok(header.includes(`id="${id}"`), `${id} bleibt in der Kopfzeile`);
+  }
+});
+
+test('Media Queries: Desktop-Basis unverändert, Tablet zweispaltig, Smartphone einspaltig, nur screen', () => {
+  assert.match(responsiveCss, /\.workspace\s*\{\s*flex: 1;\s*display: grid;\s*grid-template-columns: 17rem minmax\(0, 1fr\) 19rem;/);
+  assert.match(responsiveCss, /\.toolbar__menu,\s*\.view-switch\s*\{\s*display: none;\s*\}/);
+  const tablet = cssBlock('@media screen and (min-width: 768px) and (max-width: 1199.98px)');
+  assert.match(tablet, /grid-template-areas:\s*'canvas canvas'\s*'left right';/);
+  assert.match(tablet, /\.canvas\s*\{[^}]*grid-area: canvas;[^}]*height: clamp\(/);
+  const phone = cssBlock(`@media ${MOBILE_QUERY}`);
+  assert.match(phone, /\.view-switch\s*\{\s*display: flex;/);
+  assert.match(phone, /\.toolbar__menu\s*\{\s*display: inline-flex;/);
+  assert.match(phone, /\.toolbar:not\(\.is-menu-open\) \.toolbar__group:not\(\.toolbar__group--history\)\s*\{\s*display: none;/);
+  assert.match(phone, /grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(phone, /\.workspace\[data-view='edit'\] > :not\(\.panel--left\),\s*\.workspace\[data-view='topo'\] > :not\(\.canvas\),\s*\.workspace\[data-view='symbols'\] > :not\(\.panel--right\)\s*\{\s*display: none;/);
+  assert.match(phone, /\[role='tab'\]\s*\{[^}]*min-height: 44px;/);
+  for (const [, prelude] of responsiveCss.matchAll(/@media ([^{]*width[^{]*)\{/g)) {
+    assert.ok(prelude.split(',').every((part) => /^\s*screen and /.test(part) || /pointer: coarse/.test(part)),
+      `Breiten-Query muss screen-only sein (Druck bleibt unverändert): ${prelude}`);
+  }
+  assert.match(responsiveCss, /@media print\s*\{\s*\.toolbar,\s*\.panel,\s*\.canvas__zoom\s*\{\s*display: none;/);
+});
+
+test('Touch: Zielflächen ≥ 44px und Eingaben ≥ 16px gegen iOS-Auto-Zoom', () => {
+  const coarse = cssBlock('@media (pointer: coarse)');
+  assert.match(coarse, /button,\s*\.button,\s*\.panel__section > summary,\s*#ai-settings > summary\s*\{\s*min-height: 44px;/);
+  assert.match(coarse, /button,\s*\.button\s*\{\s*min-width: 44px;/);
+  assert.match(coarse, /input\[type='password'\]\s*\{\s*min-height: 44px;/);
+  const fonts = cssBlock(`@media ${MOBILE_QUERY}, (pointer: coarse)`);
+  assert.match(fonts, /select,\s*input,\s*textarea,\s*input\[type='text'\],\s*input\[type='number'\],\s*input\[type='date'\],\s*input\[type='password'\]\s*\{\s*font-size: 16px;/,
+    'gleiche Spezifität wie die Basisregel, damit 16px gewinnt');
+});
+
+test('Zeichenfläche nutzt Pointer Events; Ziehen per Touch scrollt die Seite nicht', () => {
+  assert.match(responsiveCss, /\.topo-element\s*\{[^}]*touch-action: none;/);
+  assert.doesNotMatch(responsiveCss, /\.(canvas|workspace)\s*\{[^}]*touch-action/, 'ausserhalb der Elemente bleibt Scrollen/Zoomen nativ');
+  for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) {
+    assert.ok(appSource.includes(`'${type}'`), type);
+  }
+  assert.doesNotMatch(appSource, /'(mouse|touch)(down|move|up|start|end)'/);
+  assert.match(appSource, /if \(event\.isPrimary === false\) return;/);
+  assert.match(appSource, /pointerId: event\.pointerId,/);
+});
+
+function fakeResponsiveRoot() {
+  const nodes = new Map();
+  const node = (id, tag = 'button') => {
+    const item = new FakeNode(tag);
+    item._id = id;
+    item.focused = false;
+    item.focus = () => {
+      for (const other of nodes.values()) other.focused = false;
+      item.focused = true;
+    };
+    item.removeAttribute = (name) => delete item.attributes[name];
+    nodes.set(id, item);
+    return item;
+  };
+  for (const entry of VIEWS) {
+    node(entry.tab);
+    node(entry.panel, 'aside');
+  }
+  node('workspace', 'main');
+  const toolbar = node('toolbar', 'header');
+  toolbar.classList.add('toolbar');
+  const menu = node('btn-menu');
+  menu.closest = (selector) => (selector === '.toolbar' ? toolbar : null);
+  const listeners = [];
+  const query = {
+    matches: true,
+    addEventListener: (type, handler) => listeners.push(handler),
+  };
+  const win = { matchMedia: (text) => (assert.equal(text, MOBILE_QUERY), query) };
+  const api = initResponsive({ root: { getElementById: (id) => nodes.get(id) }, win });
+  const setMobile = (value) => {
+    query.matches = value;
+    for (const handler of listeners) handler({ matches: value });
+  };
+  return { nodes, api, setMobile, get: (id) => nodes.get(id) };
+}
+
+test('Tabs schalten per Klick und Tastatur (Pfeile, Pos1, Ende) mit aria-selected und roving tabindex', () => {
+  const { get } = fakeResponsiveRoot();
+  const state = () => VIEWS.map((entry) => [get(entry.tab).getAttribute('aria-selected'), get(entry.tab).tabIndex]);
+  assert.equal(get('workspace').dataset.view, 'topo');
+  assert.deepEqual(state(), [['false', -1], ['true', 0], ['false', -1]]);
+  get('view-tab-symbols').dispatch('click');
+  assert.equal(get('workspace').dataset.view, 'symbols');
+  assert.deepEqual(state(), [['false', -1], ['false', -1], ['true', 0]]);
+  get('view-tab-symbols').dispatch('keydown', { key: 'ArrowRight' });
+  assert.equal(get('workspace').dataset.view, 'edit');
+  assert.ok(get('view-tab-edit').focused, 'Fokus folgt dem Tab');
+  get('view-tab-edit').dispatch('keydown', { key: 'ArrowLeft' });
+  assert.equal(get('workspace').dataset.view, 'symbols');
+  get('view-tab-symbols').dispatch('keydown', { key: 'Home' });
+  assert.equal(get('workspace').dataset.view, 'edit');
+  get('view-tab-edit').dispatch('keydown', { key: 'End' });
+  assert.equal(get('workspace').dataset.view, 'symbols');
+  get('view-tab-symbols').dispatch('keydown', { key: 'a' });
+  assert.equal(get('workspace').dataset.view, 'symbols', 'andere Tasten ändern nichts');
+});
+
+test('tabpanel-Rollen gelten nur im Smartphone-Layout', () => {
+  const { get, setMobile } = fakeResponsiveRoot();
+  for (const entry of VIEWS) {
+    assert.equal(get(entry.panel).getAttribute('role'), 'tabpanel');
+    assert.equal(get(entry.panel).getAttribute('aria-labelledby'), entry.tab);
+  }
+  setMobile(false);
+  for (const entry of VIEWS) {
+    assert.equal(get(entry.panel).getAttribute('role'), null);
+    assert.equal(get(entry.panel).getAttribute('aria-labelledby'), null);
+  }
+  setMobile(true);
+  assert.equal(get('canvas').getAttribute('role'), 'tabpanel');
+});
+
+test('Menü-Knopf klappt die Toolbar auf und zu, Escape schliesst und fokussiert ihn', () => {
+  const { get } = fakeResponsiveRoot();
+  const menu = get('btn-menu');
+  const toolbar = get('toolbar');
+  assert.equal(menu.getAttribute('aria-expanded'), 'false');
+  menu.dispatch('click');
+  assert.equal(menu.getAttribute('aria-expanded'), 'true');
+  assert.ok(toolbar.classList.contains('is-menu-open'));
+  toolbar.dispatch('keydown', { key: 'Escape' });
+  assert.equal(menu.getAttribute('aria-expanded'), 'false');
+  assert.equal(toolbar.classList.contains('is-menu-open'), false);
+  assert.ok(menu.focused);
+  menu.dispatch('click');
+  menu.dispatch('click');
+  assert.equal(menu.getAttribute('aria-expanded'), 'false');
+});
+
+test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verdrahtet', () => {
+  assert.equal(elementById('workspace').dataset.view, 'topo');
+  elementById('view-tab-edit').dispatch('click');
+  assert.equal(elementById('workspace').dataset.view, 'edit');
+  elementById('view-tab-topo').dispatch('click');
+  assert.equal(elementById('workspace').dataset.view, 'topo');
+  assert.equal(elementById('canvas').getAttribute('role'), null);
+  assert.equal(elementById('btn-menu').getAttribute('aria-expanded'), 'false');
+});
 
 console.log(`\n${passed} Test(s) bestanden.`);

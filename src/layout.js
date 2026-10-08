@@ -57,11 +57,22 @@ function toRadians(degrees) {
 }
 
 /** Gezeichnete Länge eines Segments (WALK wird gestaucht). */
-export function drawnLengthOf(segment, maximumWalkLength) {
+export function drawnLengthOf(
+  segment,
+  maximumWalkLength,
+  shorteningThreshold = 0,
+) {
+  let drawn = segment.length_in_meters;
   if (segment.type === 'WALK' && segment.length_in_meters > maximumWalkLength) {
-    return maximumWalkLength;
+    drawn = maximumWalkLength;
   }
-  return segment.length_in_meters;
+  if (
+    shorteningThreshold > 0 &&
+    segment.length_in_meters > shorteningThreshold
+  ) {
+    drawn = Math.min(drawn, shorteningThreshold);
+  }
+  return drawn;
 }
 
 function localToWorld(origin, dir, perp, along, across) {
@@ -115,9 +126,13 @@ export function worldToLocal(placement, point) {
 
 /* ------------------------------------------------------- Zeilenaufteilung */
 
-function segmentMetricsFor(topo, maximumWalkLength) {
+function segmentMetricsFor(topo, maximumWalkLength, shorteningThreshold) {
   return topo.segments.map((segment) => {
-    const drawn = drawnLengthOf(segment, maximumWalkLength);
+    const drawn = drawnLengthOf(
+      segment,
+      maximumWalkLength,
+      shorteningThreshold,
+    );
     const angle = segment.angle_in_degrees;
     const rad = toRadians(angle);
     const dir = { x: Math.cos(rad), y: Math.sin(rad) };
@@ -127,6 +142,9 @@ function segmentMetricsFor(topo, maximumWalkLength) {
     return {
       segment,
       drawn,
+      shortened:
+        shorteningThreshold > 0 &&
+        segment.length_in_meters > shorteningThreshold,
       angle,
       dir,
       perp: { x: dir.y, y: -dir.x },
@@ -344,6 +362,7 @@ function placeTracks(metrics, assignment) {
         segment.length_in_meters > 0 ? drawn / segment.length_in_meters : 1,
       isWater: WATER_SEGMENT_TYPES.has(segment.type),
     };
+    if (metric.shortened) placement.shortened = true;
     placement.elements = placeElements(segment, placement);
     placement.wallBulge = wallBulgeFor(placement);
 
@@ -548,10 +567,14 @@ export function layoutTopo(topo, options = {}) {
   const mode = options.layout || 'serpentine';
   const frame = options.frame || null;
   const maxWalk = topo.maximum_walk_length > 0 ? topo.maximum_walk_length : 30;
+  const shorteningThreshold =
+    topo.length_shortening_threshold_meters > 0
+      ? topo.length_shortening_threshold_meters
+      : 0;
   const baseWidth =
     topo.distance_of_single_line > 0 ? topo.distance_of_single_line : 60;
 
-  const metrics = segmentMetricsFor(topo, maxWalk);
+  const metrics = segmentMetricsFor(topo, maxWalk, shorteningThreshold);
 
   let rowWidthLimit;
   let assignment;

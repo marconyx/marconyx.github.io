@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
 
 import worker from '../tools/worker.js';
+import { buildPromptParts } from '../src/ai.js';
 
 const PROXY_SCRIPT = fileURLToPath(new URL('../tools/proxy.mjs', import.meta.url));
 const KEY = 'geheimer-test-key';
@@ -474,14 +475,14 @@ try {
     assert.equal(received.length, before, 'so ein Key darf den Upstream nie erreichen');
   });
   await test('übernimmt die System-Anweisung des Browsers unverändert', async () => {
-    const system = 'Du bist Canyoning-Topo-Experte.';
-    await post(PORT, { image: IMAGE, prompt: 'Aufgabe zum Bild', system });
+    const { system, user } = buildPromptParts({}, { template: 'optimized' });
+    await post(PORT, { image: IMAGE, prompt: user, system });
     const messages = received.at(-1).body.messages;
     assert.equal(messages.length, 2);
     assert.equal(messages[0].role, 'system');
     assert.equal(messages[0].content, system, 'der Proxy darf nichts eigenes formulieren');
     assert.equal(messages[1].role, 'user');
-    assert.equal(messages[1].content[1].text, 'Aufgabe zum Bild');
+    assert.equal(messages[1].content[1].text, user);
   });
 
   await test('ohne System-Anweisung bleibt es bei einer einzigen Nachricht', async () => {
@@ -569,9 +570,10 @@ try {
       AI_MODEL: 'claude-test',
     });
     try {
-      await post(other, { image: IMAGE, prompt: 'Aufgabe', system: 'Anweisung' });
+      const { system, user } = buildPromptParts({}, { template: 'optimized' });
+      await post(other, { image: IMAGE, prompt: user, system });
       const body = received.at(-1).body;
-      assert.equal(body.system, 'Anweisung');
+      assert.equal(body.system, system);
       assert.equal(body.temperature, 0.15);
       assert.equal(body.response_format, undefined, 'Anthropic kennt response_format nicht');
       assert.equal(
@@ -579,7 +581,7 @@ try {
         undefined,
         'Anthropic kennt chat_template_kwargs nicht',
       );
-      assert.equal(body.messages[0].content[1].text, 'Aufgabe');
+      assert.equal(body.messages[0].content[1].text, user);
     } finally {
       alt.child.kill();
     }
@@ -596,6 +598,27 @@ try {
     );
     assert.deepEqual(bodies[0].chat_template_kwargs, { enable_thinking: false });
     assert.equal(bodies[0].max_tokens, 8000);
+  });
+
+  await test('der Worker erhält den optimierten Prompt für OpenAI und Anthropic bytegleich', async () => {
+    const { system, user } = buildPromptParts({}, { template: 'optimized' });
+    for (const api of ['openai', 'anthropic']) {
+      const bodies = [];
+      await withMockedFetch((url, init) => {
+        bodies.push(JSON.parse(init.body));
+        return new Response(JSON.stringify({ choices: [{ message: { content: '{}' } }] }));
+      }, () => callWorker({ image: IMAGE, prompt: user, system }, { AI_API: api }));
+      const body = bodies[0];
+      if (api === 'openai') {
+        assert.equal(body.messages[0].content, system);
+        assert.equal(body.messages[1].content[1].text, user);
+        assert.equal(body.messages[1].content[0].image_url.url, IMAGE);
+      } else {
+        assert.equal(body.system, system);
+        assert.equal(body.messages[0].content[1].text, user);
+        assert.equal(body.messages[0].content[0].source.data, IMAGE.split(',')[1]);
+      }
+    }
   });
 
   await test('der Worker wiederholt ohne Denkschalter, wenn der Upstream ihn ablehnt', async () => {

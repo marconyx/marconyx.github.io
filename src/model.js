@@ -126,6 +126,7 @@ const ROOT_KNOWN_KEYS = new Set([
   'maximum_walk_length',
   'distance_of_single_line',
   'legend_offset_top',
+  'length_shortening_threshold_meters',
   'segments',
 ]);
 
@@ -296,6 +297,9 @@ export function normalizeTopo(raw) {
     maximum_walk_length: num(raw?.maximum_walk_length, 30),
     distance_of_single_line: num(raw?.distance_of_single_line, 60),
     legend_offset_top: num(raw?.legend_offset_top, 0),
+    length_shortening_threshold_meters: nonNegativeOrNull(
+      raw?.length_shortening_threshold_meters,
+    ),
     segments: Array.isArray(raw?.segments)
       ? raw.segments.map(normalizeSegment)
       : [],
