@@ -74,6 +74,27 @@ function rowSegments(layout) {
   return layout.rows.map((row) => row.placements.map((p) => p.index));
 }
 
+function rowMarkupFromSvg(svg) {
+  const rows = [];
+  const rowStarts = [...svg.matchAll(/<g class="topo-row" data-row="\d+">/g)];
+  for (const rowStart of rowStarts) {
+    const tags = /<\/?g\b[^>]*>/g;
+    tags.lastIndex = rowStart.index;
+    let depth = 0;
+    let end = rowStart.index;
+    let tag;
+    while ((tag = tags.exec(svg))) {
+      depth += tag[0].startsWith('</') ? -1 : 1;
+      if (depth === 0) {
+        end = tags.lastIndex;
+        break;
+      }
+    }
+    rows.push(svg.slice(rowStart.index, end));
+  }
+  return rows;
+}
+
 /* ------------------------------------------------ automatische Aufteilung */
 
 test('Serpentine teilt automatisch auf und hält die Zielbreite ein', () => {
@@ -154,7 +175,7 @@ test('Verkürzungsschwelle spart proportional Platz und ist standardmässig aus'
     }],
   });
   const placement = layoutTopo(rappel).placements[0];
-  assert.equal(drawnLengthOf(rappel.segments[0], 30), 80);
+  assert.equal(drawnLengthOf(rappel.segments[0]), 80);
   assert.equal(placement.drawnLength, 30);
   assert.equal(placement.realLength, 80);
   assert.equal(placement.shortened, true);
@@ -180,11 +201,59 @@ test('Verkürzungsschwelle spart proportional Platz und ist standardmässig aus'
     drawnLengthOf(
       normalizeTopo({ segments: [{ type: 'POOL', length_in_meters: 30 }] }).segments[0],
       30,
-      30,
     ),
     30,
     'Werte bis einschliesslich Schwelle bleiben unverändert',
   );
+});
+
+test('maximum_walk_length ändert Geometrie und Layout nicht', () => {
+  const source = {
+    canyon_name: 'Max walk is legend only',
+    duration: '4 h',
+    date: '2026-10-08',
+    distance_of_single_line: 60,
+    segments: [
+      { type: 'WALK', length_in_meters: 120, angle_in_degrees: 0, duration_to_walk_in_min: 40 },
+      { type: 'RAPPEL', length_in_meters: 80, angle_in_degrees: 90 },
+      { type: 'SLIDE', length_in_meters: 60, angle_in_degrees: 45 },
+    ],
+  };
+  const shortMax = normalizeTopo({ ...source, maximum_walk_length: 20 });
+  const longMax = normalizeTopo({ ...source, maximum_walk_length: 90 });
+  const segmentGeometry = (topo, mode, paper) => {
+    const layout = layoutTopo(topo, { layout: mode, paper });
+    return {
+      rows: layout.rows.map((row) => ({
+        placements: row.placements.map(({ index, start, end, drawnLength, compressed }) => ({
+          index, start, end, drawnLength, compressed,
+        })),
+      })),
+      rowAssignment: layout.rowAssignment,
+    };
+  };
+  for (const mode of LAYOUT_MODES) {
+    for (const paper of Object.keys(PAPER_PRESETS)) {
+      assert.deepEqual(
+        segmentGeometry(shortMax, mode, paper),
+        segmentGeometry(longMax, mode, paper),
+        `${mode}/${paper}: Metadatum ändert das Layout nicht`,
+      );
+      assert.deepEqual(
+        rowMarkupFromSvg(renderTopoSvg(
+          shortMax,
+          layoutTopo(shortMax, { layout: mode, paper }),
+          { paper },
+        )),
+        rowMarkupFromSvg(renderTopoSvg(
+          longMax,
+          layoutTopo(longMax, { layout: mode, paper }),
+          { paper },
+        )),
+        `${mode}/${paper}: Topo-SVG ohne Legende bleibt gleich`,
+      );
+    }
+  }
 });
 
 test('alle Segmenttypen nutzen die Verkürzungsschwelle', () => {
@@ -722,17 +791,42 @@ test('Author und Dauer stehen in der Legende', () => {
   assert.ok(svg.includes('Marco &amp; Team'), 'Author-Wert fehlt/unescaped');
   assert.ok(svg.includes('Dauer:'), 'Dauer-Beschriftung fehlt');
   assert.ok(svg.includes('ca. 4 h'), 'Dauer-Wert fehlt');
+  assert.ok(svg.includes('Max. Abseil:'));
+  assert.ok(svg.includes('30 m'));
   assert.ok(svg.includes(topo.canyon_name));
 });
 
 test('leere Metadaten erzeugen keine leeren Legendenzeilen', () => {
-  const topo = normalizeTopo({ ...example, author: '   ', duration: '' });
+  const topo = normalizeTopo({
+    ...example,
+    author: '   ',
+    duration: '',
+    maximum_walk_length: 0,
+  });
   assert.deepEqual(legendMetaTextsFor(topo), []);
   const svg = renderTopoSvg(topo, layoutTopo(topo));
   assert.ok(!svg.includes('Author:'));
   assert.ok(!svg.includes('Dauer:'));
   assert.ok(!svg.includes('data-meta="author"'));
   assert.ok(!svg.includes('data-meta="duration"'));
+  assert.ok(!svg.includes('data-meta="maximum_walk_length"'));
+});
+
+test('maximale Abseillänge steht direkt nach der Dauer in der Legende', () => {
+  const topo = normalizeTopo({
+    ...example,
+    duration: '3-4 h',
+    maximum_walk_length: 45,
+  });
+  for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
+    const svg = renderTopoSvg(topo, layoutTopo(topo), { theme });
+    assert.match(svg, /data-meta="maximum_walk_length"[^>]*>[\s\S]*Max\. Abseil:<\/tspan> 45 m<\/text>/);
+    assert.equal(
+      metaY(svg, 'maximum_walk_length') - metaY(svg, 'duration'),
+      1.4,
+      `${theme}: Max. Abseil steht direkt unter Dauer`,
+    );
+  }
 });
 
 test('ein leeres Datum erzeugt keine Datumszeile', () => {
@@ -744,7 +838,12 @@ test('ein leeres Datum erzeugt keine Datumszeile', () => {
 });
 
 test('nur ein gefülltes Feld ergibt genau eine Zusatzzeile neben dem Datum', () => {
-  const topo = normalizeTopo({ ...example, author: 'Solo', duration: '' });
+  const topo = normalizeTopo({
+    ...example,
+    author: 'Solo',
+    duration: '',
+    maximum_walk_length: 0,
+  });
   const svg = renderTopoSvg(topo, layoutTopo(topo));
   assert.equal((svg.match(/data-meta="/g) || []).length, 2);
   assert.ok(svg.includes('data-meta="author"'));
@@ -1272,8 +1371,8 @@ test('ohne Gumpentiefe bleiben alle Layouts und Renderstile byte-identisch', () 
     }
   }
   const hash = (values) => createHash('sha256').update(values.join('\n')).digest('hex');
-  assert.equal(hash(layouts), 'f710d25f6f14cda59838ff8165e55acb454526d09c576151b0e575eff83ac03c');
-  assert.equal(hash(svgs), '83754da120f1d52690ac62246fdafe1c174860c075470b85a103090461e4a904');
+  assert.equal(hash(layouts), 'fbbe6919511d3e2f72f2cce5536841b86bce83f9703df379135bca0798d17618');
+  assert.equal(hash(svgs), '692f2cf20936f2dadeeef28672b09b6886b38ba78f5045934744fd6166bdf0ea');
 });
 
 test('Gumpen-Zeichentiefe skaliert gedämpft und begrenzt, WEIR bleibt unverändert', () => {

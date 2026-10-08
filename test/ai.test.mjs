@@ -652,7 +652,7 @@ test('rekonstruierte Kaskaden behalten Reihenfolge, Mehrfachsymbole, Text und lo
   const rappel = layout.placements[0];
   assert.ok(Math.abs(rappel.elements[0].point.x - rappel.start.x - 1) < 1e-8);
   const path = layout.placements[2].elements[0];
-  assert.ok(Math.abs(path.endPoint.x - path.point.x - 15) < 1e-8);
+  assert.ok(Math.abs(path.endPoint.x - path.point.x - 40) < 1e-8);
   assert.ok(Math.abs(path.endPoint.y - path.point.y - 5) < 1e-8);
   assert.equal(topo.segments[2].elements[0].horizontal_end_rel_to_segment_start, 60);
   assert.match(renderTopoSvg(topo, layout), /C25/);

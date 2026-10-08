@@ -10,8 +10,8 @@
  *    `horizontal_*` = Versatz entlang der Segmentrichtung,
  *    `vertical_*`   = Versatz senkrecht dazu, positiv = links der Laufrichtung
  *    (bei flachem Gelände also nach oben).
- *  - `maximum_walk_length` begrenzt die gezeichnete Länge von WALK-Segmenten;
- *    gestauchte Segmente bekommen eine Dauer-Klammer (|← 5min →|).
+ *  - `maximum_walk_length` bleibt als Metadatum am Topo erhalten und wird in
+ *    der Legende angezeigt, beeinflusst aber die Zeichengeometrie nicht.
  *  - `distance_of_single_line` ist die Zeilenbreite für das freie Bildschirm-
  *    format. Bei A4 ergibt sich die nutzbare Breite aus dem Format, siehe
  *    `planTrackLimit`.
@@ -56,16 +56,9 @@ function toRadians(degrees) {
   return (degrees * Math.PI) / 180;
 }
 
-/** Gezeichnete Länge eines Segments (WALK wird gestaucht). */
-export function drawnLengthOf(
-  segment,
-  maximumWalkLength,
-  shorteningThreshold = 0,
-) {
+/** Gezeichnete Segmentlänge nach optionaler globaler Verkürzungsschwelle. */
+export function drawnLengthOf(segment, shorteningThreshold = 0) {
   let drawn = segment.length_in_meters;
-  if (segment.type === 'WALK' && segment.length_in_meters > maximumWalkLength) {
-    drawn = maximumWalkLength;
-  }
   if (
     shorteningThreshold > 0 &&
     segment.length_in_meters > shorteningThreshold
@@ -126,13 +119,9 @@ export function worldToLocal(placement, point) {
 
 /* ------------------------------------------------------- Zeilenaufteilung */
 
-function segmentMetricsFor(topo, maximumWalkLength, shorteningThreshold) {
+function segmentMetricsFor(topo, shorteningThreshold) {
   return topo.segments.map((segment) => {
-    const drawn = drawnLengthOf(
-      segment,
-      maximumWalkLength,
-      shorteningThreshold,
-    );
+    const drawn = drawnLengthOf(segment, shorteningThreshold);
     const angle = segment.angle_in_degrees;
     const rad = toRadians(angle);
     const dir = { x: Math.cos(rad), y: Math.sin(rad) };
@@ -286,6 +275,9 @@ function round(value) {
 function planTrackLimit(topo, chunks, baseWidth, paperKey, buildFor) {
   const aspect = paperAspectRatio(paperKey);
   if (!aspect || !chunks.length) return baseWidth;
+  // Die maximale Abseillänge ist Legendentext. Ihre wechselnde Ziffernzahl
+  // darf die A4-Layoutoptimierung und damit Segmentgeometrie nicht verändern.
+  const planningTopo = { ...topo, maximum_walk_length: 30 };
 
   const spans = chunks.map((chunk) => chunk.span);
   const total = spans.reduce((sum, span) => sum + span, 0);
@@ -300,7 +292,7 @@ function planTrackLimit(topo, chunks, baseWidth, paperKey, buildFor) {
   for (const limit of [...candidates].sort((a, b) => a - b)) {
     if (!(limit > 0)) continue;
     const layout = buildFor(limit);
-    const bounds = contentBoundsFor(topo, layout);
+    const bounds = contentBoundsFor(planningTopo, layout);
     const width = bounds.maxX - bounds.minX;
     const height = bounds.maxY - bounds.minY;
     if (!(width > 0) || !(height > 0)) continue;
@@ -455,7 +447,6 @@ function buildLayout(metrics, assignment, rowWidthLimit, mode, frame) {
     height,
     rowWidthLimit,
     rowAssignment: assignment,
-    maximumWalkLength: 0,
     mode,
   };
 }
@@ -545,7 +536,6 @@ function buildColumnLayout(metrics, assignment, columnHeightLimit, mode, frame) 
     rowAssignment: assignment,
     columnAssignment: assignment,
     orientation: 'columns',
-    maximumWalkLength: 0,
     mode,
   };
 }
@@ -566,7 +556,6 @@ function buildColumnLayout(metrics, assignment, columnHeightLimit, mode, frame) 
 export function layoutTopo(topo, options = {}) {
   const mode = options.layout || 'serpentine';
   const frame = options.frame || null;
-  const maxWalk = topo.maximum_walk_length > 0 ? topo.maximum_walk_length : 30;
   const shorteningThreshold =
     topo.length_shortening_threshold_meters > 0
       ? topo.length_shortening_threshold_meters
@@ -574,7 +563,7 @@ export function layoutTopo(topo, options = {}) {
   const baseWidth =
     topo.distance_of_single_line > 0 ? topo.distance_of_single_line : 60;
 
-  const metrics = segmentMetricsFor(topo, maxWalk, shorteningThreshold);
+  const metrics = segmentMetricsFor(topo, shorteningThreshold);
 
   let rowWidthLimit;
   let assignment;
@@ -615,7 +604,6 @@ export function layoutTopo(topo, options = {}) {
       mode,
       frame,
     );
-    layout.maximumWalkLength = maxWalk;
     return layout;
   }
 
@@ -650,7 +638,6 @@ export function layoutTopo(topo, options = {}) {
   }
 
   const layout = buildLayout(metrics, assignment, rowWidthLimit, mode, frame);
-  layout.maximumWalkLength = maxWalk;
   return layout;
 }
 
