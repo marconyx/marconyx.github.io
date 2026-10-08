@@ -238,6 +238,83 @@ test('Doppelbruch erscheint für verkürzte Strecken in allen Stilen, nicht auf 
   );
 });
 
+test('SVG-Doppelbruch sitzt exakt in der geometrischen Mitte der Linie', () => {
+  const topo = normalizeTopo({
+    maximum_walk_length: 200,
+    distance_of_single_line: 60,
+    length_shortening_threshold_meters: 30,
+    segments: [
+      { type: 'RAPPEL', length_in_meters: 80, angle_in_degrees: 45, wall_distance_in_meters: 4 },
+      { type: 'WALK', length_in_meters: 120, angle_in_degrees: 90 },
+      { type: 'POOL', length_in_meters: 80, angle_in_degrees: 30, depth_in_meters: 5 },
+      { type: 'JUMP', length_in_meters: 80, angle_in_degrees: 0 },
+      { type: 'SLIDE', length_in_meters: 80, angle_in_degrees: 120 },
+      { type: 'WEIR', length_in_meters: 80, angle_in_degrees: 60 },
+    ],
+  });
+
+  for (const mode of LAYOUT_MODES) {
+    const layout = layoutTopo(topo, { layout: mode });
+    for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
+      const svg = renderTopoSvg(topo, layout, { theme });
+      const markers = new Map(
+        [...svg.matchAll(
+          /<g class="topo-shortening-break" data-seg="(\d+)" data-center-x="([^"]+)" data-center-y="([^"]+)" transform="translate\(([^,]+),([^)]+)\)">/g,
+        )].map((match) => [
+          Number(match[1]),
+          {
+            x: Number(match[2]),
+            y: Number(match[3]),
+            transformX: Number(match[4]),
+            transformY: Number(match[5]),
+          },
+        ]),
+      );
+      assert.equal(markers.size, topo.segments.length, `${mode}/${theme}: ein Marker je Segment`);
+      for (const placement of layout.placements) {
+        const marker = markers.get(placement.index);
+        assert.ok(marker, `${mode}/${theme}: Marker für ${placement.segment.type}`);
+        const { start, end, wallBulge, segment } = placement;
+        let expected;
+        if (wallBulge) {
+          expected = {
+            x: (start.x + 2 * wallBulge.control.x + end.x) / 4,
+            y: (start.y + 2 * wallBulge.control.y + end.y) / 4,
+          };
+        } else if (segment.type === 'POOL' || segment.type === 'WEIR') {
+          const controlY = Math.max(start.y, end.y) + poolDrawingDepthOf(segment);
+          expected = {
+            x: (start.x + end.x) / 2,
+            y: (start.y + 2 * controlY + end.y) / 4,
+          };
+        } else {
+          expected = {
+            x: (start.x + end.x) / 2,
+            y: (start.y + end.y) / 2,
+          };
+        }
+        assert.ok(Math.abs(marker.x - expected.x) < 1e-9, `${mode}/${theme}/${segment.type}: x`);
+        assert.ok(Math.abs(marker.y - expected.y) < 1e-9, `${mode}/${theme}/${segment.type}: y`);
+        assert.equal(marker.transformX, marker.x, 'Markergruppe ist am exakten Mittelpunkt verankert');
+        assert.equal(marker.transformY, marker.y, 'Markergruppe ist am exakten Mittelpunkt verankert');
+      }
+      const rowStarts = [...svg.matchAll(/<g class="topo-row" data-row="\d+">/g)]
+        .map((match) => match.index);
+      for (const [index, rowStart] of rowStarts.entries()) {
+        const row = svg.slice(rowStart, rowStarts[index + 1] ?? svg.length);
+        const lastDepthLabel = row.lastIndexOf('topo-pool-depth');
+        const firstMarker = row.indexOf('class="topo-shortening-break"');
+        if (firstMarker >= 0 && lastDepthLabel >= 0) {
+          assert.ok(
+            firstMarker > lastDepthLabel,
+            `${mode}/${theme}: Marker wird über Labels gezeichnet`,
+          );
+        }
+      }
+    }
+  }
+});
+
 test('Pool-Tiefe bleibt als separat stilisierte Tiefe erhalten', () => {
   const topo = normalizeTopo({
     length_shortening_threshold_meters: 30,

@@ -230,33 +230,43 @@ function arrowFor(placement, theme) {
 function shorteningMarkerFor(placement, theme) {
   if (!placement.shortened) return '';
   const { start, end, dir, perp, segment, wallBulge } = placement;
-  let center = {
-    x: (start.x + end.x) / 2,
-    y: (start.y + end.y) / 2,
-  };
+  let center;
   if (wallBulge) {
     center = {
       x: (start.x + 2 * wallBulge.control.x + end.x) / 4,
       y: (start.y + 2 * wallBulge.control.y + end.y) / 4,
     };
-  } else if (segment.type === 'POOL') {
-    center.y += poolDrawingDepthOf(segment) / 2;
+  } else if (WATER_SEGMENT_TYPES.has(segment.type)) {
+    const control = {
+      x: (start.x + end.x) / 2,
+      y: Math.max(start.y, end.y) + poolDrawingDepthOf(segment),
+    };
+    center = {
+      x: (start.x + 2 * control.x + end.x) / 4,
+      y: (start.y + 2 * control.y + end.y) / 4,
+    };
+  } else {
+    center = {
+      x: (start.x + end.x) / 2,
+      y: (start.y + end.y) / 2,
+    };
   }
-  const markerScale = Math.min(1, placement.drawnLength / 0.86);
-  const paths = [-0.18, 0.18]
+
+  const scale = Math.min(1, placement.drawnLength / 0.9);
+  const gap = 0.18 * scale;
+  const slashHalf = 0.32 * scale;
+  const paths = [-gap, gap]
     .map((along) => {
-      const x1 =
-        center.x + dir.x * (along - 0.24 * markerScale) - perp.x * 0.34 * markerScale;
-      const y1 =
-        center.y + dir.y * (along - 0.24 * markerScale) - perp.y * 0.34 * markerScale;
-      const x2 =
-        center.x + dir.x * (along + 0.24 * markerScale) + perp.x * 0.34 * markerScale;
-      const y2 =
-        center.y + dir.y * (along + 0.24 * markerScale) + perp.y * 0.34 * markerScale;
+      const startAlong = along - slashHalf;
+      const endAlong = along + slashHalf;
+      const x1 = dir.x * startAlong - perp.x * slashHalf;
+      const y1 = dir.y * startAlong - perp.y * slashHalf;
+      const x2 = dir.x * endAlong + perp.x * slashHalf;
+      const y2 = dir.y * endAlong + perp.y * slashHalf;
       return `M ${x1} ${y1} L ${x2} ${y2}`;
     })
     .join(' ');
-  return `<path class="topo-shortening-break" d="${paths}" fill="none" stroke="${theme.background}" stroke-width="0.34" stroke-linecap="round"/><path d="${paths}" fill="none" stroke="${theme.accent}" stroke-width="0.16" stroke-linecap="round"/>`;
+  return `<g class="topo-shortening-break" data-seg="${placement.index}" data-center-x="${center.x}" data-center-y="${center.y}" transform="translate(${center.x},${center.y})"><path d="${paths}" fill="none" stroke="${theme.background}" stroke-width="0.34" stroke-linecap="round"/><path d="${paths}" fill="none" stroke="${theme.accent}" stroke-width="0.16" stroke-linecap="round"/></g>`;
 }
 
 function labelBoxFor(placement, theme) {
@@ -519,14 +529,13 @@ export function renderTopoSvg(topo, layout, options = {}) {
         ${theme.eauFroide ? `<path d="${terrain}" fill="url(#topo-marble)" stroke="none"/>` : ''}
         <path d="${ground}" fill="none" stroke="${theme.terrainLine}" stroke-width="0.14" stroke-linejoin="round"/>
         ${cascades}
-        ${water}${shorteningMarkers ? `
-        ${shorteningMarkers}` : ''}
+        ${water}
         ${arrows}
         ${hits}
         ${elements}
         ${labels}
         ${brackets}
-        ${continuationMarkers(row, layout, theme)}
+        ${shorteningMarkers}${continuationMarkers(row, layout, theme)}
       </g>`;
     })
     .join('');
