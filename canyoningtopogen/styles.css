@@ -1,0 +1,728 @@
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --border: #d7dae0;
+  --text: #1c1f24;
+  --muted: #6b7280;
+  --accent: #1668dc;
+  --accent-soft: #e8f1fd;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.toolbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.toolbar__logo {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 1rem;
+}
+
+.toolbar__brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.toolbar__hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.toolbar__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.toolbar__group label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.toolbar__group select {
+  min-width: 0;
+}
+
+/* Nur für Screenreader: visuell unsichtbar, aber im Fokus-/Vorlesefluss. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.field-language select {
+  width: auto;
+  min-width: 3.4rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+button,
+.button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:hover,
+.button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+select,
+input[type='text'],
+input[type='number'],
+input[type='date'] {
+  padding: 0.3rem 0.4rem;
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  width: 100%;
+}
+
+.workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr) 19rem;
+  min-height: 0;
+}
+
+.panel {
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+.panel--right {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+
+.panel__section {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel__content > .panel__section {
+  min-width: 0;
+  padding: 0 0 0 0.75rem;
+  border-bottom: none;
+}
+
+.panel__section > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 4px;
+}
+
+.panel__section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel__section > summary:hover {
+  background: var(--accent-soft);
+}
+
+.panel__section > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.panel__arrow {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.panel__arrow::before {
+  content: '▶';
+}
+
+.panel__section[open] > summary .panel__arrow::before {
+  content: '◀';
+}
+
+.panel__content {
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.panel__section h2,
+.panel__section h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.panel__section h3 {
+  font-size: 0.74rem;
+}
+
+.panel__section label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.row input[type='number'] {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.row button {
+  flex: 0 0 auto;
+  padding-inline: 0.5rem;
+}
+
+#photo-page-row[hidden] {
+  display: none;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+#ai-settings summary,
+#panel-ai > summary h3 {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: normal;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--muted);
+}
+
+#ai-settings input[type='text'],
+#ai-settings input[type='password'],
+#ai-settings select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#ai-status:empty {
+  display: none;
+}
+
+#ai-status.is-error {
+  color: var(--danger, #e2554c);
+}
+
+#btn-ai-cancel[hidden],
+#ai-key-row[hidden],
+#ai-model-row[hidden] {
+  display: none;
+}
+
+.is-busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.segment-add {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.segment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.segment-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.segment-list li.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.segment-list__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.segment-list button {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.7rem;
+}
+
+.canvas {
+  position: relative;
+  overflow: auto;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--bg);
+  padding: 1.5rem;
+}
+
+.canvas__stage {
+  position: relative;
+  display: inline-block;
+  transform-origin: top left;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
+}
+
+#photo-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transform-origin: top left;
+}
+
+#svg-host svg {
+  display: block;
+}
+
+#svg-host.is-dragging svg {
+  overflow: visible;
+}
+
+.save-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: min(18rem, calc(100vw - 1rem));
+  max-height: calc(100vh - 1rem);
+  overflow: auto;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
+}
+
+.save-menu:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.save-menu button {
+  text-align: left;
+}
+
+.canvas__zoom {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.78rem;
+}
+
+.topo-element {
+  cursor: grab;
+  /* Ziehen per Touch verschiebt das Element statt die Seite/Zeichenfläche. */
+  touch-action: none;
+}
+
+.topo-element:active {
+  cursor: grabbing;
+}
+
+.topo-segment-hit {
+  cursor: pointer;
+}
+
+.symbol-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.6rem;
+}
+
+.symbol-group h3 {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.symbol-group__items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.symbol-group__items button {
+  font-size: 0.7rem;
+  text-align: left;
+  padding: 0.25rem 0.4rem;
+}
+
+.issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.issues li::before {
+  margin-right: 0.35rem;
+}
+
+.issues li.error {
+  color: #b42318;
+}
+
+.issues li.error::before {
+  content: '●';
+}
+
+.issues li.warning {
+  color: #b45309;
+}
+
+.issues li.warning::before {
+  content: '▲';
+}
+
+.issues li.ok {
+  color: #15803d;
+}
+
+.issues li.ok::before {
+  content: '✓';
+}
+
+.inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.inspector-grid label {
+  font-size: 0.72rem;
+}
+
+.inspector-grid .full {
+  grid-column: 1 / -1;
+}
+
+@media print {
+  .toolbar,
+  .panel,
+  .canvas__zoom {
+    display: none;
+  }
+}
+
+/* Modellfeld: Eingabe und "Modelle laden" nebeneinander, Hinweis darunter. */
+#ai-model-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.field-with-button {
+  display: flex;
+  gap: 0.3rem;
+  align-items: stretch;
+}
+
+.field-with-button input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-with-button button {
+  white-space: nowrap;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- Responsiv */
+
+/* Nur auf Smartphones sichtbar (siehe unten). */
+.toolbar__menu,
+.view-switch {
+  display: none;
+}
+
+/* Tablet hoch/quer: Zeichenfläche breit oben, Seitenleisten zweispaltig darunter. */
+@media screen and (min-width: 768px) and (max-width: 1199.98px) {
+  html,
+  body {
+    height: auto;
+  }
+
+  body {
+    min-height: 100%;
+  }
+
+  .workspace {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'canvas canvas'
+      'left right';
+  }
+
+  .canvas {
+    grid-area: canvas;
+    height: clamp(22rem, 68vh, 56rem);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel--left {
+    grid-area: left;
+  }
+
+  .panel--right {
+    grid-area: right;
+  }
+}
+
+/* Smartphone: einspaltig, Kopfzeile kompakt, Bereiche per Tabs umschaltbar. */
+@media screen and (max-width: 767.98px) {
+  .toolbar {
+    flex: none;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .toolbar__brand {
+    flex: 1 1 12rem;
+  }
+
+  .toolbar__menu {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .toolbar:not(.is-menu-open) .toolbar__group:not(.toolbar__group--history):not(#toolbar-export) {
+    display: none;
+  }
+
+  .toolbar.is-menu-open {
+    max-height: 75vh;
+    overflow-y: auto;
+  }
+
+  .toolbar.is-menu-open .toolbar__group:not(.toolbar__group--history):not(#toolbar-export) {
+    flex-basis: 100%;
+  }
+
+  .view-switch {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .view-switch [role='tab'] {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .view-switch [role='tab'][aria-selected='true'] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .view-switch [role='tab']:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .workspace {
+    flex: 1 1 auto;
+    min-height: 20rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .workspace > * {
+    grid-area: 1 / 1;
+  }
+
+  .workspace[data-view='edit'] > :not(.panel--left),
+  .workspace[data-view='topo'] > :not(.canvas),
+  .workspace[data-view='symbols'] > :not(.panel--right) {
+    display: none;
+  }
+
+  .panel,
+  .panel--right {
+    border: none;
+  }
+
+  .canvas {
+    padding: 0.75rem;
+  }
+}
+
+/* Touch: Zielflächen ≥ 44px. */
+@media (pointer: coarse) {
+  button,
+  .button,
+  .panel__section > summary,
+  #ai-settings > summary {
+    min-height: 44px;
+  }
+
+  button,
+  .button {
+    min-width: 44px;
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #ai-settings > summary {
+    line-height: 44px;
+  }
+
+  select,
+  input[type='text'],
+  input[type='number'],
+  input[type='date'],
+  input[type='password'] {
+    min-height: 44px;
+  }
+
+  input[type='range'] {
+    min-height: 32px;
+  }
+}
+
+/* Kein iOS-Auto-Zoom beim Fokussieren von Eingabefeldern. */
+@media screen and (max-width: 767.98px), (pointer: coarse) {
+  select,
+  input,
+  textarea,
+  input[type='text'],
+  input[type='number'],
+  input[type='date'],
+  input[type='password'] {
+    font-size: 16px;
+  }
+}

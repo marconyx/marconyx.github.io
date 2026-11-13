@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Canyoning Topo Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="toolbar__brand">
+        <img class="toolbar__logo" src="assets/bachab-logo.png" alt="bachab" width="400" height="133" />
+        <div class="toolbar__brand-text">
+          <strong>Canyoning Topo Generator</strong>
+          <span class="toolbar__hint" id="status">bereit</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="toolbar__menu"
+        id="btn-menu"
+        aria-expanded="false"
+        aria-controls="toolbar-file toolbar-view"
+      >☰ <span id="lbl-menu">Menü</span></button>
+
+      <div class="toolbar__group" id="toolbar-file">
+        <label class="field-language" for="select-language"><span id="lbl-language" class="sr-only">Sprache</span>
+          <select id="select-language">
+            <option value="de">DE</option>
+            <option value="en">EN</option>
+            <option value="fr">FR</option>
+            <option value="it">IT</option>
+          </select>
+        </label>
+        <button type="button" id="btn-new">Neu</button>
+        <button type="button" id="btn-example">Beispiel</button>
+        <button type="button" id="btn-random" title="Zufälliges Topo mit allen Segmenttypen und Symbolen">Zufall</button>
+        <label class="button" for="file-open"><span id="lbl-file-open">Öffnen…</span></label>
+        <input type="file" id="file-open" accept=".json,.xml,application/json,text/xml" hidden />
+      </div>
+
+      <div class="toolbar__group" id="toolbar-export">
+        <button type="button" id="btn-save" popovertarget="save-menu" aria-controls="save-menu" aria-expanded="false">Speichern…</button>
+        <div id="save-menu" class="save-menu" popover="auto" role="group" aria-label="Speichern">
+          <button type="button" id="btn-save-json">JSON speichern</button>
+          <button type="button" id="btn-save-xml">XML speichern</button>
+          <button type="button" id="btn-export-svg">SVG</button>
+          <button type="button" id="btn-export-png">PNG</button>
+          <button type="button" id="btn-print">Drucken / PDF</button>
+        </div>
+      </div>
+
+      <div class="toolbar__group toolbar__group--history">
+        <button type="button" id="btn-undo" title="Rückgängig (Cmd/Ctrl+Z)">↶</button>
+        <button type="button" id="btn-redo" title="Wiederholen (Cmd/Ctrl+Shift+Z)">↷</button>
+      </div>
+
+      <div class="toolbar__group" id="toolbar-view">
+        <label><span id="lbl-select-layout">Layout</span>
+          <select id="select-layout">
+            <option value="serpentine" id="opt-layout-serpentine">Serpentine (Zeilen)</option>
+            <option value="cascaded" id="opt-layout-cascaded">Kaskadiert (Spalten)</option>
+            <option value="linear" id="opt-layout-linear">Linear (eine Zeile)</option>
+          </select>
+        </label>
+        <label><span id="lbl-select-theme">Stil</span>
+          <select id="select-theme">
+            <option value="color" id="opt-theme-color">Farbe</option>
+            <option value="bw" id="opt-theme-bw">Schwarz/Weiß</option>
+            <option value="alpiner_classic" id="opt-theme-alpiner-classic">Alpin klassisch</option>
+            <option value="eau_froide" id="opt-theme-eau-froide">Standard</option>
+            <option value="pencil_sketch" id="opt-theme-pencil-sketch">Bleistiftskizze</option>
+          </select>
+        </label>
+        <label><span id="lbl-select-paper">Format</span>
+          <select id="select-paper">
+            <option value="screen" id="opt-paper-screen">Bildschirm</option>
+            <option value="a4_landscape" id="opt-paper-a4-landscape">A4 quer</option>
+            <option value="a4_portrait" id="opt-paper-a4-portrait">A4 hoch</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="view-switch" id="view-switch" role="tablist" aria-label="Ansicht">
+      <button type="button" role="tab" id="view-tab-edit" aria-controls="panel-left" aria-selected="false" tabindex="-1">Bearbeiten</button>
+      <button type="button" role="tab" id="view-tab-topo" aria-controls="canvas" aria-selected="true">Topo</button>
+      <button type="button" role="tab" id="view-tab-symbols" aria-controls="panel-right" aria-selected="false" tabindex="-1">Symbole</button>
+    </div>
+
+    <main class="workspace" id="workspace" data-view="topo">
+      <aside class="panel panel--left" id="panel-left" aria-label="Topo, Segmente und Foto-Referenz">
+        <details class="panel__section" id="panel-topo" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2 id="h-panel-topo">Topo</h2></summary>
+          <div class="panel__content">
+            <label><span id="lbl-topo-name">Name</span> <input type="text" id="topo-name" /></label>
+            <label><span id="lbl-topo-author">Author</span> <input type="text" id="topo-author" /></label>
+            <label><span id="lbl-topo-duration">Dauer</span> <input type="text" id="topo-duration" /></label>
+            <label><span id="lbl-topo-date">Datum</span> <input type="date" id="topo-date" /></label>
+            <label><span id="lbl-topo-max-walk">Max. Abseillänge (m)</span> <input type="number" id="topo-max-walk" min="1" step="1" /></label>
+            <label id="lbl-topo-line-distance-row" title="Serpentine: Zeilenbreite · Kaskadiert: Spaltenhöhe (Format Bildschirm)"><span id="lbl-topo-line-distance">Zeilenbreite (m)</span> <input type="number" id="topo-line-distance" min="5" step="1" /></label>
+            <label><span id="lbl-topo-legend-offset">Legende Offset (m)</span> <input type="number" id="topo-legend-offset" step="1" /></label>
+            <label><span id="lbl-topo-length-shortening-threshold">Segmente verkürzen ab (m): </span><input type="number" id="topo-length-shortening-threshold" min="0" step="1" /></label>
+            <button type="button" id="btn-renumber">Nummern neu vergeben</button>
+          </div>
+        </details>
+
+        <details class="panel__section" id="panel-segments" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2 id="h-panel-segments">Segmente</h2></summary>
+          <div class="panel__content">
+            <div class="segment-add">
+              <select id="select-new-segment"></select>
+              <button type="button" id="btn-add-segment">+ hinzufügen</button>
+            </div>
+            <ol class="segment-list" id="segment-list"></ol>
+          </div>
+        </details>
+
+        <details class="panel__section" id="panel-photo" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2 id="h-panel-photo">Foto-Referenz</h2></summary>
+          <div class="panel__content">
+            <p class="hint" id="hint-photo-usage">Foto oder PDF als Hintergrund einblenden und Topo darüber nachzeichnen.</p>
+            <label class="button" for="file-photo" id="lbl-file-photo">Foto oder PDF wählen…</label>
+            <input
+              type="file"
+              id="file-photo"
+              accept="image/*,application/pdf,.pdf"
+              hidden
+            />
+            <label id="photo-page-row" hidden>
+              <span id="lbl-photo-page">PDF-Seite</span>
+              <span class="row">
+                <button type="button" id="btn-photo-page-prev" title="Vorherige Seite">◀</button>
+                <input type="number" id="photo-page" min="1" value="1" />
+                <button type="button" id="btn-photo-page-next" title="Nächste Seite">▶</button>
+              </span>
+              <span class="hint" id="photo-page-info"></span>
+            </label>
+            <label><span id="lbl-photo-opacity">Deckkraft</span> <input type="range" id="photo-opacity" min="0" max="100" value="45" /></label>
+            <label><span id="lbl-photo-scale">Größe</span> <input type="range" id="photo-scale" min="20" max="300" value="100" /></label>
+            <label><span id="lbl-photo-x">Horizontal</span> <input type="range" id="photo-x" min="-100" max="100" value="0" /></label>
+            <label><span id="lbl-photo-y">Vertikal</span> <input type="range" id="photo-y" min="-100" max="100" value="0" /></label>
+            <button type="button" id="btn-photo-clear">Referenz entfernen</button>
+
+            <details class="panel__section" id="panel-ai" open>
+              <summary><span class="panel__arrow" aria-hidden="true"></span><h3 id="h-panel-ai">AI-Erkennung</h3></summary>
+              <div class="panel__content">
+                <p class="hint" id="hint-ai-cors">
+                  Erzeugt aus dem geladenen Bild bzw. der PDF-Seite ein Topo. Der Aufruf läuft
+                  direkt aus deinem Browser zum Modell — blockiert ein Gateway das (CORS),
+                  springt automatisch der lokale Proxy ein, sofern er läuft (<code>npm start</code>).
+                </p>
+                <button type="button" id="btn-photo-ai">Aus Foto erzeugen (AI)</button>
+                <button type="button" id="btn-ai-cancel" hidden>Abbrechen</button>
+                <p class="hint" id="ai-status"></p>
+
+                <details id="ai-settings">
+                  <summary id="lbl-ai-settings">Einstellungen</summary>
+                  <div class="stack">
+                    <label>
+                      <span id="lbl-ai-provider">Anbieter</span>
+                      <select id="ai-provider"></select>
+                    </label>
+                    <p class="hint" id="ai-provider-hint"></p>
+                    <label>
+                      <span id="lbl-ai-endpoint">Endpoint</span>
+                      <input type="text" id="ai-endpoint" spellcheck="false" placeholder="https://api.swisscom.com/products/swiss-ai-platform/internal-all-models/v1" />
+                    </label>
+                    <div id="ai-model-row">
+                      <label for="ai-model" id="lbl-ai-model">Modell</label>
+                      <div class="field-with-button">
+                        <input
+                          type="text"
+                          id="ai-model"
+                          spellcheck="false"
+                          placeholder="qwen/qwen3.6-35b-a3b"
+                          list="ai-model-options"
+                          autocomplete="off"
+                        />
+                        <button type="button" id="btn-ai-models">Modelle laden</button>
+                      </div>
+                      <datalist id="ai-model-options"></datalist>
+                      <p class="hint" id="ai-model-hint"></p>
+                    </div>
+                    <label id="ai-key-row"><span id="lbl-ai-key">API-Key</span>
+                      <input type="password" id="ai-key" spellcheck="false" autocomplete="off" placeholder="sk-…" />
+                    </label>
+                    <label>
+                      <span id="lbl-ai-prompt-template">Prompt-Vorlage</span>
+                      <select id="ai-prompt-template"></select>
+                    </label>
+                    <p class="hint" id="ai-prompt-hint"></p>
+                    <label id="ai-prompt-custom-row" hidden><span id="lbl-ai-prompt-custom">Eigener Prompt</span>
+                      <textarea id="ai-prompt-custom" rows="8" spellcheck="false"></textarea>
+                    </label>
+                    <label>
+                      <span id="lbl-ai-notes">Zusatzinfo für das Modell (optional)</span>
+                      <input type="text" id="ai-notes" placeholder="z. B. Gerätebezeichnungen, Sprache, Region" />
+                    </label>
+                    <p class="hint" id="hint-ai-key-storage">
+                      Der Key wird nur im <code>localStorage</code> dieses Browsers gespeichert und
+                      ausschließlich an den angegebenen Endpoint gesendet. Auf gemeinsam genutzten
+                      Rechnern besser einen eigenen Proxy verwenden.
+                    </p>
+                    <button type="button" id="btn-ai-forget">Key löschen</button>
+                    <p class="hint" id="ai-proxy-state"></p>
+                  </div>
+                </details>
+              </div>
+            </details>
+          </div>
+        </details>
+      </aside>
+
+      <section class="canvas" id="canvas">
+        <div class="canvas__stage" id="stage">
+          <img id="photo-layer" alt="" hidden />
+          <div id="svg-host"></div>
+        </div>
+        <div class="canvas__zoom">
+          <button type="button" id="btn-zoom-out">−</button>
+          <span id="zoom-label">100%</span>
+          <button type="button" id="btn-zoom-in">+</button>
+          <button type="button" id="btn-zoom-fit">Einpassen</button>
+        </div>
+      </section>
+
+      <aside class="panel panel--right" id="panel-right" aria-label="Auswahl, Symbole und Prüfung">
+        <details class="panel__section" id="panel-selection" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2 id="h-panel-selection">Auswahl</h2></summary>
+          <div class="panel__content">
+            <div id="inspector"><p class="hint">Segment oder Symbol im Topo anklicken.</p></div>
+          </div>
+        </details>
+
+        <details class="panel__section" id="panel-symbols" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2 id="h-panel-symbols">Symbole</h2></summary>
+          <div class="panel__content">
+            <p class="hint" id="hint-symbol-palette">Auf ein ausgewähltes Segment klicken, um ein Symbol hinzuzufügen.</p>
+            <div id="symbol-palette"></div>
+          </div>
+        </details>
+
+        <details class="panel__section" id="panel-validation" open>
+          <summary><span class="panel__arrow" aria-hidden="true"></span><h2 id="h-panel-validation">Prüfung</h2></summary>
+          <div class="panel__content">
+            <ul class="issues" id="issues"></ul>
+          </div>
+        </details>
+      </aside>
+    </main>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

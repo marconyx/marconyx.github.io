@@ -1,0 +1,1 @@
+from proxy_flask import app as application
