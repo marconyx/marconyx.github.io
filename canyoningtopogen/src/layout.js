@@ -125,9 +125,12 @@ function segmentMetricsFor(topo, shorteningThreshold) {
     const angle = segment.angle_in_degrees;
     const rad = toRadians(angle);
     const dir = { x: Math.cos(rad), y: Math.sin(rad) };
+    // Eine verkürzte Strecke staucht ihre Wandwölbung im selben Verhältnis.
+    const wallDistance =
+      (segment.wall_distance_in_meters || 0) *
+      (segment.length_in_meters > 0 ? drawn / segment.length_in_meters : 1);
     // Eine ausweichende Wand braucht zusätzlich Platz in der Breite.
-    const wallSpan =
-      Math.abs(dir.y) * (segment.wall_distance_in_meters || 0);
+    const wallSpan = Math.abs(dir.y) * wallDistance;
     return {
       segment,
       drawn,
@@ -143,7 +146,7 @@ function segmentMetricsFor(topo, shorteningThreshold) {
       // oben bzw. unten aus und kostet dann Höhe statt Breite.
       verticalSpan:
         Math.abs(dir.y * drawn) +
-        Math.abs(dir.x) * (segment.wall_distance_in_meters || 0) +
+        Math.abs(dir.x) * wallDistance +
         (segment.type === 'POOL' && segment.depth_in_meters != null
           ? poolDrawingDepthOf(segment) / 2 + 1.4
           : 0),

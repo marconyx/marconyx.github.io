@@ -241,12 +241,18 @@ export function fitBoundsToPaper(bounds, paperKey) {
  * Bézier-Kurve: Legt man den Kontrollpunkt auf die doppelte Auslenkung, ist die
  * maximale Abweichung der Kurve exakt die Wanddistanz.
  *
+ * Bei verkürzten Segmenten (Längenschwelle) wird die Auslenkung mit demselben
+ * Faktor wie die Länge gestaucht, damit die Proportionen erhalten bleiben.
+ *
  * Bewusst hier und nicht im Renderer, weil die Layout-Engine denselben
  * Extrempunkt braucht: Ohne ihn liefe die Wand über den Blattrand hinaus.
  */
 export function wallBulgeFor(placement) {
-  const distance = placement?.segment?.wall_distance_in_meters || 0;
-  if (!(distance > 0)) return null;
+  const realDistance = placement?.segment?.wall_distance_in_meters || 0;
+  if (!(realDistance > 0)) return null;
+  // Verkürzte Segmente stauchen die Wölbung proportional zur Länge mit.
+  const scale = placement.scaleAlong > 0 ? placement.scaleAlong : 1;
+  const distance = realDistance * scale;
   const { start, end, dir } = placement;
   // Normale zur Laufrichtung, zeigt von der Seilseite weg in die Wand hinein.
   const normal = { x: -dir.y, y: dir.x };

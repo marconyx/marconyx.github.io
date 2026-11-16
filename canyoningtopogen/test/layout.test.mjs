@@ -327,6 +327,24 @@ test('verkürzte Gehstrecke zeigt die echte Länge in m statt der Gehzeit', () =
   assert.doesNotMatch(renderTopoSvg(topo, layoutTopo(topo)), /topo-length-bracket/);
 });
 
+test('verkürzte Segmente stauchen die Wanddistanz-Wölbung proportional', () => {
+  const make = (threshold) =>
+    layoutTopo(
+      normalizeTopo({
+        distance_of_single_line: 200,
+        length_shortening_threshold_meters: threshold,
+        segments: [{ type: 'RAPPEL', length_in_meters: 80, angle_in_degrees: 90, wall_distance_in_meters: 8 }],
+      }),
+    ).placements[0];
+  const full = make(null);
+  const short = make(20);
+  assert.equal(full.wallBulge.distance, 8);
+  assert.equal(short.drawnLength, 20);
+  assert.equal(short.wallBulge.distance, 2, 'Wölbung muss 8 m × 20/80 = 2 m betragen');
+  const ratio = (p) => Math.hypot(p.wallBulge.apex.x - (p.start.x + p.end.x) / 2, p.wallBulge.apex.y - (p.start.y + p.end.y) / 2) / p.drawnLength;
+  assert.ok(Math.abs(ratio(full) - ratio(short)) < 1e-9, 'Proportion Wölbung/Länge bleibt gleich');
+});
+
 test('SVG-Doppelbruch sitzt exakt in der geometrischen Mitte der Linie', () => {
   const topo = normalizeTopo({
     maximum_walk_length: 200,
@@ -1070,7 +1088,7 @@ function columnSpan(column) {
     (sum, p) =>
       sum +
       Math.abs(p.dir.y * p.drawnLength) +
-      Math.abs(p.dir.x) * (p.segment.wall_distance_in_meters || 0),
+      Math.abs(p.dir.x) * (p.segment.wall_distance_in_meters || 0) * p.scaleAlong,
     0,
   );
 }
