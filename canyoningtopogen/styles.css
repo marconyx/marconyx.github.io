@@ -83,6 +83,12 @@ body {
   max-width: 100%;
 }
 
+/* "Öffnen…" ist ein als Knopf gestaltetes Label – nicht wie Feldbeschriftung ausgrauen. */
+.toolbar__group label.button {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
 .toolbar__group select {
   min-width: 0;
 }
