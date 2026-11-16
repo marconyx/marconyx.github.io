@@ -364,9 +364,9 @@ und Datum erscheinen sofort beim Tippen im Topo.
 
 **Frei verschiebbar:** Die Legende lässt sich mit Maus oder Finger an jede Stelle im
 Topo ziehen (Raster 0,25 m, mit Rückgängig). Die Lage landet in `legend_offset_left`
-und `legend_offset_top` (Felder *Legende links* und *Legende Offset*) und wird mit JSON
-und XML gespeichert. Das Blatt wächst mit, die Zeilenaufteilung bleibt unverändert.
-*Legende links* leeren stellt die automatische Lage rechts oben wieder her.
+und `legend_offset_top` und wird mit JSON und XML gespeichert. Das Blatt wächst mit,
+die Zeilenaufteilung bleibt unverändert. Eigene Eingabefelder für den Versatz gibt es
+nicht mehr; ohne gespeicherte Lage steht die Legende automatisch rechts oben.
 
 Auch `author` und `duration` sind optionale Erweiterungen. Leere Werte werden
 weder im JSON noch im XML geschrieben, damit ältere Dateien beim Round-Trip

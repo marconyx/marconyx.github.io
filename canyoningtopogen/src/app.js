@@ -805,7 +805,6 @@ function finishLegendDrag() {
   if (host.hasPointerCapture?.(finished.pointerId)) host.releasePointerCapture(finished.pointerId);
   render();
   if (!finished.moved) return;
-  syncTopoFields();
   // Das Blatt passt sich jetzt der neuen Legendenlage an. Die Kamera hält die
   // Legende dort, wo sie losgelassen wurde.
   const nextSvg = host.querySelector('svg');
@@ -1133,10 +1132,6 @@ function bindTopoFields() {
     ['topo-date', 'date', (value) => value],
     ['topo-max-walk', 'maximum_walk_length', Number],
     ['topo-line-distance', 'distance_of_single_line', Number],
-    ['topo-legend-offset', 'legend_offset_top', Number],
-    // Leer = Legende automatisch rechts oben.
-    ['topo-legend-offset-left', 'legend_offset_left', (value) =>
-      value.trim() === '' || !Number.isFinite(Number(value)) ? null : Number(value)],
   ];
   for (const [id, key, transform] of bindings) {
     const input = $(id);
@@ -1206,10 +1201,6 @@ function syncTopoFields() {
   $('topo-date').value = state.topo.date;
   $('topo-max-walk').value = state.topo.maximum_walk_length;
   $('topo-line-distance').value = state.topo.distance_of_single_line;
-  $('topo-legend-offset').value = state.topo.legend_offset_top;
-  $('topo-legend-offset-left').value = Number.isFinite(state.topo.legend_offset_left)
-    ? state.topo.legend_offset_left
-    : '';
   $('topo-length-shortening-threshold').value =
     state.topo.length_shortening_threshold_meters ?? '';
 }

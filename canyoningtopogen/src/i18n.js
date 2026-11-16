@@ -111,20 +111,6 @@ export const UI_TEXT = {
     it: 'Larghezza riga (m)',
     es: 'Ancho de fila (m)',
   },
-  'lbl-topo-legend-offset': {
-    de: 'Legende Offset (m)',
-    en: 'Legend offset (m)',
-    fr: 'Décalage légende (m)',
-    it: 'Offset legenda (m)',
-    es: 'Desplazamiento leyenda (m)',
-  },
-  'lbl-topo-legend-offset-left': {
-    de: 'Legende links (m)',
-    en: 'Legend left (m)',
-    fr: 'Légende à gauche (m)',
-    it: 'Legenda a sinistra (m)',
-    es: 'Leyenda izquierda (m)',
-  },
   'lbl-topo-length-shortening-threshold': {
     de: 'Segmente verkürzen ab (m): ',
     en: 'Shorten segments from (m): ',
