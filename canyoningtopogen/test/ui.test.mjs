@@ -407,7 +407,7 @@ test('Touch-Scrollen wird nur auf Symbolen verhindert, nicht auf freiem Gelände
 test('bachab-Logo steht nur in der responsiven App-Kopfzeile neben Titel und Status', () => {
   const header = /<header class="toolbar">([\s\S]*?)<\/header>/.exec(markup)?.[1];
   assert.ok(header);
-  assert.match(header, /<div class="toolbar__brand">\s*<img class="toolbar__logo" src="assets\/bachab-logo\.png" alt="bachab" width="400" height="133" \/>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<span class="toolbar__hint" id="status">bereit<\/span>/);
+  assert.match(header, /<div class="toolbar__brand">\s*<div class="toolbar__logo-wrap">\s*<img class="toolbar__logo" src="assets\/bachab-logo\.png" alt="bachab" width="400" height="133" \/>\s*<span class="toolbar__version" id="app-version">v0\.\d+<\/span>\s*<\/div>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<span class="toolbar__hint" id="status">bereit<\/span>/);
   assert.equal((markup.match(/assets\/bachab-logo\.png/g) || []).length, 1);
   const image = readFileSync(new URL('../assets/bachab-logo.png', import.meta.url));
   assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');

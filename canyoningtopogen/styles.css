@@ -52,6 +52,20 @@ body {
   height: 1rem;
 }
 
+.toolbar__logo-wrap {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.toolbar__version {
+  font-size: 0.65rem;
+  line-height: 1;
+  color: var(--muted);
+}
+
 .toolbar__brand-text {
   display: flex;
   flex-direction: column;
