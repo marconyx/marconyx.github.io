@@ -540,6 +540,9 @@ function metaLineSvg(line, right, y, theme) {
   return `<text class="topo-legend-meta" data-meta="${line.key}" x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}"><tspan font-weight="700">${esc(line.label)}:</tspan> ${esc(line.value)}</text>`;
 }
 
+/** Abstand der Legendenzeilen zum Rahmen im Stil "Standard" (≈ zwei Leerzeichen). */
+const LEGEND_TEXT_INSET_METERS = 1.1;
+
 function renderLegend(topo, layout, theme, bounds, lang = DEFAULT_LANGUAGE) {
   const entries = legendEntriesFor(topo);
   const headLines = legendHeadLinesFor(topo, lang);
@@ -549,9 +552,14 @@ function renderLegend(topo, layout, theme, bounds, lang = DEFAULT_LANGUAGE) {
   const titleWidth = legendTitleWidthMeters(topo);
   const panelWidth = legendPanelWidthMeters(topo, lang);
   const panelHeight = legendPanelHeightMeters(topo);
+  // Im Stil "Standard" hat der Kasten einen sichtbaren Rahmen: Die Textzeilen
+  // halten dort rund zwei Leerzeichen Abstand zum rechten Rand. Der Kasten
+  // wächst dafür nach links, damit lange Zeilen nicht links anstossen.
+  const textInset = theme.eauFroide ? LEGEND_TEXT_INSET_METERS : 0;
+  const textRight = right - textInset;
 
   const frame = theme.eauFroide
-    ? `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.1"/>`
+    ? `<rect x="${right - panelWidth - textInset}" y="${top - 0.5}" width="${panelWidth + textInset}" height="${panelHeight}" fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.1"/>`
     : `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" opacity="0.92"/>`;
   const titleShadow = theme.eauFroide
     ? `<rect class="topo-title-shadow" x="${right - titleWidth + 0.6}" y="${top + 0.6}" width="${titleWidth}" height="3.2" fill="${theme.shadow}"/>`
@@ -570,12 +578,12 @@ function renderLegend(topo, layout, theme, bounds, lang = DEFAULT_LANGUAGE) {
   // Die Dauer steht direkt unter dem Titel – nur wenn gefüllt, sonst bliebe
   // eine leere Beschriftungszeile stehen.
   for (const line of headLines) {
-    parts.push(metaLineSvg(line, right, y, theme));
+    parts.push(metaLineSvg(line, textRight, y, theme));
     y += LEGEND_LINE_HEIGHT;
   }
   if (headLines.length) y += 0.4;
   parts.push(
-    `<text x="${right}" y="${y}" font-size="1.1" font-weight="700"${theme.eauFroide ? ' font-style="italic"' : ''} text-anchor="end" fill="${theme.text}">${esc(translateLegendLabel('title', lang))}</text>`,
+    `<text x="${textRight}" y="${y}" font-size="1.1" font-weight="700"${theme.eauFroide ? ' font-style="italic"' : ''} text-anchor="end" fill="${theme.text}">${esc(translateLegendLabel('title', lang))}</text>`,
   );
   y += 1.6;
   for (const entry of entries) {
@@ -586,14 +594,14 @@ function renderLegend(topo, layout, theme, bounds, lang = DEFAULT_LANGUAGE) {
         : `${match[1]}<tspan font-size="0.75" dy="0.25">${esc(match[2])}</tspan><tspan dy="-0.25"> ${esc(match[3])}</tspan>`
       : esc(entry);
     parts.push(
-      `<text x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}">${formatted}</text>`,
+      `<text x="${textRight}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}">${formatted}</text>`,
     );
     y += LEGEND_LINE_HEIGHT;
   }
   // Author und Datum schliessen die Legende ab – nach dem letzten Eintrag.
   if (footerLines.length) y += LEGEND_LINE_HEIGHT - 0.4;
   for (const line of footerLines) {
-    parts.push(metaLineSvg(line, right, y, theme));
+    parts.push(metaLineSvg(line, textRight, y, theme));
     y += LEGEND_LINE_HEIGHT;
   }
   return parts.join('');

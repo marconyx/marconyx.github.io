@@ -38,7 +38,7 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
 - **Mehrsprachige Oberfläche**: Auswahl links neben „Neu“ (DE/EN/FR/IT/ES) übersetzt alle
   Oberflächentexte (Labels, Buttons, Hinweise, Symbolpalette, Statuszeile, Legende im
-  Topo-SVG inkl. „Dauer“/„Max. Abseil“/„Author“/„Datum“/„Legend:“) sofort und ohne
+  Topo-SVG inkl. „Dauer“/„Max. Abseil“/„Author“/„Datum“/„Legende:“) sofort und ohne
   Neuladen. Ausgenommen bleibt bewusst nur der feste Produktname „Canyoning Topo
   Generator“ im Kopfbereich. Nicht übersetzt werden ausserdem technische
   Segmenttyp-Codes (z. B. `RAPPEL_DRY`), die kurzen Legenden-Abkürzungen

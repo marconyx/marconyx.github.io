@@ -70,10 +70,10 @@ function exitRegressionTopo(types) {
 
 test('Fluchtweg links und Standard bleiben bytegenau unverändert', () => {
   const baselines = {
-    color: 'ce25b8f38f349bb39d0da07b464c9d124902de16644df81cc2a0e82ea82267f7',
-    bw: 'ce200bc64930cfde5bce4d4e7ece6d1724c75ea742e732eee915b4024fe30fd3',
-    alpiner_classic: '625c9842af412b971cc3895c2817ecb1bae547197d913d49ec941a3dbb85a9f2',
-    eau_froide: '0492aef12d9b76fa4640b817d14871af11dac1cf47ce1a3052d7cf5429d7d13f',
+    color: '250718ce6c51e1c6a4cd7b1a8d87d75371d64742b492deafa16a44c340d33a4f',
+    bw: 'dfe4c1e1cfc70bd9752d8a6b22c16f5b9da898d1c309df3d3a4bc49078471b45',
+    alpiner_classic: '7d39c988e44a3165dd9674547759904de95b06b2800162a18ae02d8c3b71cab3',
+    eau_froide: '4a79ec3a98bf12a0ccc1833bad63b67f9a59bf38db0c783bda545dc9e00efed4',
   };
   for (const [theme, baseline] of Object.entries(baselines)) {
     const topo = exitRegressionTopo(theme === 'eau_froide'

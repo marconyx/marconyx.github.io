@@ -497,10 +497,7 @@ export const LEGEND_LABELS = {
   maximum_walk_length: { de: 'Max. Abseil', en: 'Max. rappel', fr: 'Rappel max.', it: 'Calata max.', es: 'Rápel máx.' },
   author: { de: 'Author', en: 'Author', fr: 'Auteur', it: 'Autore', es: 'Autor' },
   date: { de: 'Datum', en: 'Date', fr: 'Date', it: 'Data', es: 'Fecha' },
-  // Bewusst "Legend:" auf Deutsch belassen (bisherige, schon vorher englische
-  // Beschriftungskonvention) – nur so bleibt das Standard-SVG ohne gewählte
-  // Sprache bytegleich zu allen bestehenden Baselines/Tests.
-  title: { de: 'Legend:', en: 'Legend:', fr: 'Légende :', it: 'Legenda:', es: 'Leyenda:' },
+  title: { de: 'Legende:', en: 'Legend:', fr: 'Légende :', it: 'Legenda:', es: 'Leyenda:' },
 };
 
 export function translateLegendLabel(key, lang) {

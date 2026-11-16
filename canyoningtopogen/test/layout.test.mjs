@@ -957,7 +957,7 @@ test('Author und Datum stehen nach dem letzten Legendeneintrag', () => {
   const dateY = metaY(svg, 'date');
   assert.ok(authorY > entryY, `Author (${authorY}) steht nicht unter dem Eintrag (${entryY})`);
   assert.ok(dateY > authorY, `Datum (${dateY}) muss unter dem Author (${authorY}) stehen`);
-  // Die Dauer bleibt oben zwischen Titel und "Legend:".
+  // Die Dauer bleibt oben zwischen Titel und "Legende:".
   assert.ok(metaY(svg, 'duration') < entryY);
 });
 
@@ -1449,7 +1449,7 @@ test('ohne Gumpentiefe bleiben alle Layouts und Renderstile byte-identisch', () 
   }
   const hash = (values) => createHash('sha256').update(values.join('\n')).digest('hex');
   assert.equal(hash(layouts), 'fbbe6919511d3e2f72f2cce5536841b86bce83f9703df379135bca0798d17618');
-  assert.equal(hash(svgs), '73b4b888cd7118d7bc867f7919eb140187c0b6fe00b05452ea25132c06838f7b');
+  assert.equal(hash(svgs), '1da152133eb99fbc5cfafaf135f976cdb0d3139ba37bbced8efc21f41a4f7936');
 });
 
 test('Gumpen-Zeichentiefe skaliert gedämpft und begrenzt, WEIR bleibt unverändert', () => {
