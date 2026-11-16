@@ -604,7 +604,6 @@ test('bestehende Felder bleiben in ihrem Abschnitt und AI-Einstellungen separat 
       'topo-duration',
       'topo-date',
       'topo-length-shortening-threshold',
-      'btn-renumber',
     ],
     ['select-new-segment', 'btn-add-segment', 'segment-list'],
     ['file-photo', 'photo-page-row', 'photo-opacity', 'photo-scale', 'photo-x', 'photo-y', 'btn-photo-clear'],

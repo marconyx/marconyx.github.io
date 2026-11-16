@@ -90,13 +90,6 @@ export const UI_TEXT = {
   'view-tab-edit': { de: 'Bearbeiten', en: 'Edit', fr: 'Modifier', it: 'Modifica', es: 'Editar' },
   'view-tab-topo': { de: 'Topo', en: 'Topo', fr: 'Topo', it: 'Topo', es: 'Topo' },
   'view-tab-symbols': { de: 'Symbole', en: 'Symbols', fr: 'Symboles', it: 'Simboli', es: 'Símbolos' },
-  'btn-renumber': {
-    de: 'Nummern neu vergeben',
-    en: 'Renumber',
-    fr: 'Renuméroter',
-    it: 'Rinumera',
-    es: 'Renumerar',
-  },
   'h-panel-topo': { de: 'Topo', en: 'Topo', fr: 'Topo', it: 'Topo', es: 'Topo' },
   'lbl-topo-name': { de: 'Name', en: 'Name', fr: 'Nom', it: 'Nome', es: 'Nombre' },
   'lbl-topo-author': { de: 'Author', en: 'Author', fr: 'Auteur', it: 'Autore', es: 'Autor' },
@@ -661,13 +654,6 @@ export const MESSAGES = {
     fr: 'Échec de l\u2019export PNG : {error}',
     it: 'Esportazione PNG non riuscita: {error}',
     es: 'Error en la exportación PNG: {error}',
-  },
-  'status.renumbered': {
-    de: 'Nummern neu vergeben.',
-    en: 'Renumbered.',
-    fr: 'Renumérotation effectuée.',
-    it: 'Rinumerazione eseguita.',
-    es: 'Renumeración realizada.',
   },
   'status.ai_running': { de: 'AI-Erkennung läuft…', en: 'AI detection running…', fr: 'Détection IA en cours…', it: 'Rilevamento IA in corso…', es: 'Detección IA en curso…' },
   'status.ai_done': {

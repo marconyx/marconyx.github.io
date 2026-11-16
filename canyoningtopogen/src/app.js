@@ -15,7 +15,6 @@ import {
   defaultAngleFor,
   defaultLengthFor,
   normalizeTopo,
-  renumberElements,
   validateTopo,
 } from './model.js';
 import { topoFromJson, topoToJson } from './io-json.js';
@@ -1171,12 +1170,6 @@ function bindToolbar() {
 
   $('btn-undo').addEventListener('click', undo);
   $('btn-redo').addEventListener('click', redo);
-  $('btn-renumber').addEventListener('click', () => {
-    pushHistory();
-    renumberElements(state.topo);
-    render();
-    setStatusKey('status.renumbered');
-  });
 
   for (const [id, key] of [
     ['select-layout', 'layout'],
