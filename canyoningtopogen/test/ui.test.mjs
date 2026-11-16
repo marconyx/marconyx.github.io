@@ -234,7 +234,7 @@ import { initResponsive, MOBILE_QUERY, VIEWS, DEFAULT_VIEW } from '../src/respon
 
 const markup = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const panelHeaders = [...markup.matchAll(
-  /<details class="panel__section" id="([^"]+)" open>\s*<summary>(.*?)<\/summary>\s*<div class="panel__content">/gs,
+  /<details class="panel__section" id="([^"]+)"( open)?>\s*<summary>(.*?)<\/summary>\s*<div class="panel__content">/gs,
 )];
 const markupRoot = new FakeNode('root');
 const markupNodes = new Map();
@@ -250,10 +250,10 @@ for (const [tag] of markup.matchAll(/<\/?(?:aside|details|summary|div)\b[^>]*>/g
   markupStack.push(node);
   if (node.id) markupNodes.set(node.id, node);
 }
-for (const [, id] of panelHeaders) {
+for (const [, id, open] of panelHeaders) {
   const node = new FakeNode('details');
   node.id = id;
-  node.open = true;
+  node.open = Boolean(open);
 }
 
 const app = await import('../src/app.js');
@@ -424,20 +424,20 @@ test('bachab-Logo steht nur in der responsiven App-Kopfzeile neben Titel und Sta
   assert.doesNotMatch(svg(), /bachab-logo|alt="bachab"/, 'kein Logo im Topo-Export');
 });
 
-test('alle sieben Abschnitte haben native, fokussierbare summary-Überschriften und offene Defaults', () => {
+test('alle sieben Abschnitte haben native summary-Überschriften; nur die gesperrte AI startet zu', () => {
   assert.deepEqual(panelHeaders.map((entry) => entry[1]), PANEL_SECTION_IDS);
   assert.equal((markup.match(/class="panel__section"/g) || []).length, 7);
-  assert.deepEqual(panelHeaders.map((entry) => /<h[23][^>]*>(.*?)<\/h[23]>/.exec(entry[2])?.[1]),
+  assert.deepEqual(panelHeaders.map((entry) => /<h[23][^>]*>(.*?)<\/h[23]>/.exec(entry[3])?.[1]),
     ['Topo', 'Segmente', 'Foto-Referenz', 'AI-Erkennung', 'Auswahl', 'Symbole', 'Prüfung']);
-  for (const [, id, summary] of panelHeaders) {
+  for (const [, id, , summary] of panelHeaders) {
     const heading = id === 'panel-ai' ? 'h3' : 'h2';
     assert.match(
       summary,
       new RegExp(`^<span class="panel__arrow" aria-hidden="true"></span><${heading}[^>]*>`),
     );
-    assert.equal(elementById(id).open, true, id);
+    assert.equal(elementById(id).open, id !== 'panel-ai', id);
     assert.equal(elementById(id).listeners.has('keydown'), false, 'Tastatur bleibt nativ');
-    assert.equal(elementById(id).listeners.has('click'), false, 'Klick bleibt nativ');
+    if (id !== 'panel-ai') assert.equal(elementById(id).listeners.has('click'), false, 'Klick bleibt nativ');
   }
   const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
   assert.match(css, /\.panel__arrow::before\s*\{\s*content: '▶';/);
@@ -493,19 +493,21 @@ test('jeder Abschnitt lässt sich unabhängig schliessen, wieder öffnen und nac
   const beforeTopo = storage.get('canyon-topo-generator/state/v1');
   const beforeJson = topoToJson(state.topo);
   const beforeXml = topoToXml(state.topo);
-  for (const id of PANEL_SECTION_IDS) {
+  // Die AI-Sperre hat eigene Tests; hier nur die frei klappbaren Abschnitte.
+  const freeIds = PANEL_SECTION_IDS.filter((id) => id !== 'panel-ai');
+  for (const id of freeIds) {
     const section = elementById(id);
     section.open = false;
     section.dispatch('toggle');
     assert.equal(JSON.parse(storage.get(PANEL_STORAGE_KEY))[id], false);
     assert.equal(freshPanels().find((node) => node.id === id).open, false);
-    for (const otherId of PANEL_SECTION_IDS.filter((other) => other !== id)) {
+    for (const otherId of freeIds.filter((other) => other !== id)) {
       assert.equal(elementById(otherId).open, true, otherId);
     }
     section.open = true;
     section.dispatch('toggle');
     assert.equal(JSON.parse(storage.get(PANEL_STORAGE_KEY))[id], true);
-    assert.ok(freshPanels().every((node) => node.open));
+    assert.ok(freshPanels().filter((node) => node.id !== 'panel-ai').every((node) => node.open));
   }
   assert.equal(storage.get('canyon-topo-generator/state/v1'), beforeTopo);
   assert.equal(topoToJson(state.topo), beforeJson);

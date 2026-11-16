@@ -144,7 +144,7 @@
             <label><span id="lbl-photo-y">Vertikal</span> <input type="range" id="photo-y" min="-100" max="100" value="0" /></label>
             <button type="button" id="btn-photo-clear">Referenz entfernen</button>
 
-            <details class="panel__section" id="panel-ai" open>
+            <details class="panel__section" id="panel-ai">
               <summary><span class="panel__arrow" aria-hidden="true"></span><h3 id="h-panel-ai">AI-Erkennung</h3></summary>
               <div class="panel__content">
                 <p class="hint" id="hint-ai-cors">
@@ -252,6 +252,19 @@
       </aside>
     </main>
 
+    <dialog id="ai-lock-dialog" class="ai-lock" aria-labelledby="h-ai-lock">
+      <form id="ai-lock-form" method="dialog">
+        <h2 id="h-ai-lock">AI-Erkennung entsperren</h2>
+        <label><span id="lbl-ai-lock-password">Passwort</span>
+          <input type="password" id="ai-lock-password" autocomplete="off" spellcheck="false" />
+        </label>
+        <p class="hint ai-lock__error" id="ai-lock-error" role="alert" hidden>Falsches Passwort.</p>
+        <div class="ai-lock__actions">
+          <button type="button" id="btn-ai-lock-cancel">Abbrechen</button>
+          <button type="submit" id="btn-ai-lock-submit">Entsperren</button>
+        </div>
+      </form>
+    </dialog>
     <script type="module" src="src/app.js"></script>
   </body>
 </html>

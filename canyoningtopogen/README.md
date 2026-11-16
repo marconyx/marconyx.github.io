@@ -452,6 +452,12 @@ als JSON in das Attribut `extra`.
 Unter **Foto-Referenz → AI-Erkennung** schickt der Button **„Aus Foto erzeugen (AI)“** das geladene Referenzbild an ein
 Vision-Modell und baut aus der Antwort ein Topo.
 
+Der Abschnitt **AI-Erkennung** ist passwortgeschützt: Beim Aufklappen fragt ein Dialog
+nach dem Passwort, erst danach sind Button und Einstellungen erreichbar. Die
+Freischaltung gilt bis zum Schliessen des Tabs (`sessionStorage`). Im Code steht nur
+der SHA-256-Hash des Passworts. Weil alles im Browser läuft, ist das eine Zugangshürde,
+kein echter Schutz.
+
 GitHub Pages liefert nur statische Dateien — es gibt also keinen Server, der einen
 API-Key verwahren könnte. Der Aufruf geht deshalb **direkt aus dem Browser** an den
 konfigurierten Endpoint; der Key liegt ausschließlich im `localStorage` dieses
@@ -763,6 +769,7 @@ src/ai.js             Foto/PDF → Topo per Vision-Modell (+ Antwort-Sanitizing)
 src/pdf.js            PDF-Seiten als Referenzbild rendern (pdf.js)
 src/app.js            Editor-Logik und UI-Bindings
 src/panel-sections.js Klappbare Seitenleisten-Abschnitte mit Persistenz
+src/ai-lock.js        Passwortabfrage beim Aufklappen der AI-Erkennung
 src/responsive.js     Smartphone-Tabs, Toolbar-Menü und Speichern-Auswahl
 tools/proxy.mjs       Lokaler AI-Proxy (löst CORS) + serviert die App
 tools/worker.js       Derselbe Proxy als Cloudflare Worker

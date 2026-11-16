@@ -50,6 +50,7 @@ import {
 } from './ai.js';
 import { isPdfFile, openPdf } from './pdf.js';
 import { initPanelSections } from './panel-sections.js';
+import { initAiLock } from './ai-lock.js';
 import { initResponsive } from './responsive.js';
 import { contentBoundsFor, fitBoundsToPaper } from './sheet.js';
 import {
@@ -1574,6 +1575,7 @@ function bindCanvas() {
 
 function init() {
   initPanelSections();
+  initAiLock({ onMessage: (key) => setStatusKey(key) });
   initResponsive();
   const restored = restore();
   bindToolbar();

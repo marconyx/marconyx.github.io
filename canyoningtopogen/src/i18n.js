@@ -147,6 +147,16 @@ export const UI_TEXT = {
     it: 'Rimuovi riferimento',
   },
   'h-panel-ai': { de: 'AI-Erkennung', en: 'AI detection', fr: 'Détection IA', it: 'Rilevamento IA' },
+  'h-ai-lock': {
+    de: 'AI-Erkennung entsperren',
+    en: 'Unlock AI detection',
+    fr: 'Déverrouiller la détection IA',
+    it: 'Sblocca rilevamento IA',
+  },
+  'lbl-ai-lock-password': { de: 'Passwort', en: 'Password', fr: 'Mot de passe', it: 'Password' },
+  'ai-lock-error': { de: 'Falsches Passwort.', en: 'Wrong password.', fr: 'Mot de passe incorrect.', it: 'Password errata.' },
+  'btn-ai-lock-cancel': { de: 'Abbrechen', en: 'Cancel', fr: 'Annuler', it: 'Annulla' },
+  'btn-ai-lock-submit': { de: 'Entsperren', en: 'Unlock', fr: 'Déverrouiller', it: 'Sblocca' },
   'btn-photo-ai': {
     de: 'Aus Foto erzeugen (AI)',
     en: 'Generate from photo (AI)',
@@ -574,6 +584,12 @@ export const MESSAGES = {
     en: 'Short list exported ({count} segments).',
     fr: 'Liste courte exportée ({count} segments).',
     it: 'Elenco breve esportato ({count} segmenti).',
+  },
+  'status.ai_unlocked': {
+    de: 'AI-Erkennung entsperrt.',
+    en: 'AI detection unlocked.',
+    fr: 'Détection IA déverrouillée.',
+    it: 'Rilevamento IA sbloccato.',
   },
   'status.shortlist_empty': {
     de: 'Keine Segmente mit Längenangabe – Kurzliste nicht erstellt.',

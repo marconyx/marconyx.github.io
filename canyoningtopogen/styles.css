@@ -726,3 +726,32 @@ input[type='date'] {
     font-size: 16px;
   }
 }
+
+/* Passwortabfrage der AI-Erkennung */
+.ai-lock {
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+.ai-lock::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+.ai-lock h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+.ai-lock label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.ai-lock__error {
+  color: #b00020;
+}
+.ai-lock__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
