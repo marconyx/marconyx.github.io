@@ -200,8 +200,52 @@ export function drawingRightEdge(layout) {
     : layout.maxX;
 }
 
+/** Abstand der Legendenzeilen zum Rahmen im Stil "Standard" (≈ zwei Leerzeichen). */
+export const LEGEND_TEXT_INSET_METERS = 1.1;
+
+/**
+ * Frei platzierte Legende: `legend_offset_left` ist der Abstand der linken
+ * Kastenkante zur linken Zeichenkante in Metern. Ohne Wert steht die Legende
+ * wie bisher automatisch in einer eigenen Spalte rechts oben.
+ */
+export function hasFreeLegendPosition(topo) {
+  return Number.isFinite(topo?.legend_offset_left);
+}
+
+/**
+ * Kasten der Legende in Blattkoordinaten (Renderer und Ziehen teilen ihn).
+ * `inset` ist der stilabhängige Textabstand zum rechten Rahmen.
+ */
+export function legendPanelRectFor(topo, layout, bounds, lang = DEFAULT_LANGUAGE, inset = 0) {
+  const panelWidth = legendPanelWidthMeters(topo, lang);
+  const width = panelWidth + inset;
+  // Textanker (Oberkante Titel); der Rahmen beginnt 0.5 m darüber.
+  const anchorTop = -MARGIN_METERS + 1 + (topo?.legend_offset_top || 0);
+  let left;
+  let right;
+  if (hasFreeLegendPosition(topo)) {
+    left = layout.minX + topo.legend_offset_left;
+    right = left + width;
+  } else {
+    right = bounds.maxX - 2;
+    left = right - panelWidth - inset;
+  }
+  return { left, right, width, anchorTop, top: anchorTop - 0.5, height: legendPanelHeightMeters(topo) };
+}
+
 /** Aussenmasse des Blatts in Metern, inkl. Rand und Legendenspalte. */
 export function contentBoundsFor(topo, layout, lang = DEFAULT_LANGUAGE) {
+  if (hasFreeLegendPosition(topo)) {
+    // Frei platziert braucht die Legende keine eigene Spalte: Das Blatt umfasst
+    // Zeichnung und Legendenkasten, egal wo dieser liegt.
+    const rect = legendPanelRectFor(topo, layout, null, lang, LEGEND_TEXT_INSET_METERS);
+    return {
+      minX: Math.min(layout.minX - MARGIN_METERS, rect.left - 1),
+      maxX: Math.max(drawingRightEdge(layout) + MARGIN_METERS, rect.right + 2),
+      minY: Math.min(-MARGIN_METERS, rect.top - 1),
+      maxY: Math.max(layout.height + MARGIN_METERS, rect.top + rect.height + 1),
+    };
+  }
   // Die Legende kann bei kurzen Topos tiefer reichen als die Zeichnung – dann
   // wächst das Blatt nach unten mit, statt die unteren Zeilen abzuschneiden.
   const legendBottom =

@@ -396,6 +396,11 @@ input[type='date'] {
   overflow: visible;
 }
 
+#svg-host.is-over-legend svg,
+#svg-host.is-dragging-legend svg {
+  cursor: move;
+}
+
 .save-menu {
   position: fixed;
   inset: auto;

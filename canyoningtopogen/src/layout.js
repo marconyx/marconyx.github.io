@@ -280,7 +280,8 @@ function planTrackLimit(topo, chunks, baseWidth, paperKey, buildFor) {
   if (!aspect || !chunks.length) return baseWidth;
   // Die maximale Abseillänge ist Legendentext. Ihre wechselnde Ziffernzahl
   // darf die A4-Layoutoptimierung und damit Segmentgeometrie nicht verändern.
-  const planningTopo = { ...topo, maximum_walk_length: 30 };
+  // Die Lage einer frei verschobenen Legende darf den Zeilenumbruch nicht ändern.
+  const planningTopo = { ...topo, maximum_walk_length: 30, legend_offset_left: undefined };
 
   const spans = chunks.map((chunk) => chunk.span);
   const total = spans.reduce((sum, span) => sum + span, 0);

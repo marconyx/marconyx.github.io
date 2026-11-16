@@ -22,8 +22,8 @@ import {
   legendEntriesFor,
   legendFooterLinesFor,
   legendHeadLinesFor,
-  legendPanelHeightMeters,
-  legendPanelWidthMeters,
+  LEGEND_TEXT_INSET_METERS,
+  legendPanelRectFor,
   legendTitleWidthMeters,
   paperPreset,
   poolDepthLabelFor,
@@ -540,27 +540,29 @@ function metaLineSvg(line, right, y, theme) {
   return `<text class="topo-legend-meta" data-meta="${line.key}" x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}"><tspan font-weight="700">${esc(line.label)}:</tspan> ${esc(line.value)}</text>`;
 }
 
-/** Abstand der Legendenzeilen zum Rahmen im Stil "Standard" (≈ zwei Leerzeichen). */
-const LEGEND_TEXT_INSET_METERS = 1.1;
+/** Legendenkasten so, wie ihn der jeweilige Stil zeichnet (auch fürs Ziehen). */
+export function legendRectFor(topo, layout, bounds, themeKey, lang = DEFAULT_LANGUAGE) {
+  const theme = THEMES[themeKey] || THEMES.color;
+  return legendPanelRectFor(topo, layout, bounds, lang, theme.eauFroide ? LEGEND_TEXT_INSET_METERS : 0);
+}
 
 function renderLegend(topo, layout, theme, bounds, lang = DEFAULT_LANGUAGE) {
   const entries = legendEntriesFor(topo);
   const headLines = legendHeadLinesFor(topo, lang);
   const footerLines = legendFooterLinesFor(topo, lang);
-  const right = bounds.maxX - 2;
-  const top = bounds.minY + 1 + (topo.legend_offset_top || 0);
-  const titleWidth = legendTitleWidthMeters(topo);
-  const panelWidth = legendPanelWidthMeters(topo, lang);
-  const panelHeight = legendPanelHeightMeters(topo);
   // Im Stil "Standard" hat der Kasten einen sichtbaren Rahmen: Die Textzeilen
   // halten dort rund zwei Leerzeichen Abstand zum rechten Rand. Der Kasten
   // wächst dafür nach links, damit lange Zeilen nicht links anstossen.
   const textInset = theme.eauFroide ? LEGEND_TEXT_INSET_METERS : 0;
+  const rect = legendPanelRectFor(topo, layout, bounds, lang, textInset);
+  const right = rect.right;
+  const top = rect.anchorTop;
+  const titleWidth = legendTitleWidthMeters(topo);
   const textRight = right - textInset;
 
   const frame = theme.eauFroide
-    ? `<rect x="${right - panelWidth - textInset}" y="${top - 0.5}" width="${panelWidth + textInset}" height="${panelHeight}" fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.1"/>`
-    : `<rect x="${right - panelWidth}" y="${top - 0.5}" width="${panelWidth}" height="${panelHeight}" fill="${theme.background}" opacity="0.92"/>`;
+    ? `<rect x="${rect.left}" y="${rect.top}" width="${rect.width}" height="${rect.height}" fill="${theme.background}" stroke="${theme.terrainLine}" stroke-width="0.1"/>`
+    : `<rect x="${rect.left}" y="${rect.top}" width="${rect.width}" height="${rect.height}" fill="${theme.background}" opacity="0.92"/>`;
   const titleShadow = theme.eauFroide
     ? `<rect class="topo-title-shadow" x="${right - titleWidth + 0.6}" y="${top + 0.6}" width="${titleWidth}" height="3.2" fill="${theme.shadow}"/>`
     : '';

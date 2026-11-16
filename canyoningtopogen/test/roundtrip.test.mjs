@@ -1285,4 +1285,17 @@ test('ohne Gumpentiefe bleiben JSON/XML byte-identisch zum bisherigen Export', (
   assert.equal(topoToXml(topo).includes('depth_in_meters'), false);
 });
 
+test('legend_offset_left: nur gesetzt exportiert, JSON und XML verlustfrei', () => {
+  const plain = normalizeTopo(original);
+  assert.equal('legend_offset_left' in plain, false);
+  assert.equal(topoToJson(plain).includes('legend_offset_left'), false);
+  assert.equal(topoToXml(plain).includes('legend_offset_left'), false);
+
+  const moved = normalizeTopo({ ...original, legend_offset_left: 12.75 });
+  assert.equal(moved.legend_offset_left, 12.75);
+  assert.equal(topoFromJson(topoToJson(moved)).legend_offset_left, 12.75);
+  assert.equal(topoFromXml(topoToXml(moved)).legend_offset_left, 12.75);
+  assert.equal('legend_offset_left' in normalizeTopo({ ...original, legend_offset_left: null }), false);
+});
+
 console.log(`\n${passed} Test(s) bestanden.`);

@@ -21,7 +21,7 @@ import { topoFromJson, topoToJson } from './io-json.js';
 import { createRandomTopo } from './random-topo.js';
 import { topoFromXml, topoToXml } from './io-xml.js';
 import { layoutTopo, worldToLocal } from './layout.js';
-import { renderTopoSvg } from './renderer.js';
+import { legendRectFor, renderTopoSvg } from './renderer.js';
 import { SYMBOLS, symbolOptions } from './symbols.js';
 import {
   downloadBlob,
@@ -118,7 +118,7 @@ function redo() {
  * render() gerufen, damit ein Eingabefeld unter dem Cursor nicht neu gesetzt wird.
  */
 function replaceTopo(topo) {
-  if (drag) onPointerUp();
+  if (drag || legendDrag) onPointerUp();
   state.topo = topo;
   state.selection = null;
   render();
@@ -186,7 +186,7 @@ function render() {
   currentLayout = layoutTopo(state.topo, {
     layout: state.view.layout,
     paper: state.view.paper,
-    frame: drag ? drag.frame : null,
+    frame: drag ? drag.frame : legendDrag ? legendDrag.frame : null,
   });
   currentSvgText = renderTopoSvg(state.topo, currentLayout, {
     theme: state.view.theme,
@@ -208,6 +208,8 @@ function render() {
   $('svg-host').innerHTML = renderTopoSvg(state.topo, currentLayout, {
     theme: state.view.theme,
     paper: state.view.paper,
+    // Beim Ziehen der Legende bleibt das Blatt stehen, sonst liefe es dem Zeiger davon.
+    bounds: legendDrag?.bounds,
     interactive: true,
     selection: state.selection,
     language: lang(),
@@ -737,6 +739,91 @@ function svgPoint(event) {
 }
 
 let drag = null;
+let legendDrag = null;
+
+function currentSheetBounds() {
+  return fitBoundsToPaper(contentBoundsFor(state.topo, currentLayout, lang()), state.view.paper);
+}
+
+/** Legendenkasten unter dem Zeiger, oder `null`. */
+function legendRectAt(point, bounds = currentSheetBounds()) {
+  if (!point || !currentLayout) return null;
+  const rect = legendRectFor(state.topo, currentLayout, bounds, state.view.theme, lang());
+  const inside = point.x >= rect.left && point.x <= rect.right &&
+    point.y >= rect.top && point.y <= rect.top + rect.height;
+  return inside ? rect : null;
+}
+
+function startLegendDrag(event) {
+  const point = svgPoint(event);
+  const bounds = currentSheetBounds();
+  const rect = legendRectAt(point, bounds);
+  if (!rect) return false;
+  legendDrag = {
+    startPoint: { x: point.x, y: point.y },
+    startLeft: rect.left - currentLayout.minX,
+    startTop: state.topo.legend_offset_top || 0,
+    frame: currentLayout,
+    bounds,
+    moved: false,
+    pointerId: event.pointerId,
+  };
+  $('svg-host').setPointerCapture?.(event.pointerId);
+  $('svg-host').classList.add('is-dragging', 'is-dragging-legend');
+  event.preventDefault();
+  return true;
+}
+
+function moveLegend(event) {
+  const point = svgPoint(event);
+  if (!point) return;
+  const left = round(legendDrag.startLeft + point.x - legendDrag.startPoint.x);
+  const top = round(legendDrag.startTop + point.y - legendDrag.startPoint.y);
+  if (left === state.topo.legend_offset_left && top === state.topo.legend_offset_top) return;
+  if (!legendDrag.moved) {
+    pushHistory();
+    legendDrag.moved = true;
+  }
+  state.topo.legend_offset_left = left;
+  state.topo.legend_offset_top = top;
+  render();
+}
+
+function finishLegendDrag() {
+  const finished = legendDrag;
+  const host = $('svg-host');
+  const svg = host.querySelector('svg');
+  const matrix = svg?.getScreenCTM();
+  const legendCorner = () => {
+    const rect = legendRectFor(state.topo, currentLayout, currentSheetBounds(), state.view.theme, lang());
+    return { x: rect.left, y: rect.top };
+  };
+  const corner = matrix ? legendCorner() : null;
+  const anchor = corner ? new DOMPoint(corner.x, corner.y).matrixTransform(matrix) : null;
+  legendDrag = null;
+  host.classList.remove('is-dragging', 'is-dragging-legend');
+  if (host.hasPointerCapture?.(finished.pointerId)) host.releasePointerCapture(finished.pointerId);
+  render();
+  if (!finished.moved) return;
+  syncTopoFields();
+  // Das Blatt passt sich jetzt der neuen Legendenlage an. Die Kamera hält die
+  // Legende dort, wo sie losgelassen wurde.
+  const nextSvg = host.querySelector('svg');
+  const nextMatrix = nextSvg?.getScreenCTM();
+  if (!anchor || !nextMatrix) return;
+  state.view.zoom *= Math.hypot(matrix.a, matrix.b) / Math.hypot(nextMatrix.a, nextMatrix.b);
+  applyZoom();
+  const nextCorner = legendCorner();
+  const nextAnchor = new DOMPoint(nextCorner.x, nextCorner.y).matrixTransform(nextSvg.getScreenCTM());
+  const canvas = $('canvas');
+  canvas.scrollLeft += nextAnchor.x - anchor.x;
+  canvas.scrollTop += nextAnchor.y - anchor.y;
+  const settled = new DOMPoint(nextCorner.x, nextCorner.y).matrixTransform(nextSvg.getScreenCTM());
+  cameraOffset.x += anchor.x - settled.x;
+  cameraOffset.y += anchor.y - settled.y;
+  applyZoom();
+  persist();
+}
 
 function onPointerDown(event) {
   // Zweiter Finger (Pinch) startet keine neue Auswahl und keinen Drag.
@@ -795,6 +882,9 @@ function onPointerDown(event) {
     return;
   }
 
+  // Die Legende liegt über der Zeichnung und lässt sich frei verschieben.
+  if (startLegendDrag(event)) return;
+
   if (segmentNode) {
     state.selection = {
       kind: 'segment',
@@ -809,6 +899,11 @@ function onPointerDown(event) {
 }
 
 function onPointerMove(event) {
+  if (legendDrag) {
+    if (legendDrag.pointerId != null && event.pointerId != null && event.pointerId !== legendDrag.pointerId) return;
+    moveLegend(event);
+    return;
+  }
   if (!drag) return;
   if (drag.pointerId != null && event.pointerId != null && event.pointerId !== drag.pointerId) return;
   const point = svgPoint(event);
@@ -842,6 +937,11 @@ function round(value) {
 }
 
 function onPointerUp(event) {
+  if (legendDrag) {
+    if (legendDrag.pointerId != null && event?.pointerId != null && event.pointerId !== legendDrag.pointerId) return;
+    finishLegendDrag();
+    return;
+  }
   if (!drag) return;
   if (drag.pointerId != null && event?.pointerId != null && event.pointerId !== drag.pointerId) return;
   const finished = drag;
@@ -1034,27 +1134,35 @@ function bindTopoFields() {
     ['topo-max-walk', 'maximum_walk_length', Number],
     ['topo-line-distance', 'distance_of_single_line', Number],
     ['topo-legend-offset', 'legend_offset_top', Number],
+    // Leer = Legende automatisch rechts oben.
+    ['topo-legend-offset-left', 'legend_offset_left', (value) =>
+      value.trim() === '' || !Number.isFinite(Number(value)) ? null : Number(value)],
   ];
   for (const [id, key, transform] of bindings) {
     const input = $(id);
+    let editing = false;
     let valueBeforeEdit;
 
     input.addEventListener('input', (event) => {
-      if (valueBeforeEdit === undefined) valueBeforeEdit = state.topo[key];
+      if (!editing) {
+        editing = true;
+        valueBeforeEdit = state.topo[key];
+      }
       state.topo[key] = transform(event.target.value);
       render();
     });
 
     input.addEventListener('change', (event) => {
       const next = transform(event.target.value);
-      if (valueBeforeEdit !== undefined && valueBeforeEdit !== next) {
+      if (editing && valueBeforeEdit !== next) {
         const edited = state.topo[key];
         state.topo[key] = valueBeforeEdit;
         pushHistory();
         state.topo[key] = edited;
-      } else if (valueBeforeEdit === undefined && state.topo[key] !== next) {
+      } else if (!editing && state.topo[key] !== next) {
         pushHistory();
       }
+      editing = false;
       valueBeforeEdit = undefined;
       state.topo[key] = next;
       render();
@@ -1099,6 +1207,9 @@ function syncTopoFields() {
   $('topo-max-walk').value = state.topo.maximum_walk_length;
   $('topo-line-distance').value = state.topo.distance_of_single_line;
   $('topo-legend-offset').value = state.topo.legend_offset_top;
+  $('topo-legend-offset-left').value = Number.isFinite(state.topo.legend_offset_left)
+    ? state.topo.legend_offset_left
+    : '';
   $('topo-length-shortening-threshold').value =
     state.topo.length_shortening_threshold_meters ?? '';
 }
@@ -1539,8 +1650,13 @@ function bindCanvas() {
   // Nur Symbolgesten blockieren; die übrige Zeichenfläche bleibt scrollbar.
   host.addEventListener('touchstart', (event) => {
     if (event.target.closest('.topo-element')) event.preventDefault();
+    else if (event.touches?.length === 1 && legendRectAt(svgPoint(event.touches[0]))) event.preventDefault();
   }, { passive: false });
   host.addEventListener('pointerdown', onPointerDown);
+  host.addEventListener('pointermove', (event) => {
+    if (drag || legendDrag) return;
+    host.classList.toggle('is-over-legend', !event.target.closest('.topo-element') && Boolean(legendRectAt(svgPoint(event))));
+  });
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerUp);

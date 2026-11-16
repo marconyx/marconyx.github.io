@@ -19,11 +19,12 @@ import {
   worldToLocal,
 } from '../src/layout.js';
 import { createRandomTopo } from '../src/random-topo.js';
-import { renderTopoSvg } from '../src/renderer.js';
+import { legendRectFor, renderTopoSvg } from '../src/renderer.js';
 import {
   contentBoundsFor,
   fitBoundsToPaper,
   legendMetaTextsFor,
+  legendPanelRectFor,
   legendPanelHeightMeters,
   legendPanelTopMeters,
   paperAspectRatio,
@@ -1511,6 +1512,33 @@ test('Gumpentiefe und Label passen in alle Layout-/Papiermodi ohne Zeilenkollisi
   const unknownColumns = layoutTopo(flatTopo(4), { layout: 'cascaded' });
   const depthColumns = layoutTopo(flatTopo(4, 10, Object.fromEntries([0, 1, 2, 3].map((index) => [index, { depth_in_meters: 8 }]))), { layout: 'cascaded' });
   assert.ok(depthColumns.height > unknownColumns.height, 'Spaltenhöhenbedarf ignoriert Tiefe');
+});
+
+test('frei verschobene Legende: Kasten folgt dem Offset, Blatt wächst mit, Zeilen bleiben', () => {
+  const auto = normalizeTopo(flatTopo(12, 20));
+  const free = normalizeTopo({ ...flatTopo(12, 20), legend_offset_left: 3.5, legend_offset_top: 7.25 });
+  const autoLayout = layoutTopo(auto, { mode: 'a4_landscape' });
+  const freeLayout = layoutTopo(free, { mode: 'a4_landscape' });
+  assert.deepEqual(rowWidths(freeLayout), rowWidths(autoLayout));
+
+  const bounds = contentBoundsFor(free, freeLayout);
+  const rect = legendRectFor(free, freeLayout, bounds, 'color', 'de');
+  assert.equal(rect.left, freeLayout.minX + 3.5);
+  assert.equal(rect.anchorTop, legendPanelRectFor(auto, autoLayout, bounds, 'de').anchorTop + 7.25);
+  assert.ok(bounds.minX <= rect.left && bounds.maxX >= rect.right);
+  assert.ok(bounds.minY <= rect.top && bounds.maxY >= rect.top + rect.height);
+  // Ohne reservierte Legendenspalte ist das Blatt schmaler als im Automatikmodus.
+  const autoBounds = contentBoundsFor(auto, autoLayout);
+  assert.ok(bounds.maxX - bounds.minX < autoBounds.maxX - autoBounds.minX);
+
+  // Weit nach links und oben: Blatt dehnt sich, Legende bleibt sichtbar.
+  const far = normalizeTopo({ ...flatTopo(12, 20), legend_offset_left: -40, legend_offset_top: -30 });
+  const farLayout = layoutTopo(far, { mode: 'a4_landscape' });
+  const farBounds = contentBoundsFor(far, farLayout);
+  const farRect = legendRectFor(far, farLayout, farBounds, 'eau_froide', 'de');
+  assert.ok(farBounds.minX <= farRect.left && farBounds.minY <= farRect.top);
+  const svg = renderTopoSvg(far, farLayout, { paper: 'a4_landscape', lang: 'de' });
+  assert.ok(svg.includes('Legende'));
 });
 
 console.log(`\n${passed} Test(s) bestanden.`);

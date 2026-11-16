@@ -188,6 +188,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `maximum_walk_length` | optionale maximale Abseillänge in Metern; reine Legendenangabe, beeinflusst Zeichnung und Layout nicht |
 | `distance_of_single_line` | Zeilenbreite in Metern für das Format *Bildschirm* (bei *Kaskadiert* als Zielhöhe einer Spalte); bei A4 wird das Mass aus dem Format abgeleitet |
 | `legend_offset_top` | vertikaler Versatz der Legende in Metern |
+| `legend_offset_left` | optional: horizontale Lage der frei verschobenen Legende (linke Kastenkante ab linker Zeichenkante, Meter); fehlt der Wert, steht die Legende automatisch rechts oben |
 | `length_shortening_threshold_meters` | optionaler Schwellenwert für zeichnerisch verkürzte Segmentlängen; nur bei aktivierter Verkürzung exportiert |
 | `segments` | Liste der Abschnitte, von oben nach unten |
 
@@ -360,6 +361,12 @@ Leere Werte erzeugen keine Zeile; Legendenkasten, Blattbreite und Blatthöhe wac
 dem Inhalt, damit nichts überlappt oder abgeschnitten wird — in jedem Format, in Farbe
 wie in Schwarz/Weiss und damit auch in jedem Export. Änderungen an Name, Author, Dauer
 und Datum erscheinen sofort beim Tippen im Topo.
+
+**Frei verschiebbar:** Die Legende lässt sich mit Maus oder Finger an jede Stelle im
+Topo ziehen (Raster 0,25 m, mit Rückgängig). Die Lage landet in `legend_offset_left`
+und `legend_offset_top` (Felder *Legende links* und *Legende Offset*) und wird mit JSON
+und XML gespeichert. Das Blatt wächst mit, die Zeilenaufteilung bleibt unverändert.
+*Legende links* leeren stellt die automatische Lage rechts oben wieder her.
 
 Auch `author` und `duration` sind optionale Erweiterungen. Leere Werte werden
 weder im JSON noch im XML geschrieben, damit ältere Dateien beim Round-Trip
