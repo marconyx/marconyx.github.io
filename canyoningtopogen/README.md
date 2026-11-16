@@ -34,7 +34,7 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 - **AI-Erkennung unter Foto-Referenz**: Foto oder PDF-Seite per Vision-Modell in ein Topo umwandeln
   (OpenAI-kompatibel, Anthropic oder eigener Proxy), mit wählbarer Prompt-Vorlage — siehe unten
 - **Speichern**: JSON (kompatibel zum Canyon-Explore-Format) und XML (mit XSD)
-- **Export**: SVG, PNG, Druck/PDF über den Browser-Druckdialog
+- **Export**: SVG, PNG, Kurzliste (TXT), Druck/PDF über den Browser-Druckdialog
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
 - **Mehrsprachige Oberfläche**: Auswahl links neben „Neu“ (DE/EN/FR/IT) übersetzt alle
   Oberflächentexte (Labels, Buttons, Hinweise, Symbolpalette, Statuszeile, Legende im
@@ -72,7 +72,12 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
   Seite zu scrollen; ausserhalb der Elemente scrollt und zoomt der Browser normal.
   Druck und Exporte sind davon nicht betroffen.
 - **Speichern…**: Die Auswahl bündelt **JSON speichern**, **XML speichern**,
-  **SVG**, **PNG** und **Drucken / PDF**. Sie bleibt auch auf Smartphones direkt
+  **SVG**, **PNG**, **Kurzliste** und **Drucken / PDF**. **Kurzliste** lädt
+  `<canyon-name>-kurzliste.txt` (UTF-8) herunter: pro Segment mit positiver
+  Längenangabe eine Zeile in Topo-Reihenfolge, z. B. `2. RAPPEL_DRY: 12.5 m`.
+  Angegeben wird die tatsächliche Länge, auch wenn die Darstellung verkürzt ist;
+  Symbole, Metadaten und Legende fehlen bewusst. Ohne solche Segmente wird keine
+  Datei erzeugt, die Statuszeile meldet das. Sie bleibt auch auf Smartphones direkt
   erreichbar, unabhängig vom Toolbar-Menü. Tab oder Pfeiltasten/Pos1/Ende wählen
   eine Aktion; Escape, Klick ausserhalb oder Fokuswechsel schliessen die Auswahl.
 - **Freies Symbolziehen**: Das ursprüngliche SVG-Ziel bleibt während der Maus-

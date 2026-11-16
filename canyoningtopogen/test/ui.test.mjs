@@ -1570,7 +1570,7 @@ function fakeResponsiveRoot() {
   };
   node('btn-save');
   const saveMenu = node('save-menu', 'div');
-  for (const id of ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-print']) {
+  for (const id of ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print']) {
     saveMenu.appendChild(node(id));
   }
   const root = new FakeNode('document');
@@ -1587,11 +1587,12 @@ function fakeResponsiveRoot() {
   return { nodes, api, root, win, setMobile, get: (id) => nodes.get(id) };
 }
 
-test('Speichern-Popover bündelt genau fünf Exportaktionen mit bisherigen IDs', () => {
+test('Speichern-Popover bündelt genau sechs Exportaktionen inkl. Kurzliste', () => {
   assert.match(markup, /id="btn-save" popovertarget="save-menu" aria-controls="save-menu" aria-expanded="false">Speichern…/);
   const menu = /<div id="save-menu"[^>]*popover="auto"[^>]*>([\s\S]*?)<\/div>/.exec(markup)[1];
-  const ids = ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-print'];
-  assert.equal((menu.match(/<button /g) || []).length, 5);
+  const ids = ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print'];
+  assert.equal((menu.match(/<button /g) || []).length, 6);
+  assert.match(menu, /id="btn-export-shortlist">Kurzliste</);
   for (const id of ids) {
     assert.equal((markup.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1);
     assert.ok(menu.includes(`id="${id}"`));
@@ -1622,7 +1623,7 @@ test('Speichern-Auswahl: Fokus, Pfeile, Escape, Fokus-aussen, Resize und Aktions
   menu.showPopover();
   win.dispatch('resize');
   assert.equal(menu.popoverOpen, false);
-  for (const id of ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-print']) {
+  for (const id of ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print']) {
     menu.showPopover();
     get(id).dispatch('click');
     assert.equal(menu.popoverOpen, false);

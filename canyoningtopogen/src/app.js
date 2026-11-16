@@ -30,6 +30,7 @@ import {
   printSvg,
   slugify,
   svgToPngBlob,
+  topoToShortList,
 } from './exporters.js';
 import {
   AI_PROVIDERS,
@@ -1152,6 +1153,15 @@ function bindToolbar() {
     } catch (error) {
       setStatusKey('status.png_export_failed', { error: error.message });
     }
+  });
+  $('btn-export-shortlist').addEventListener('click', () => {
+    const { text, count } = topoToShortList(state.topo);
+    if (count === 0) {
+      setStatusKey('status.shortlist_empty');
+      return;
+    }
+    downloadText(`${slugify(state.topo.canyon_name)}-kurzliste.txt`, text, 'text/plain');
+    setStatusKey('status.shortlist_exported', { count });
   });
   $('btn-print').addEventListener('click', () => {
     printSvg(currentSvgText, state.topo.canyon_name);

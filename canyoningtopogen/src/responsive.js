@@ -76,7 +76,7 @@ export function initResponsive({ root = document, win = globalThis.window } = {}
 
   const saveButton = root.getElementById('btn-save');
   const saveMenu = root.getElementById('save-menu');
-  const saveActions = ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-print']
+  const saveActions = ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print']
     .map((id) => root.getElementById(id));
   saveButton.setAttribute('aria-expanded', 'false');
   saveMenu.addEventListener('beforetoggle', (event) => {

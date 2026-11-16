@@ -41,6 +41,7 @@ export const UI_TEXT = {
   'btn-save-xml': { de: 'XML speichern', en: 'Save XML', fr: 'Enregistrer XML', it: 'Salva XML' },
   'btn-export-svg': { de: 'SVG', en: 'SVG', fr: 'SVG', it: 'SVG' },
   'btn-export-png': { de: 'PNG', en: 'PNG', fr: 'PNG', it: 'PNG' },
+  'btn-export-shortlist': { de: 'Kurzliste', en: 'Short list', fr: 'Liste courte', it: 'Elenco breve' },
   'btn-print': { de: 'Drucken / PDF', en: 'Print / PDF', fr: 'Imprimer / PDF', it: 'Stampa / PDF' },
   'lbl-select-layout': { de: 'Layout', en: 'Layout', fr: 'Disposition', it: 'Layout' },
   'opt-layout-serpentine': {
@@ -568,6 +569,18 @@ export const MESSAGES = {
   'status.xml_saved': { de: 'XML gespeichert.', en: 'XML saved.', fr: 'XML enregistré.', it: 'XML salvato.' },
   'status.svg_exported': { de: 'SVG exportiert.', en: 'SVG exported.', fr: 'SVG exporté.', it: 'SVG esportato.' },
   'status.png_exported': { de: 'PNG exportiert.', en: 'PNG exported.', fr: 'PNG exporté.', it: 'PNG esportato.' },
+  'status.shortlist_exported': {
+    de: 'Kurzliste exportiert ({count} Segmente).',
+    en: 'Short list exported ({count} segments).',
+    fr: 'Liste courte exportée ({count} segments).',
+    it: 'Elenco breve esportato ({count} segmenti).',
+  },
+  'status.shortlist_empty': {
+    de: 'Keine Segmente mit Längenangabe – Kurzliste nicht erstellt.',
+    en: 'No segments with a length – short list not created.',
+    fr: 'Aucun segment avec longueur – liste courte non créée.',
+    it: 'Nessun segmento con lunghezza – elenco breve non creato.',
+  },
   'status.png_export_failed': {
     de: 'PNG-Export fehlgeschlagen: {error}',
     en: 'PNG export failed: {error}',
