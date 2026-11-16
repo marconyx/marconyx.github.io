@@ -5,6 +5,7 @@
  *   node test/ui.test.mjs
  */
 import assert from 'node:assert/strict';
+import * as i18n from '../src/i18n.js';
 
 /* ------------------------------------------------------------- DOM-Attrappe */
 
@@ -734,7 +735,7 @@ test('die Sprachauswahl übersetzt Oberfläche und Legende und bleibt gespeicher
   const selectMarkup = /<select id="select-language">([\s\S]*?)<\/select>/.exec(markup)[1];
   assert.deepEqual(
     [...selectMarkup.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g)].map((m) => [m[1], m[2]]),
-    [['de', 'DE'], ['en', 'EN'], ['fr', 'FR'], ['it', 'IT']],
+    [['de', 'DE'], ['en', 'EN'], ['fr', 'FR'], ['it', 'IT'], ['es', 'ES']],
   );
   type('topo-duration', '3-4 h');
   assert.equal(elementById('h-panel-topo').textContent, 'Topo');
@@ -759,6 +760,42 @@ test('die Sprachauswahl übersetzt Oberfläche und Legende und bleibt gespeicher
   assert.equal(state.view.language, 'de');
   assert.equal(elementById('h-panel-segments').textContent, 'Segmente');
   assert.ok(svg().includes('>Dauer:<'), 'zurück auf Deutsch stellt die alte Legendenbeschriftung wieder her');
+});
+
+test('jeder Übersetzungseintrag ist in allen Sprachen vorhanden', () => {
+  assert.deepEqual(i18n.LANGUAGES, ['de', 'en', 'fr', 'it', 'es']);
+  const missing = [];
+  for (const [name, dict] of Object.entries(i18n)) {
+    if (!dict || typeof dict !== 'object' || Array.isArray(dict)) continue;
+    for (const [key, entry] of Object.entries(dict)) {
+      for (const language of i18n.LANGUAGES) {
+        if (typeof entry[language] !== 'string' || !entry[language]) missing.push(`${name}.${key}.${language}`);
+      }
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
+test('Spanisch übersetzt Oberfläche, Legende und die AI-Auswahllisten', () => {
+  const select = elementById('select-language');
+  const providerOption = () => elementById('ai-provider').options.find((o) => o.value === 'openai');
+  const promptOption = () => elementById('ai-prompt-template').options.find((o) => o.value === 'optimized');
+  assert.equal(providerOption().textContent, 'OpenAI-kompatibel');
+  type('topo-duration', '2 h');
+
+  select.value = 'es';
+  select.dispatch('change');
+  assert.equal(elementById('h-panel-segments').textContent, 'Segmentos');
+  assert.equal(elementById('btn-export-shortlist').textContent, 'Lista breve');
+  assert.ok(svg().includes('>Duración:<'), 'Legende ist nicht spanisch');
+  assert.equal(providerOption().textContent, 'Compatible con OpenAI');
+  assert.equal(promptOption().textContent, 'Optimizado (recomendado)');
+  assert.match(elementById('ai-provider-hint').textContent, /^Por defecto:/);
+
+  select.value = 'de';
+  select.dispatch('change');
+  assert.equal(providerOption().textContent, 'OpenAI-kompatibel');
+  assert.equal(promptOption().textContent, 'Optimiert (empfohlen)');
 });
 
 /* ------------------------------------------------- Legende: live, wie Name */

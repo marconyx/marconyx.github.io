@@ -36,7 +36,7 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 - **Speichern**: JSON (kompatibel zum Canyon-Explore-Format) und XML (mit XSD)
 - **Export**: SVG, PNG, Kurzliste (TXT), Druck/PDF über den Browser-Druckdialog
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
-- **Mehrsprachige Oberfläche**: Auswahl links neben „Neu“ (DE/EN/FR/IT) übersetzt alle
+- **Mehrsprachige Oberfläche**: Auswahl links neben „Neu“ (DE/EN/FR/IT/ES) übersetzt alle
   Oberflächentexte (Labels, Buttons, Hinweise, Symbolpalette, Statuszeile, Legende im
   Topo-SVG inkl. „Dauer“/„Max. Abseil“/„Author“/„Datum“/„Legend:“) sofort und ohne
   Neuladen. Ausgenommen bleibt bewusst nur der feste Produktname „Canyoning Topo
@@ -756,7 +756,7 @@ benutzt das Ergebnis als Referenzbild — ab da ist der Ablauf identisch zu eine
 index.html            UI-Gerüst
 styles.css            Layout und Themes der Oberfläche
 src/model.js          Datenmodell, Defaults, Validierung
-src/i18n.js           Übersetzungswörterbücher (DE/EN/FR/IT) und Anwendungshelfer
+src/i18n.js           Übersetzungswörterbücher (DE/EN/FR/IT/ES) und Anwendungshelfer
 src/io-json.js        JSON-Import/-Export (Originalformat)
 src/io-xml.js         XML-Import/-Export
 src/layout.js         Geometrie, Zeilenumbruch, Walk-Stauchung

@@ -89,6 +89,7 @@ function applyTranslations() {
   applyStaticTranslations($, lang());
   renderPalette();
   refreshStatusTranslation();
+  refreshAiTranslations();
 }
 
 /* ----------------------------------------------------------------- Zustand */
@@ -1259,7 +1260,7 @@ function syncAiControls() {
   const ready = isTopoProviderAvailable();
   const button = $('btn-photo-ai');
   button.disabled = !ready || aiAbort !== null;
-  button.title = providerStatusText();
+  button.title = providerStatusText(lang());
   $('ai-provider-hint').textContent = translateProviderHint(spec.id, lang());
   $('ai-key-row').hidden = !spec.needsKey;
   $('ai-model-row').hidden = spec.id === 'proxy';
@@ -1314,7 +1315,7 @@ async function loadModelOptions({ manual = false } = {}) {
 
   let result;
   try {
-    result = await listModels();
+    result = await listModels({ lang: lang() });
   } catch (error) {
     result = { ok: false, reason: error.message };
   }
@@ -1378,6 +1379,19 @@ async function refreshProxyState() {
     target.textContent = t(lang(), 'ai.proxy_unavailable', { port: LOCAL_PROXY_PORT });
     target.classList.remove('is-error');
   }
+}
+
+/** Übersetzt die dynamisch befüllten AI-Auswahllisten und Hinweise neu. */
+function refreshAiTranslations() {
+  const providerSelect = $('ai-provider');
+  if (!providerSelect) return;
+  for (const option of providerSelect.options) option.textContent = translateProviderLabel(option.value, lang());
+  for (const option of $('ai-prompt-template').options) option.textContent = translatePromptLabel(option.value, lang());
+  const settings = getAiSettings();
+  $('btn-photo-ai').title = providerStatusText(lang());
+  $('ai-provider-hint').textContent = translateProviderHint(providerById(settings.providerId).id, lang());
+  $('ai-prompt-hint').textContent = translatePromptHint(promptTemplateById(settings.promptTemplate).id, lang());
+  refreshProxyState();
 }
 
 function bindAi() {

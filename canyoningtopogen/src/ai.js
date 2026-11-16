@@ -30,6 +30,7 @@ import {
   todayIso,
 } from './model.js';
 import { SYMBOLS } from './symbols.js';
+import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js';
 
 const SETTINGS_KEY = 'canyon-topo-generator/ai/v1';
 
@@ -180,15 +181,15 @@ export function registerTopoProvider(fn) {
  * Gibt immer ein Ergebnisobjekt zurück statt zu werfen, weil der Aufrufer hier
  * nur eine Auswahlliste füllt und ein Fehlschlag folgenlos bleiben soll.
  */
-export async function listModels({ signal } = {}) {
+export async function listModels({ signal, lang = DEFAULT_LANGUAGE } = {}) {
   const spec = providerById(settings.providerId);
   if (spec.id === 'proxy') {
-    return { ok: false, reason: 'Im Proxy-Modus bestimmt der Proxy das Modell.' };
+    return { ok: false, reason: t(lang, 'ai.models_proxy_mode') };
   }
-  if (!settings.endpoint) return { ok: false, reason: 'Kein Endpoint hinterlegt.' };
-  if (!settings.apiKey) return { ok: false, reason: 'Kein API-Key hinterlegt.' };
+  if (!settings.endpoint) return { ok: false, reason: t(lang, 'ai.status_no_endpoint') };
+  if (!settings.apiKey) return { ok: false, reason: t(lang, 'ai.status_no_key') };
   const bad = badKeyCharacter(settings.apiKey);
-  if (bad) return { ok: false, reason: `Der Key enthält ein unzulässiges Zeichen ("${bad}").` };
+  if (bad) return { ok: false, reason: t(lang, 'ai.models_bad_key_char', { char: bad }) };
 
   const base = settings.endpoint.trim().replace(/\/+$/, '');
   const headers =
@@ -199,10 +200,10 @@ export async function listModels({ signal } = {}) {
   try {
     const response = await fetch(`${base}/models`, { method: 'GET', headers, signal });
     if (!response.ok) {
-      return { ok: false, reason: await modelErrorText(response) };
+      return { ok: false, reason: await modelErrorText(response, lang) };
     }
     const models = pickModelIds(await response.json());
-    if (!models.length) return { ok: false, reason: 'Keine Modell-Liste erkennbar.' };
+    if (!models.length) return { ok: false, reason: t(lang, 'ai.models_none_found') };
     return { ok: true, models, viaProxy: false };
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
@@ -210,22 +211,20 @@ export async function listModels({ signal } = {}) {
       return { ok: false, reason: error.message };
     }
     // Vermutlich CORS – derselbe Weg wie bei der Topo-Erkennung.
-    return listModelsViaProxy({ signal });
+    return listModelsViaProxy({ signal, lang });
   }
 }
 
-async function listModelsViaProxy({ signal } = {}) {
+async function listModelsViaProxy({ signal, lang = DEFAULT_LANGUAGE } = {}) {
   const proxy = await detectLocalProxy({ force: true });
   if (!proxy) {
     return {
       ok: false,
-      reason:
-        'Der Endpoint ist aus dem Browser nicht erreichbar (CORS). ' +
-        `Proxy starten mit "npm start" und http://127.0.0.1:${LOCAL_PROXY_PORT}/ öffnen.`,
+      reason: t(lang, 'ai.models_cors', { port: LOCAL_PROXY_PORT }),
     };
   }
   if (!proxy.canListModels) {
-    return { ok: false, reason: 'Dieser Proxy ist zu alt und kennt /api/models noch nicht.' };
+    return { ok: false, reason: t(lang, 'ai.models_proxy_too_old') };
   }
   try {
     const response = await fetch(`${proxy.base}/api/models`, {
@@ -240,7 +239,7 @@ async function listModelsViaProxy({ signal } = {}) {
     });
     const data = await readJson(response);
     const models = pickModelIds(data);
-    if (!models.length) return { ok: false, reason: 'Keine Modell-Liste erkennbar.' };
+    if (!models.length) return { ok: false, reason: t(lang, 'ai.models_none_found') };
     return { ok: true, models, viaProxy: true };
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
@@ -248,7 +247,7 @@ async function listModelsViaProxy({ signal } = {}) {
   }
 }
 
-async function modelErrorText(response) {
+async function modelErrorText(response, lang = DEFAULT_LANGUAGE) {
   let detail = '';
   try {
     const data = await response.json();
@@ -257,7 +256,7 @@ async function modelErrorText(response) {
     /* Viele Gateways antworten mit HTML. */
   }
   if (response.status === 404) {
-    return 'Dieser Endpoint kennt keine Modell-Liste – Modellname von Hand eintragen.';
+    return t(lang, 'ai.models_no_list_endpoint');
   }
   return `Fehler ${response.status}${detail ? `: ${detail}` : ''}`;
 }
@@ -290,17 +289,18 @@ export function isTopoProviderAvailable() {
 }
 
 /** Erklärt, warum der Button gesperrt ist – für das title-Attribut. */
-export function providerStatusText() {
-  if (customProvider) return 'Eigener Provider über registerTopoProvider() aktiv.';
+export function providerStatusText(lang = DEFAULT_LANGUAGE) {
+  if (customProvider) return t(lang, 'ai.status_custom_provider');
   const spec = providerById(settings.providerId);
-  if (!settings.endpoint) return 'Kein Endpoint hinterlegt.';
-  if (spec.needsKey && !settings.apiKey) return 'Kein API-Key hinterlegt.';
+  if (!settings.endpoint) return t(lang, 'ai.status_no_endpoint');
+  if (spec.needsKey && !settings.apiKey) return t(lang, 'ai.status_no_key');
   if (spec.needsKey) {
     const bad = badKeyCharacter(settings.apiKey);
-    if (bad) return `Der Key enthält ein unzulässiges Zeichen ("${bad}") – vermutlich ein Kopierfehler.`;
+    if (bad) return t(lang, 'ai.status_bad_key_char', { char: bad });
   }
-  if (spec.id !== 'proxy' && !settings.model) return 'Kein Modell hinterlegt.';
-  return `Bereit: ${spec.label}${settings.model ? ` · ${settings.model}` : ''}`;
+  if (spec.id !== 'proxy' && !settings.model) return t(lang, 'ai.status_no_model');
+  const label = translateProviderLabel(spec.id, lang);
+  return t(lang, 'ai.status_ready', { label: `${label}${settings.model ? ` · ${settings.model}` : ''}` });
 }
 
 /**
