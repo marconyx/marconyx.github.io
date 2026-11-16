@@ -119,7 +119,7 @@ export const UI_TEXT = {
     es: 'Acortar segmentos a partir de (m): ',
   },
   'h-panel-segments': { de: 'Segmente', en: 'Segments', fr: 'Segments', it: 'Segmenti', es: 'Segmentos' },
-  'btn-add-segment': { de: '+ hinzufügen', en: '+ add', fr: '+ ajouter', it: '+ aggiungi', es: '+ añadir' },
+  'btn-add-segment': { de: '+', en: '+', fr: '+', it: '+', es: '+' },
   'h-panel-photo': { de: 'Foto-Referenz', en: 'Photo reference', fr: 'Référence photo', it: 'Riferimento foto', es: 'Referencia de foto' },
   'hint-photo-usage': {
     de: 'Foto oder PDF als Hintergrund einblenden und Topo darüber nachzeichnen.',
@@ -216,6 +216,13 @@ export const UI_HTML = {
 
 /** `title`-Attribut je Element-ID. */
 export const UI_TITLES = {
+  'btn-add-segment': {
+    de: 'Segment hinzufügen',
+    en: 'Add segment',
+    fr: 'Ajouter un segment',
+    it: 'Aggiungi segmento',
+    es: 'Añadir segmento',
+  },
   'btn-random': {
     de: 'Zufälliges Topo mit allen Segmenttypen und Symbolen',
     en: 'Random topo with all segment types and symbols',
@@ -267,6 +274,13 @@ export const UI_PLACEHOLDERS = {
 
 /** `aria-label`-Attribut je Element-ID. */
 export const UI_ARIA_LABELS = {
+  'btn-add-segment': {
+    de: 'Segment hinzufügen',
+    en: 'Add segment',
+    fr: 'Ajouter un segment',
+    it: 'Aggiungi segmento',
+    es: 'Añadir segmento',
+  },
   'view-switch': { de: 'Ansicht', en: 'View', fr: 'Vue', it: 'Vista', es: 'Vista' },
   'panel-left': {
     de: 'Topo, Segmente und Foto-Referenz',
