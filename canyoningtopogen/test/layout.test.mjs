@@ -527,7 +527,7 @@ test('A4-Layouts treffen das Seitenverhältnis des Formats besser als die Rohbre
 
 test('das gerenderte SVG hat exakt das Seitenverhältnis des Formats', () => {
   const topo = normalizeTopo(example);
-  for (const paper of ['a4_landscape', 'a4_portrait']) {
+  for (const paper of ['a4_landscape', 'a4_portrait', 'a5_landscape', 'a5_portrait']) {
     const svg = renderTopoSvg(topo, layoutTopo(topo, { paper }), { paper });
     const viewBox = /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
     const preset = PAPER_PRESETS[paper];
@@ -1448,8 +1448,8 @@ test('ohne Gumpentiefe bleiben alle Layouts und Renderstile byte-identisch', () 
     }
   }
   const hash = (values) => createHash('sha256').update(values.join('\n')).digest('hex');
-  assert.equal(hash(layouts), 'fbbe6919511d3e2f72f2cce5536841b86bce83f9703df379135bca0798d17618');
-  assert.equal(hash(svgs), '1da152133eb99fbc5cfafaf135f976cdb0d3139ba37bbced8efc21f41a4f7936');
+  assert.equal(hash(layouts), '99850eca6ac8e423e543ee19352bbf62ce843e0477fd466b16d330d3e2f33c2c');
+  assert.equal(hash(svgs), '562dc1075f90319fb3b509094a731c795d5ca648415457f9a89e9418b08d63bb');
 });
 
 test('Gumpen-Zeichentiefe skaliert gedämpft und begrenzt, WEIR bleibt unverändert', () => {

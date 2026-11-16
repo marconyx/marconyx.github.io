@@ -14,6 +14,8 @@ export const PAPER_PRESETS = {
   screen: { label: 'Bildschirm (frei)', width: null, height: null },
   a4_landscape: { label: 'A4 quer', width: 1122, height: 793 },
   a4_portrait: { label: 'A4 hoch', width: 793, height: 1122 },
+  a5_landscape: { label: 'A5 quer', width: 793, height: 559 },
+  a5_portrait: { label: 'A5 hoch', width: 559, height: 793 },
 };
 
 export function paperPreset(key) {

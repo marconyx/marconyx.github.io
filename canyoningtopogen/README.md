@@ -19,7 +19,7 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
   sonst in der Segmentmitte und am Ende.
 - **Layout**: Serpentine (automatischer Zeilenumbruch), Kaskadiert (automatische
   Aufteilung in Spalten) oder Linear, Farbe, Schwarz/Weiß, Alpin klassisch, Standard
-  oder Bleistiftskizze, Bildschirm / A4 quer / A4 hoch. In der Serpentine bestimmt das Format die
+  oder Bleistiftskizze, Bildschirm / A4 quer / A4 hoch / A5 quer / A5 hoch. In der Serpentine bestimmt das Format die
   nutzbare Zeilenbreite, bei Kaskadiert die Spaltenhöhe — siehe
   [Zeilenumbruch](#zeilenumbruch) und [Kaskadiert (Spalten)](#kaskadiert-spalten).
 - **Lange Strecken kürzen**: Unter *Topo* lässt sich bei „Segmente verkürzen ab (m)“ ein
@@ -276,9 +276,9 @@ an, im Inspektor lässt sich der Zustand über die Checkbox „Abgestorben" umsc
 
 Im Layout **Serpentine** verteilt der Generator die Segmente selbständig auf Zeilen.
 
-- **Zielbreite**: Beim Format *Bildschirm* gilt `distance_of_single_line`. Bei *A4 quer*
-  und *A4 hoch* wird die Zeilenbreite gesucht, deren fertiges Blatt (inklusive Rand und
-  Legendenspalte) dem Seitenverhältnis des Formats am nächsten kommt. *A4 hoch* ergibt
+- **Zielbreite**: Beim Format *Bildschirm* gilt `distance_of_single_line`. Bei den Papierformaten
+  (*A4/A5 quer/hoch*) wird die Zeilenbreite gesucht, deren fertiges Blatt (inklusive Rand und
+  Legendenspalte) dem Seitenverhältnis des Formats am nächsten kommt. *A4 hoch* (bzw. *A5 hoch*) ergibt
   dadurch schmalere Zeilen und mehr davon als *A4 quer*.
 - **Aufteilung**: Die Zeilen werden per Dynamischer Programmierung gleichmäßig gefüllt
   (minimale Summe der quadrierten Restbreiten), nicht gierig von links nach rechts und
@@ -309,7 +309,7 @@ nach ihrer **Höhe** auf Spalten auf statt nach ihrer Breite auf Zeilen.
   Gehstücke kosten keine Höhe, machen die Spalte aber breiter.
 - **Zielhöhe**: Beim Format *Bildschirm* dient `distance_of_single_line` als generisches
   Aufteilungsmass je Spur, hier also als Spaltenhöhe — ein eigenes Dateifeld gibt es
-  bewusst nicht. Bei *A4 quer* und *A4 hoch* werden Kandidatenhöhen (Basiswert und die
+  bewusst nicht. Bei den Papierformaten (*A4/A5 quer/hoch*) werden Kandidatenhöhen (Basiswert und die
   ausgeglichenen Teilungen der Gesamthöhe in 1…n Spalten) durchprobiert; gewählt wird die
   Höhe, deren fertiges Blatt inklusive Rand und Legende dem Seitenverhältnis am nächsten
   kommt. *A4 hoch* bekommt dadurch typischerweise höhere und weniger Spalten als *A4 quer*.

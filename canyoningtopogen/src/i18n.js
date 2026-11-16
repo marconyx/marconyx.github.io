@@ -87,6 +87,8 @@ export const UI_TEXT = {
   'opt-paper-screen': { de: 'Bildschirm', en: 'Screen', fr: 'Écran', it: 'Schermo', es: 'Pantalla' },
   'opt-paper-a4-landscape': { de: 'A4 quer', en: 'A4 landscape', fr: 'A4 paysage', it: 'A4 orizzontale', es: 'A4 horizontal' },
   'opt-paper-a4-portrait': { de: 'A4 hoch', en: 'A4 portrait', fr: 'A4 portrait', it: 'A4 verticale', es: 'A4 vertical' },
+  'opt-paper-a5-landscape': { de: 'A5 quer', en: 'A5 landscape', fr: 'A5 paysage', it: 'A5 orizzontale', es: 'A5 horizontal' },
+  'opt-paper-a5-portrait': { de: 'A5 hoch', en: 'A5 portrait', fr: 'A5 portrait', it: 'A5 verticale', es: 'A5 vertical' },
   'view-tab-edit': { de: 'Bearbeiten', en: 'Edit', fr: 'Modifier', it: 'Modifica', es: 'Editar' },
   'view-tab-topo': { de: 'Topo', en: 'Topo', fr: 'Topo', it: 'Topo', es: 'Topo' },
   'view-tab-symbols': { de: 'Symbole', en: 'Symbols', fr: 'Symboles', it: 'Simboli', es: 'Símbolos' },
