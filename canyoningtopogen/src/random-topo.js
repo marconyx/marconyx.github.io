@@ -19,8 +19,8 @@ import {
   WALL_DISTANCE_SEGMENT_TYPES,
   normalizeTopo,
   renumberElements,
-} from './model.js?v=0.8';
-import { symbolOptions } from './symbols.js?v=0.8';
+} from './model.js?v=0.9';
+import { symbolOptions } from './symbols.js?v=0.9';
 
 /** Kleiner, schneller PRNG mit 32-Bit-Zustand (mulberry32). */
 export function createRng(seed = 1) {

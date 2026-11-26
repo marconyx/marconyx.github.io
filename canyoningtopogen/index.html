@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Canyoning Topo Generator</title>
-    <link rel="stylesheet" href="styles.css?v=0.8" />
+    <link rel="stylesheet" href="styles.css?v=0.9" />
   </head>
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/logo.png" alt="bachab" width="35" height="29" />
-          <span class="toolbar__version" id="app-version">v0.8</span>
+          <span class="toolbar__version" id="app-version">v0.9</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
@@ -125,7 +125,7 @@
             <div class="shortcut-help" id="shortcut-help" popover="auto" role="dialog" aria-labelledby="shortcut-help-title">
               <h3 id="shortcut-help-title">Shortcut-Hilfe</h3>
               <p class="hint" id="hint-segment-shortcut">Enter oder + fügt Kürzel mit positiver Länge unten an. Mehrere mit Komma trennen, z. B. R10,RW3, RD23.5; R12,5 ist eine Dezimalzahl.</p>
-              <p class="hint" id="shortcut-mapping">R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK</p>
+              <p class="hint" id="shortcut-mapping">R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · W=WALK</p>
               <p class="hint" id="hint-shortlist-data">Kurzlisten (TXT) enthalten nur Segmenttyp und Länge; Metadaten, Symbole und weitere Einstellungen werden nicht gespeichert.</p>
               <button type="button" id="btn-close-shortcut-help" popovertarget="shortcut-help" popovertargetaction="hide">Schliessen</button>
             </div>
@@ -285,6 +285,6 @@
         </div>
       </form>
     </dialog>
-    <script type="module" src="src/app.js?v=0.8"></script>
+    <script type="module" src="src/app.js?v=0.9"></script>
   </body>
 </html>

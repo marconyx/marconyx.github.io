@@ -115,7 +115,7 @@ test('Kurzliste: Topo-Reihenfolge und Dezimalwerte ungerundet', () => {
   assert.equal(count, 7);
   assert.equal(
     text,
-    'WA120\nRD12.5\nP4\nRW35\nJ4\nS6.25\nR8\n',
+    'W120\nRD12.5\nP4\nRW35\nJ4\nS6.25\nR8\n',
   );
   assert.doesNotMatch(text, /BOLT|Test|min|wall|depth/);
 });
@@ -124,7 +124,7 @@ test('Kurzliste: aktive Darstellungsverkürzung ändert die Meterangaben nicht',
   const shortened = shortListTopo(20);
   assert.equal(drawnLengthOf(shortened.segments[0], 20), 20, 'Zeichnung ist gekappt');
   assert.equal(topoToShortList(shortened).text, topoToShortList(shortListTopo()).text);
-  assert.match(topoToShortList(shortened).text, /^WA120$/m);
+  assert.match(topoToShortList(shortened).text, /^W120$/m);
 });
 
 test('Kurzliste: ungültige oder unbekannte Segmente werden nicht ausgelassen', () => {
@@ -163,10 +163,10 @@ test('alle Typen und extreme endliche Werte überleben Export und Import', () =>
   assert.ok(restored.segments.every((segment) => segment.elements.length === 0));
 });
 
-test('Import akzeptiert Kurzliste und alte eindeutige Exporte mit Zeilenenden und BOM', () => {
-  const topo = topoFromShortList('\uFEFF  r10\r\n\rRD23\r rw12,5 \n4. WALK: 0.0000001 m\n5. RAPPEL_DRY: 1e+21 m\n');
+test('Import akzeptiert alte Kurzlisten-Exporte mit Zeilenenden, BOM und WA-Alias', () => {
+  const topo = topoFromShortList('\uFEFF  r10\r\n\rWA120\nRD23\r rw12,5 \n4. WALK: 0.0000001 m\n5. RAPPEL_DRY: 1e+21 m\n');
   assert.deepEqual(topo.segments.map((s) => [s.type, s.length_in_meters]), [
-    ['RAPPEL', 10], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5],
+    ['RAPPEL', 10], ['WALK', 120], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5],
     ['WALK', 1e-7], ['RAPPEL_DRY', 1e21],
   ]);
 });
@@ -180,7 +180,7 @@ test('alte WEIR-Kürzel werden mit Zeilennummer abgewiesen', () => {
 });
 
 test('Import meldet jede ungültige Zeile und lehnt leere Dateien ab', () => {
-  assert.throws(() => topoFromShortList('R10\n\nW5\nRD\n3. UNKNOWN: 2 m\nR-2\nR20 P2'), (error) => {
+  assert.throws(() => topoFromShortList('R10\n\nX5\nRD\n3. UNKNOWN: 2 m\nR-2\nR20 P2'), (error) => {
     assert.ok(error instanceof ShortListError);
     assert.deepEqual(error.issues.map((issue) => issue.position), [3, 4, 5, 6, 7]);
     return true;

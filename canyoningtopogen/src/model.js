@@ -17,7 +17,7 @@ export const SEGMENT_TYPES = [
 ];
 
 export const SEGMENT_SHORTCUTS = {
-  WA: 'WALK',
+  W: 'WALK',
   P: 'POOL',
   R: 'RAPPEL',
   RD: 'RAPPEL_DRY',
@@ -32,14 +32,16 @@ export function parseSegmentShortcut(value) {
   const match = /^([a-z]+)\s*(.*)$/i.exec(String(value).trim());
   if (!match) return { error: 'shortcut.format' };
   const code = match[1].toUpperCase();
-  if (code === 'W') return { error: 'shortcut.ambiguous' };
   if (code === 'WE') return { error: 'shortcut.removed_weir' };
-  if (!Object.hasOwn(SEGMENT_SHORTCUTS, code)) return { error: 'shortcut.unknown' };
+  const type = code === 'WA'
+    ? 'WALK'
+    : Object.hasOwn(SEGMENT_SHORTCUTS, code) ? SEGMENT_SHORTCUTS[code] : null;
+  if (!type) return { error: 'shortcut.unknown' };
   const number = match[2];
   if (!/^\d+(?:[.,]\d+)?$/.test(number)) return { error: 'shortcut.length' };
   const length = Number(number.replace(',', '.'));
   if (!Number.isFinite(length) || length <= 0) return { error: 'shortcut.length' };
-  return { type: SEGMENT_SHORTCUTS[code], length_in_meters: length };
+  return { type, length_in_meters: length };
 }
 
 export function parseSegmentShortcutList(value) {

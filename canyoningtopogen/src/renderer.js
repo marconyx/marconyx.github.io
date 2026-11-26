@@ -1,18 +1,18 @@
 /**
  * SVG-Renderer: zeichnet ein Layout als eigenständiges SVG-Dokument.
  */
-import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.8';
+import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.9';
 import {
   symbolFor,
   renderUnknownSymbol,
   renderEauFroideSymbol,
   renderEauFroideRange,
   EAU_FROIDE_PALETTE,
-} from './symbols.js?v=0.8';
+} from './symbols.js?v=0.9';
 import {
   DEFAULT_LANGUAGE,
   translateLegendLabel,
-} from './i18n.js?v=0.8';
+} from './i18n.js?v=0.9';
 import {
   PAPER_PRESETS,
   contentBoundsFor,
@@ -28,7 +28,7 @@ import {
   paperPreset,
   poolDepthLabelFor,
   poolDrawingDepthOf,
-} from './sheet.js?v=0.8';
+} from './sheet.js?v=0.9';
 
 export { PAPER_PRESETS };
 
