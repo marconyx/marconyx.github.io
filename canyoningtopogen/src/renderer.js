@@ -10,18 +10,18 @@
  * separat ohne Auswahl-/Drag-Markierungen erzeugt. Sichtbare Nutztexte werden
  * vor dem Einfügen in SVG escaped.
  */
-import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.14';
+import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.15';
 import {
   symbolFor,
   renderUnknownSymbol,
   renderEauFroideSymbol,
   renderEauFroideRange,
   EAU_FROIDE_PALETTE,
-} from './symbols.js?v=0.14';
+} from './symbols.js?v=0.15';
 import {
   DEFAULT_LANGUAGE,
   translateLegendLabel,
-} from './i18n.js?v=0.14';
+} from './i18n.js?v=0.15';
 import {
   PAPER_PRESETS,
   contentBoundsFor,
@@ -37,7 +37,7 @@ import {
   paperPreset,
   poolDepthLabelFor,
   poolDrawingDepthOf,
-} from './sheet.js?v=0.14';
+} from './sheet.js?v=0.15';
 
 export { PAPER_PRESETS };
 
@@ -320,7 +320,7 @@ function sketchStrokesFor(d, color) {
 }
 
 function segmentLabelText(segment) {
-  const config = SEGMENT_LABELS[segment.type];
+  const config = Object.hasOwn(SEGMENT_LABELS, segment.type) ? SEGMENT_LABELS[segment.type] : null;
   if (!config) return null;
   return {
     base: config.base,
@@ -544,7 +544,7 @@ function metaLineSvg(line, right, y, theme) {
  * Die UI verwendet sie, um den Ziehbereich der Legende zu treffen.
  */
 export function legendRectFor(topo, layout, bounds, themeKey, lang = DEFAULT_LANGUAGE) {
-  const theme = THEMES[themeKey] || THEMES.color;
+  const theme = Object.hasOwn(THEMES, themeKey) ? THEMES[themeKey] : THEMES.color;
   return legendPanelRectFor(topo, layout, bounds, lang, theme.eauFroide ? LEGEND_TEXT_INSET_METERS : 0);
 }
 
@@ -629,7 +629,7 @@ function renderLegend(topo, layout, theme, bounds, lang = DEFAULT_LANGUAGE) {
  * @returns {string} serialisierbares SVG-Markup
  */
 export function renderTopoSvg(topo, layout, options = {}) {
-  const theme = THEMES[options.theme] || THEMES.color;
+  const theme = Object.hasOwn(THEMES, options.theme) ? THEMES[options.theme] : THEMES.color;
   const lang = options.language || DEFAULT_LANGUAGE;
 
   // Aussenmasse aus dem Layout, danach auf das Seitenverhältnis des Formats

@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.14`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.15`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -853,12 +853,20 @@ topo.xsd              XML-Schema
 
 ## Hinweise
 
+- Texte bleiben im Modell und in JSON als Original erhalten. Bei HTML-/SVG- und
+  XML-Ausgabe werden sie für den jeweiligen Kontext kodiert; XML-Attribute
+  erhalten dabei auch Tabulatoren und Zeilenumbrüche. KI-Endpoints müssen absolute
+  HTTP- oder HTTPS-URLs sein. Das macht einen Endpoint nicht automatisch
+  vertrauenswürdig: Bei der KI-Nutzung gehen Bild und Prompt an den gewählten
+  Dienst und gegebenenfalls auch der API-Key.
 - Alle Symbole sind eigens gezeichnet; es werden keine fremden Assets verwendet.
   Einzige Fremdbibliothek ist pdf.js unter `vendor/pdfjs/` (Apache-2.0).
 - Die Layout-Regeln der Referenz-App sind nicht dokumentiert und wurden aus Beispieldatei
   und gerendertem Topo rekonstruiert — Abweichungen im Detail sind möglich, die Daten
   bleiben aber vollständig kompatibel.
-- Ohne AI-Erkennung verlassen Foto, PDF und Topo den Browser nicht. Wird die AI genutzt,
-  geht genau das Referenzbild an den von dir eingestellten Endpoint — sonst nichts.
-- Der API-Key liegt nur im `localStorage` dieses Browsers. Auf gemeinsam genutzten
-  Rechnern oder öffentlichen Instanzen stattdessen den Proxy-Modus verwenden.
+- Ohne AI-Erkennung verlassen Foto, PDF und Topo den Browser nicht. Die AI-Anfrage
+  enthält das Referenzbild, den Prompt und gegebenenfalls Hinweise zum Topo.
+- Ein in der App eingetragener API-Key liegt im `localStorage` dieses Browsers und
+  wird an den konfigurierten Dienst beziehungsweise beim Fallback an den lokalen
+  Proxy gesendet. Für gemeinsam genutzte Rechner ist ein entsprechend abgesicherter
+  Proxy mit serverseitigem Key vorzuziehen.

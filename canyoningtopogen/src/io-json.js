@@ -1,7 +1,7 @@
 /**
  * Import/Export im Canyon-Explore-JSON-Format (verlustfreier Round-Trip).
  */
-import { normalizeTopo } from './model.js?v=0.14';
+import { normalizeTopo } from './model.js?v=0.15';
 
 /**
  * Baut das JSON-Objekt in der Feldreihenfolge des Originalformats.
@@ -64,7 +64,7 @@ export function topoToJsonObject(topo) {
           if (element.duration_to_walk_in_min > 0) {
             elementOut.duration_to_walk_in_min = element.duration_to_walk_in_min;
           }
-          return Object.assign(elementOut, element._extra || {});
+          return { ...elementOut, ...element._extra };
         }),
       };
       // Erweiterung gegenüber Canyon-Explore: nur schreiben, wenn gesetzt.
@@ -74,10 +74,10 @@ export function topoToJsonObject(topo) {
       if (segment.depth_in_meters != null) {
         segmentOut.depth_in_meters = segment.depth_in_meters;
       }
-      return Object.assign(segmentOut, segment._extra || {});
+      return { ...segmentOut, ...segment._extra };
     }),
   });
-  return Object.assign(out, topo._extra || {});
+  return { ...out, ...topo._extra };
 }
 
 /**

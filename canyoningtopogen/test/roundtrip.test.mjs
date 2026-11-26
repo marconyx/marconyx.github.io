@@ -67,6 +67,72 @@ test('alte WEIR-Dateien werden vor Normalisierung abgewiesen; andere unbekannte 
   assert.equal(raw.segments[0].type, 'FUTURE_TYPE');
 });
 
+test('Nutzertext bleibt in SVG und JSON/XML unverändert und erzeugt kein Markup', () => {
+  const text = `Ä😀 & <svg onload="globalThis.pwned=1"> ' "</text><script>attack()</script> stroke-width="10" #fff"`;
+  const topo = normalizeTopo({
+    canyon_name: text,
+    author: text,
+    duration: text,
+    segments: [{ type: 'WALK', length_in_meters: 20, elements: [
+      { type: 'CUSTOM_TEXT', text },
+      { type: 'PATH', text, horizontal_end_rel_to_segment_start: 4, vertical_end_rel_to_segment_start: 0 },
+    ] }],
+  });
+  const expected = topoToJsonObject(topo);
+  assert.deepEqual(topoToJsonObject(topoFromJson(topoToJson(topo))), expected);
+  const xml = topoToXml(topo);
+  assert.ok(xml.includes('&lt;svg onload=&quot;globalThis.pwned=1&quot;&gt;'));
+  assert.deepEqual(topoToJsonObject(topoFromXml(xml)), expected);
+  for (const theme of Object.keys(THEMES)) {
+    for (const interactive of [false, true]) {
+      const svg = renderTopoSvg(topo, layoutTopo(topo), { theme, interactive });
+      assert.doesNotMatch(svg, /<script|<svg onload=/i);
+      assert.match(svg, /&lt;svg onload=&quot;globalThis\.pwned=1&quot;&gt;/);
+      assert.match(svg, /stroke-width=&quot;10&quot; #fff&quot;/);
+      assert.doesNotMatch(svg, /stroke-width=&quot;8\.2&quot;|#fbfbf8&quot;/);
+    }
+  }
+});
+
+test('XML-Attribute erhalten Leerraum und Unicode-Zeichenreferenzen', () => {
+  const text = 'Zeile 1\nZeile 2\r\t😀 & "\'';
+  const topo = normalizeTopo({ canyon_name: text, segments: [] });
+  const xml = topoToXml(topo);
+  assert.match(xml, /&#10;.*&#13;&#9;/);
+  assert.equal(topoFromXml(xml).canyon_name, text);
+  assert.equal(topoFromXml('<topo canyon_name="&#128512; &#x1F600;"/>').canyon_name, '😀 😀');
+});
+
+test('importierte Prototypnamen bleiben unbekannte Typen statt Symbolkatalog-Einträge', () => {
+  for (const type of ['constructor', '__proto__', 'toString']) {
+    const topo = topoFromJson(JSON.stringify({ segments: [{
+      type, elements: [{ type, text: '<img src=x onerror=attack()>' }],
+    }] }));
+    for (const theme of Object.keys(THEMES)) {
+      const svg = renderTopoSvg(topo, layoutTopo(topo), { theme, interactive: true });
+      assert.ok(svg.includes(type));
+      assert.doesNotMatch(svg, /<img/i);
+    }
+    assert.equal(topoToJsonObject(topo).segments[0].elements[0].type, type);
+  }
+});
+
+test('importierte __proto__-Felder bleiben Daten und verändern keine Objekt-Prototypen', () => {
+  const raw = JSON.parse('{"__proto__":{"polluted":"root"},"segments":[{"type":"WALK","__proto__":{"polluted":"segment"},"elements":[{"type":"STONE","__proto__":{"polluted":"element"}}]}]}');
+  const topo = topoFromJson(raw);
+  for (const imported of [topo, topo.segments[0], topo.segments[0].elements[0]]) {
+    assert.equal(Object.getPrototypeOf(imported._extra), Object.prototype);
+    assert.equal(Object.hasOwn(imported._extra, '__proto__'), true);
+    assert.equal(imported.polluted, undefined);
+  }
+  const json = topoToJsonObject(topo);
+  assert.equal(Object.getPrototypeOf(json), Object.prototype);
+  assert.equal(Object.hasOwn(json, '__proto__'), true);
+  assert.deepEqual(topoToJsonObject(topoFromJson(JSON.stringify(json))), json);
+  assert.deepEqual(topoToJsonObject(topoFromXml(topoToXml(topo))), json);
+  assert.equal({}.polluted, undefined);
+});
+
 function exitRegressionTopo(types) {
   return normalizeTopo({
     canyon_name: 'Exit regression',

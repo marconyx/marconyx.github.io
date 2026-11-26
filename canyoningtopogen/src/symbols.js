@@ -11,13 +11,15 @@
  * Schema. Punkt-Renderer arbeiten um den Anker, Strecken-Renderer erhalten
  * Anfang und Ende; unbekannte Typen bleiben als sichtbarer Platzhalter erhalten.
  */
-import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.14';
+import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.15';
 
 const esc = (value) =>
   String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 
 const stroke = 'stroke="#111" stroke-width="0.08" stroke-linejoin="round" stroke-linecap="round"';
 const thin = 'stroke="#111" stroke-width="0.05"';
@@ -963,10 +965,10 @@ const EAU_FROIDE_RANGE = { PATH: efTrackLine('path'), ROAD: efTrackLine('road') 
 
 /** Punktsymbol im Stil Eau Froide: eigene Form, sonst an die Palette angepasst. */
 export function renderEauFroideSymbol(type, element) {
-  const custom = EAU_FROIDE_SYMBOLS[type];
+  const custom = Object.hasOwn(EAU_FROIDE_SYMBOLS, type) ? EAU_FROIDE_SYMBOLS[type] : null;
   const own = custom ? custom(element) : null;
   if (own) return own;
-  const symbol = SYMBOLS[type];
+  const symbol = symbolFor(type);
   return symbol ? eauFroideRecolor(symbol.render(element, 'color')) : renderUnknownSymbol(element);
 }
 
@@ -979,14 +981,14 @@ export function renderEauFroideSymbol(type, element) {
  * @returns {string} SVG-Fragment; der Typ muss im Symbolkatalog bekannt sein
  */
 export function renderEauFroideRange(type, a, b, options) {
-  const custom = EAU_FROIDE_RANGE[type];
+  const custom = Object.hasOwn(EAU_FROIDE_RANGE, type) ? EAU_FROIDE_RANGE[type] : null;
   if (custom) return custom(a, b, options);
   return eauFroideRecolor(SYMBOLS[type].render(a, b, options));
 }
 
 /** Liefert den Symbolkatalogeintrag oder `null`, wenn der Typ unbekannt ist. */
 export function symbolFor(type) {
-  return SYMBOLS[type] || null;
+  return Object.hasOwn(SYMBOLS, type) ? SYMBOLS[type] : null;
 }
 
 /** Fallback für unbekannte Typen: neutraler Marker, damit Daten sichtbar bleiben. */

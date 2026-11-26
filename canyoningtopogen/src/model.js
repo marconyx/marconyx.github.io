@@ -241,15 +241,9 @@ const ELEMENT_KNOWN_KEYS = new Set([
 ]);
 
 function collectExtra(obj, knownKeys) {
-  const extra = {};
-  let has = false;
-  for (const key of Object.keys(obj || {})) {
-    if (!knownKeys.has(key)) {
-      extra[key] = obj[key];
-      has = true;
-    }
-  }
-  return has ? extra : undefined;
+  // Auch "__proto__" ist ein Dateifeld, kein Setter auf dem Sammelobjekt.
+  const entries = Object.entries(obj || {}).filter(([key]) => !knownKeys.has(key));
+  return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
 function num(value, fallback) {

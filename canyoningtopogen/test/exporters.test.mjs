@@ -94,6 +94,13 @@ test('printSvg kommt ohne Titel klar (leerer String statt "undefined")', () => {
   assert.ok(frame.contentDocument.written.includes('<title></title>'));
 });
 
+test('Drucktitel kann das HTML-Dokument nicht verlassen', () => {
+  const title = `Ä😀 & </title><script>globalThis.pwned=1</script> "'`;
+  const frame = withFakeDocument(() => printSvg('<svg></svg>', title));
+  assert.ok(frame.contentDocument.written.includes('&lt;/title&gt;&lt;script&gt;'));
+  assert.doesNotMatch(frame.contentDocument.written, /<script>/);
+});
+
 function shortListTopo(threshold = null) {
   return normalizeTopo({
     canyon_name: 'Test',

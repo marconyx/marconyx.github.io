@@ -1095,6 +1095,13 @@ export const MESSAGES = {
     it: 'Nessun endpoint configurato.',
     es: 'No hay ningún endpoint configurado.',
   },
+  'ai.status_invalid_endpoint': {
+    de: 'Endpoint muss eine gültige HTTP- oder HTTPS-URL sein.',
+    en: 'The endpoint must be a valid HTTP or HTTPS URL.',
+    fr: 'Le point de terminaison doit être une URL HTTP ou HTTPS valide.',
+    it: "L'endpoint deve essere un URL HTTP o HTTPS valido.",
+    es: 'El endpoint debe ser una URL HTTP o HTTPS válida.',
+  },
   'ai.status_no_key': {
     de: 'Kein API-Key hinterlegt.',
     en: 'No API key configured.',

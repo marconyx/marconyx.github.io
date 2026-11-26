@@ -8,7 +8,7 @@
  *  - null-Werte      : Attribut wird weggelassen
  *  - unbekannte Felder: als JSON im Attribut `extra`
  */
-import { normalizeTopo } from './model.js?v=0.14';
+import { normalizeTopo } from './model.js?v=0.15';
 
 const ROOT_NUMBER_FIELDS = [
   'maximum_walk_length',
@@ -35,7 +35,10 @@ function escapeAttr(value) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/\t/g, '&#9;')
+    .replace(/\n/g, '&#10;')
+    .replace(/\r/g, '&#13;');
 }
 
 function unescapeXml(value) {
@@ -45,7 +48,7 @@ function unescapeXml(value) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
     .replace(/&amp;/g, '&');
 }
 
@@ -169,6 +172,15 @@ function maybeExtra(attributes) {
   }
 }
 
+function mergeExtra(target, attributes) {
+  // Unbekannte Dateifelder dürfen den Prototyp des Rohobjekts nicht setzen.
+  for (const [key, value] of Object.entries(maybeExtra(attributes) ?? {})) {
+    Object.defineProperty(target, key, {
+      value, enumerable: true, writable: true, configurable: true,
+    });
+  }
+}
+
 /**
  * Liest XML mit dem abhängigenkeitsfreien Scanner ein und übergibt das
  * rekonstruierte Objekt an dieselbe Modellnormalisierung wie JSON.
@@ -200,7 +212,7 @@ export function topoFromXml(xml) {
       raw[field] = Number(root.attributes[field]);
     }
   }
-  Object.assign(raw, maybeExtra(root.attributes));
+  mergeExtra(raw, root.attributes);
 
   let currentSegment = null;
   for (const tag of tags) {
@@ -224,7 +236,7 @@ export function topoFromXml(xml) {
       for (const field of SEGMENT_BOOL_FIELDS) {
         currentSegment[field] = tag.attributes[field] === 'true';
       }
-      Object.assign(currentSegment, maybeExtra(tag.attributes));
+      mergeExtra(currentSegment, tag.attributes);
       raw.segments.push(currentSegment);
       if (tag.selfClosing) currentSegment = null;
     } else if (tag.name === 'segment' && tag.closing) {
@@ -245,7 +257,7 @@ export function topoFromXml(xml) {
             ? null
             : Number(tag.attributes[field]);
       }
-      Object.assign(element, maybeExtra(tag.attributes));
+      mergeExtra(element, tag.attributes);
       currentSegment.elements.push(element);
     }
   }

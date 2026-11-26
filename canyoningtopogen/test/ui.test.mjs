@@ -365,6 +365,13 @@ try {
   assert.equal(state.topo.segments[0].length_in_meters, 9);
   elementById('btn-undo').dispatch('click');
   assert.equal(topoToJson(state.topo), imported);
+  const hostile = `Ä😀 & <svg onload="globalThis.pwned=1"> ' "</text><script>attack()</script>`;
+  await open('hostile.json', JSON.stringify({ canyon_name: hostile, segments: [{ type: 'WALK', length_in_meters: 2 }] }));
+  assert.equal(state.topo.canyon_name, hostile);
+  assert.match(svg(), /&lt;svg onload="globalThis\.pwned=1"&gt;/);
+  assert.doesNotMatch(svg(), /<svg onload=|<script>/);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), imported);
 
   const originalCreateObjectURL = URL.createObjectURL;
   const originalCreateElement = document.createElement;
@@ -1045,6 +1052,17 @@ test('der Name aktualisiert das Topo sofort beim Tippen', () => {
   type('topo-name', 'Rio Live');
   assert.equal(state.topo.canyon_name, 'Rio Live');
   assert.ok(svg().includes('Rio Live'), 'Name fehlt im gerenderten SVG');
+});
+
+test('Nutzereingaben bleiben Rohtext im Modell und werden im SVG als Text ausgegeben', () => {
+  const previous = state.topo.canyon_name;
+  const input = `Ä😀 & <svg onload="globalThis.pwned=1"> ' </text><script>attack()</script>`;
+  type('topo-name', input);
+  assert.equal(state.topo.canyon_name, input);
+  assert.equal(elementById('topo-name').value, input);
+  assert.match(svg(), /&lt;svg onload="globalThis\.pwned=1"&gt;/);
+  assert.doesNotMatch(svg(), /<svg onload=|<script>/);
+  type('topo-name', previous);
 });
 
 test('Author erscheint ohne Blur in der Legende – exakt wie der Name', () => {

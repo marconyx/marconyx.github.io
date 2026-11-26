@@ -36,9 +36,9 @@ import {
   defaultLengthFor,
   normalizeTopo,
   todayIso,
-} from './model.js?v=0.14';
-import { SYMBOLS } from './symbols.js?v=0.14';
-import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.14';
+} from './model.js?v=0.15';
+import { SYMBOLS } from './symbols.js?v=0.15';
+import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.15';
 
 const SETTINGS_KEY = 'canyon-topo-generator/ai/v1';
 
@@ -203,6 +203,15 @@ export function registerTopoProvider(fn) {
   customProvider = typeof fn === 'function' ? fn : null;
 }
 
+function validEndpoint(endpoint) {
+  try {
+    const url = new URL(String(endpoint).trim());
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Holt die Liste verfügbarer Modelle. Versucht zuerst direkt, fällt bei
  * CORS-Blockade still auf den lokalen Proxy zurück – genau wie die Topo-Erkennung.
@@ -218,6 +227,7 @@ export async function listModels({ signal, lang = DEFAULT_LANGUAGE } = {}) {
     return { ok: false, reason: t(lang, 'ai.models_proxy_mode') };
   }
   if (!settings.endpoint) return { ok: false, reason: t(lang, 'ai.status_no_endpoint') };
+  if (!validEndpoint(settings.endpoint)) return { ok: false, reason: t(lang, 'ai.status_invalid_endpoint') };
   if (!settings.apiKey) return { ok: false, reason: t(lang, 'ai.status_no_key') };
   const bad = badKeyCharacter(settings.apiKey);
   if (bad) return { ok: false, reason: t(lang, 'ai.models_bad_key_char', { char: bad }) };
@@ -313,6 +323,7 @@ export function isTopoProviderAvailable() {
   if (customProvider) return true;
   const spec = providerById(settings.providerId);
   if (!settings.endpoint) return false;
+  if (!validEndpoint(settings.endpoint)) return false;
   if (spec.needsKey && !settings.apiKey) return false;
   if (spec.needsKey && badKeyCharacter(settings.apiKey)) return false;
   if (spec.id !== 'proxy' && !settings.model) return false;
@@ -324,6 +335,7 @@ export function providerStatusText(lang = DEFAULT_LANGUAGE) {
   if (customProvider) return t(lang, 'ai.status_custom_provider');
   const spec = providerById(settings.providerId);
   if (!settings.endpoint) return t(lang, 'ai.status_no_endpoint');
+  if (!validEndpoint(settings.endpoint)) return t(lang, 'ai.status_invalid_endpoint');
   if (spec.needsKey && !settings.apiKey) return t(lang, 'ai.status_no_key');
   if (spec.needsKey) {
     const bad = badKeyCharacter(settings.apiKey);

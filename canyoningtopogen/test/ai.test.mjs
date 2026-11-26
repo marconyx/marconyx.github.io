@@ -21,12 +21,14 @@ import {
   buildPromptParts,
   extractJsonObject,
   getAiSettings,
+  isTopoProviderAvailable,
   listModels,
   loadAiSettings,
   photoToTopo,
   pickModelIds,
   promptTemplateById,
   providerById,
+  providerStatusText,
   sanitizeTopoCandidate,
   saveAiSettings,
 } from '../src/ai.js';
@@ -93,9 +95,49 @@ function jsonResponse(payload, status = 200) {
 
 console.log('AI-Antwortverarbeitung');
 
+await testAsync('ungültige Endpoint-Schemata lösen weder direkte noch Proxy-Anfragen aus', async () => {
+  const original = getAiSettings();
+  try {
+    await withFetch(() => { throw new Error('unerwarteter Netzwerkzugriff'); }, async () => {
+      for (const providerId of ['openai', 'anthropic', 'proxy']) {
+        for (const endpoint of ['javascript:alert(1)', 'data:text/plain,x', '/relative', 'not a URL']) {
+          saveAiSettings({ providerId, endpoint, apiKey: 'key', model: 'model' });
+          assert.equal(isTopoProviderAvailable(), false);
+          assert.match(providerStatusText(), /HTTP- oder HTTPS-URL/);
+          await assert.rejects(photoToTopo('data:image/png;base64,AA=='), /HTTP- oder HTTPS-URL/);
+          if (providerId !== 'proxy') {
+            assert.match((await listModels()).reason, /HTTP- oder HTTPS-URL/);
+          }
+        }
+      }
+      for (const endpoint of ['http://127.0.0.1:8787/api/topo', 'https://example.test/v1']) {
+        saveAiSettings({ providerId: 'openai', endpoint, apiKey: 'key', model: 'model' });
+        assert.equal(isTopoProviderAvailable(), true);
+      }
+    });
+  } finally {
+    saveAiSettings(original);
+  }
+});
+
 test('JSON in Markdown-Codefence wird erkannt', () => {
   const answer = 'Klar, hier das Topo:\n```json\n{"canyon_name":"Test","segments":[]}\n```\nViel Spaß!';
   assert.equal(extractJsonObject(answer).canyon_name, 'Test');
+});
+
+test('AI-Antworttext bleibt im Modell erhalten und wird im SVG als Text behandelt', () => {
+  const text = `Ä😀 & "</text><script>attack()</script> stroke-width="10" #fff"`;
+  const topo = sanitizeTopoCandidate({ canyon_name: text, segments: [{
+    type: 'WALK', length_in_meters: 10, elements: [{ type: 'CUSTOM_TEXT', text }],
+  }] });
+  assert.equal(topo.canyon_name, text);
+  assert.equal(topo.segments[0].elements[0].text, text);
+  for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+    const svg = renderTopoSvg(topo, layoutTopo(topo), { theme });
+    assert.doesNotMatch(svg, /<script>/);
+    assert.match(svg, /&lt;script&gt;attack\(\)&lt;\/script&gt;/);
+    assert.match(svg, /stroke-width=&quot;10&quot; #fff&quot;/);
+  }
 });
 
 test('verschachtelte Objekte und Klammern in Strings brechen den Parser nicht', () => {

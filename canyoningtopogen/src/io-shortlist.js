@@ -5,7 +5,7 @@
  * gültig ist. `SEGMENT_SHORTCUTS` enthält ausschliesslich Exportkürzel: WALK
  * wird als `W` ausgegeben und das alte `WA` beim Kurzlistenimport abgewiesen.
  */
-import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js?v=0.14';
+import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js?v=0.15';
 
 // Die Werte sind eindeutig; das Modell führt hier nur kanonische Kürzel auf.
 const CODE_BY_TYPE = Object.fromEntries(
