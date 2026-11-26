@@ -7,7 +7,7 @@
  *
  * Neue Symbole lassen sich allein durch einen Eintrag in SYMBOLS ergänzen.
  */
-import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.11';
+import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.12';
 
 const esc = (value) =>
   String(value ?? '')
@@ -470,6 +470,15 @@ export const SYMBOLS = {
         <line x1="0.9" y1="-0.3" x2="1.55" y2="-0.2"/>
         <line x1="0.9" y1="-0.3" x2="1.3" y2="0.2"/>
       </g>${label(element.text, 0, -0.9)}`,
+  },
+  BUSH: {
+    label: 'Busch',
+    category: 'nature',
+    render: (element, mode) => `
+      <path d="M-1.25,0 C-1.55,-0.25 -1.35,-0.75 -0.95,-0.72 C-0.8,-1.2 -0.3,-1.3 0,-1.05 C0.35,-1.35 0.85,-1.15 0.95,-0.72 C1.35,-0.75 1.55,-0.25 1.25,0 Z"
+        fill="${mode === 'bw' ? '#fff' : '#1f7a34'}" ${stroke}/>
+      <path d="M-0.55,-0.15 L-0.72,-0.43 M0,-0.12 L0,-0.52 M0.55,-0.15 L0.72,-0.43" fill="none" ${stroke}/>
+      ${label(element.text, 0, -1.55)}`,
   },
   LEAF_TREE: {
     label: 'Laubbaum',

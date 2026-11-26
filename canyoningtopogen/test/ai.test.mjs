@@ -471,6 +471,11 @@ test('die optimierte Vorlage nennt jeden Segment- und jeden Symboltyp', () => {
   }
 });
 
+test('aktive AI-Vorlagen kennen den Busch als eigenen Symboltyp', () => {
+  assert.match(buildOptimizedInstructions(), /BUSH \(Busch\).*niedriger, breiter Strauch/);
+  assert.match(buildCompactInstructions(), /Elementtypen:.*\bBUSH\b/);
+});
+
 test('die optimierte Vorlage priorisiert die Kodierung der Topo-Kurzlabels', () => {
   const prompt = buildOptimizedInstructions();
   const mapping = prompt.split('KODIERUNGS-MAPPING (Priorität!):')[1]?.split('\nAUSGABE:')[0];

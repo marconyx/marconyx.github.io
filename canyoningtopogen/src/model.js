@@ -98,6 +98,7 @@ export const ELEMENT_TYPES = [
   'SHARP_EDGE',
   'LADDER',
   'TRUNK',
+  'BUSH',
   'LEAF_TREE',
   'CONIFER_TREE',
   'CAVE',

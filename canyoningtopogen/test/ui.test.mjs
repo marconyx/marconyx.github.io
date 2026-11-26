@@ -1721,6 +1721,26 @@ test('ein Anbieterwechsel setzt Endpoint und Modell des Anbieters', () => {
 
 /* ------------------------------------------------------------- Rappel Guide */
 
+test('Busch lässt sich über Natur platzieren und per Undo/Redo wiederherstellen', () => {
+  state.topo = createEmptyTopo();
+  state.selection = { kind: 'segment', segmentIndex: 0 };
+  elementById('topo-name').dispatch('input');
+  const before = topoToJson(state.topo);
+  const button = elementById('symbol-palette').descendants()
+    .find((node) => node.tagName === 'BUTTON' && node.textContent === 'Busch');
+  assert.ok(button);
+  button.dispatch('click');
+  assert.equal(state.topo.segments[0].elements.at(-1).type, 'BUSH');
+  assert.equal(state.selection.kind, 'element');
+  assert.ok(svg().includes('M-1.25,0 C-1.55,-0.25'));
+  const after = topoToJson(state.topo);
+  assert.match(storage.get('canyon-topo-generator/state/v1'), /"BUSH"/);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), before);
+  elementById('btn-redo').dispatch('click');
+  assert.equal(topoToJson(state.topo), after);
+});
+
 test('Helikopter lässt sich als Punktsymbol platzieren und per Undo/Redo wiederherstellen', () => {
   state.topo = createEmptyTopo();
   state.selection = { kind: 'segment', segmentIndex: 0 };

@@ -28,9 +28,9 @@ import {
   defaultLengthFor,
   normalizeTopo,
   todayIso,
-} from './model.js?v=0.11';
-import { SYMBOLS } from './symbols.js?v=0.11';
-import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.11';
+} from './model.js?v=0.12';
+import { SYMBOLS } from './symbols.js?v=0.12';
+import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.12';
 
 const SETTINGS_KEY = 'canyon-topo-generator/ai/v1';
 
@@ -506,6 +506,7 @@ const ELEMENT_DESCRIPTIONS = {
   SHARP_EDGE: 'Scharfe Kante – Seilrisiko, meist als Kreuz mit roten Ringen markiert.',
   LADDER: 'Fixe Leiter – zwei Holme mit Sprossen.',
   TRUNK: 'Liegender Baumstamm/Totholz, quer im Bachbett.',
+  BUSH: 'Busch – niedriger, breiter Strauch ohne ausgeprägten Baumstamm.',
   LEAF_TREE: 'Laubbaum – runde Krone. Als Verankerung nur brauchbar, wenn lebend.',
   CONIFER_TREE: 'Nadelbaum – spitze Krone.',
   CAVE: 'Höhle/Unterstand – dunkler Bogen in der Wand.',

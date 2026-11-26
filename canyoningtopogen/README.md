@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.11`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.12`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -48,7 +48,7 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
   Nach Erfolg bleibt der Fokus im
   geleerten Feld; bestehende Auswahl, normale Plus-Aktion und Autosave bleiben
   erhalten.
-- **Symbole**: 43 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Helikopter, Funk- und Liftmasten,
+- **Symbole**: 44 Topo-Symbole (Bolts, Blöcke, Büsche, Bäume, Brücken, Helikopter, Funk- und Liftmasten,
   Fluchtwege, Gefahrenzeichen wie Lebensgefahr, Baum- und Felsblockverhau, Steinschlag,
   Unterspülung, Siphon, Wege und Umgehungen …)
   per Klick einfügen und im Topo frei verschieben. Ist bereits ein Symbol ausgewählt,
@@ -277,7 +277,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | --- | --- |
 | Verankerung | `BOLT`, `BOLT_LEFT`, `BOLT_RIGHT`, `RAPPEL_GUIDE` (Rappel Guide, RG) |
 | Gefahren | `SHARP_EDGE`, `TRAPPED_STONE`, `BACKWATER`, `WARNING_AND_TEXT`, `DEATH_HAZARD` (Lebensgefahr), `TREE_JAM` (Baumverhau), `BOULDER_JAM` (Felsblockverhau), `ROCKFALL` (Steinschlag), `UNDERCUT` (Unterspülung), `DANGEROUS_CURRENT` (gefährliche Strömung), `SIPHON` |
-| Natur | `STONE`, `TRUNK`, `LEAF_TREE`, `CONIFER_TREE` (beide auch abgestorben), `CAVE`, `INLET_LEFT`, `INLET_RIGHT` |
+| Natur | `STONE`, `TRUNK`, `BUSH`, `LEAF_TREE`, `CONIFER_TREE` (beide auch abgestorben), `CAVE`, `INLET_LEFT`, `INLET_RIGHT` |
 | Infrastruktur | `LADDER`, `STONE_BRIDGE`, `WOODEN_BRIDGE`, `STONE_HOUSE`, `HELICOPTER` (Helikopter), `RADIO_MAST` (Funkmast), `LIFT_MAST` (Liftmast), `SQUARE_CONCRETE_BASE` (Betonsockel eckig), `STEEL_BEAM` (Stahlträger), `WATER_DIVERSION` (Wasserableitung), `ROPE_RAILING_LEFT`, `ROPE_RAILING_RIGHT`, `PATH` (Pfad), `ROAD` (Weg / Strasse) |
 | Beschriftung | `ELEMENT_NUMBER`, `CUSTOM_TEXT`, `ESCAPE_EXIT_LEFT`, `ESCAPE_EXIT_RIGHT`, `BYPASS` (Umgehung), `ENTRY_POINT` (Einstieg), `EXIT_POINT` (Ausstieg) |
 

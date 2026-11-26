@@ -387,7 +387,7 @@ function rappelGeometry(topo) {
 }
 
 test('Infrastrukturtypen sind im Modell und mit deutschen Labels in der Palette', () => {
-  assert.equal(ELEMENT_TYPES.length, 43);
+  assert.equal(ELEMENT_TYPES.length, 44);
   assert.deepEqual(new Set(Object.keys(SYMBOLS)), new Set(ELEMENT_TYPES));
   const group = symbolOptions().find((category) => category.id === 'infrastructure');
   for (const [type, name] of Object.entries(infrastructure)) {
@@ -468,6 +468,33 @@ test('neue SVG-Silhouetten sind einzeln unterscheidbar und in Farbe sowie S/W le
       assert.ok(drawings.some((drawing) => drawing.includes('#c52b24')));
     }
   }
+});
+
+test('Busch steht unter Natur und überlebt JSON/XML in allen Darstellungsstilen', () => {
+  assert.ok(ELEMENT_TYPES.includes('BUSH'));
+  assert.ok(symbolOptions().find((group) => group.id === 'nature').symbols.some((symbol) => symbol.type === 'BUSH'));
+  const topo = normalizeTopo({
+    segments: [{ type: 'WALK', length_in_meters: 20, elements: [{
+      type: 'BUSH', horizontal_start_rel_to_segment_start: 7,
+      vertical_start_rel_to_segment_start: 2, size: 1.5, text: 'Busch & Stein',
+    }] }],
+  });
+  const expected = topo.segments[0].elements[0];
+  assert.deepEqual(topoFromJson(topoToJson(topo)).segments[0].elements[0], expected);
+  const xml = topoToXml(topo);
+  assert.deepEqual(topoFromXml(xml).segments[0].elements[0], expected);
+  const validation = spawnSync('xmllint', ['--noout', '--schema', xsdPath, '-'], {
+    input: xml, encoding: 'utf8',
+  });
+  if (!validation.error) assert.equal(validation.status, 0, validation.stderr);
+  for (const theme of Object.keys(THEMES)) {
+    const svg = renderTopoSvg(topo, layoutTopo(topo), { theme, interactive: true });
+    assert.ok(svg.includes('M-1.25,0 C-1.55,-0.25'), `${theme}: Busch fehlt`);
+    assert.ok(svg.includes('Busch &amp; Stein'), `${theme}: Beschriftung fehlt`);
+    assert.match(svg, /class="topo-element" data-seg="0" data-el="0"/);
+  }
+  assert.notEqual(SYMBOLS.BUSH.render({ text: '' }), SYMBOLS.LEAF_TREE.render({ text: '' }));
+  assert.match(SYMBOLS.BUSH.render({ text: '' }, 'bw'), /fill="#fff"/);
 });
 
 test('Abgestorbene Bäume überleben den JSON- und XML-Roundtrip', () => {

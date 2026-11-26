@@ -384,6 +384,7 @@ export const SYMBOL_LABELS = {
   TRAPPED_STONE: { de: 'Klemmblock', en: 'Chockstone', fr: 'Bloc coincé', it: 'Masso incastrato', es: 'Bloque empotrado' },
   SHARP_EDGE: { de: 'Scharfe Kante', en: 'Sharp edge', fr: 'Arête coupante', it: 'Spigolo tagliente', es: 'Arista cortante' },
   TRUNK: { de: 'Baumstamm', en: 'Tree trunk', fr: 'Tronc d\u2019arbre', it: 'Tronco d\u2019albero', es: 'Tronco' },
+  BUSH: { de: 'Busch', en: 'Bush', fr: 'Buisson', it: 'Cespuglio', es: 'Arbusto' },
   LEAF_TREE: { de: 'Laubbaum', en: 'Deciduous tree', fr: 'Arbre feuillu', it: 'Albero a foglie larghe', es: 'Árbol de hoja caduca' },
   CONIFER_TREE: { de: 'Nadelbaum', en: 'Conifer tree', fr: 'Conifère', it: 'Conifera', es: 'Conífera' },
   CAVE: { de: 'Höhle', en: 'Cave', fr: 'Grotte', it: 'Grotta', es: 'Cueva' },
