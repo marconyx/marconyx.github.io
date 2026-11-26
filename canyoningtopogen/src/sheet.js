@@ -6,7 +6,7 @@
  * wissen, wie breit eine Zeile im gewählten Format sein darf, und dafür zählt
  * das fertige Blatt inklusive Rand und Legende – nicht nur die nackte Zeile.
  */
-import { DEFAULT_LANGUAGE, translateLegendLabel } from './i18n.js?v=0.12';
+import { DEFAULT_LANGUAGE, translateLegendLabel } from './i18n.js?v=0.13';
 
 
 /** Zielformate. `width`/`height` in Pixeln (A4 bei 96 dpi), `null` = frei. */

@@ -497,6 +497,32 @@ test('Busch steht unter Natur und überlebt JSON/XML in allen Darstellungsstilen
   assert.match(SYMBOLS.BUSH.render({ text: '' }, 'bw'), /fill="#fff"/);
 });
 
+test('Busch ist in farbigen Stilen grün und in monochromen Stilen neutral', () => {
+  const topo = normalizeTopo({
+    segments: [{ type: 'WALK', length_in_meters: 20, elements: [{ type: 'BUSH' }] }],
+  });
+  const expected = {
+    color: ['#2a9d48', '#14532d'],
+    alpiner_classic: ['#377b4d', '#214f32'],
+    eau_froide: ['#00ff00', '#004d00'],
+    bw: ['#fff', '#111'],
+  };
+  for (const [theme, [fill, stroke]] of Object.entries(expected)) {
+    const svg = renderTopoSvg(topo, layoutTopo(topo), { theme });
+    const path = /<path d="M-1\.25,0 C-1\.55,-0\.25[^>]*>/.exec(svg)?.[0];
+    assert.ok(path, `${theme}: Busch fehlt`);
+    assert.ok(path.includes(`fill="${fill}"`), `${theme}: Füllfarbe`);
+    assert.ok(path.includes(`stroke="${stroke}"`), `${theme}: Kontur`);
+  }
+  const sketch = renderTopoSvg(topo, layoutTopo(topo), { theme: 'pencil_sketch' });
+  const path = /<path d="M-1\.25,0 C-1\.55,-0\.25[^>]*>/.exec(sketch)?.[0];
+  assert.ok(path);
+  for (const [, color] of path.matchAll(/(?:fill|stroke)="#([0-9a-f]{6})"/g)) {
+    assert.equal(color.slice(0, 2), color.slice(2, 4));
+    assert.equal(color.slice(2, 4), color.slice(4, 6));
+  }
+});
+
 test('Abgestorbene Bäume überleben den JSON- und XML-Roundtrip', () => {
   const topo = normalizeTopo({
     ...original,
