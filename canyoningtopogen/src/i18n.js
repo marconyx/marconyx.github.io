@@ -30,6 +30,24 @@ function pick(entry, lang) {
 
 /** Statischer Text (`textContent`) je Element-ID. */
 export const UI_TEXT = {
+  'lbl-segment-shortcut': {
+    de: 'Segment-Shortcut (m)', en: 'Segment shortcut (m)', fr: 'Raccourci de segment (m)',
+    it: 'Scorciatoia segmento (m)', es: 'Atajo de segmento (m)',
+  },
+  'hint-segment-shortcut': {
+    de: 'Kürzel + positive Länge in Metern; Enter hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.',
+    en: 'Code + positive length in metres; Enter appends one segment at the end. Decimal point or comma, any letter case.',
+    fr: 'Code + longueur positive en mètres ; Entrée ajoute un segment à la fin. Point ou virgule décimale, majuscules ou minuscules.',
+    it: 'Codice + lunghezza positiva in metri; Invio aggiunge un segmento alla fine. Punto o virgola decimale, maiuscole o minuscole.',
+    es: 'Código + longitud positiva en metros; Intro añade un segmento al final. Punto o coma decimal, mayúsculas o minúsculas.',
+  },
+  'shortcut-mapping': {
+    de: 'R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W ist mehrdeutig)',
+    en: 'R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W is ambiguous)',
+    fr: 'R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W est ambigu)',
+    it: 'R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W è ambiguo)',
+    es: 'R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W es ambiguo)',
+  },
   'lbl-menu': { de: 'Menü', en: 'Menu', fr: 'Menu', it: 'Menu', es: 'Menú' },
   'lbl-language': { de: 'Sprache', en: 'Language', fr: 'Langue', it: 'Lingua', es: 'Idioma' },
   'btn-new': { de: 'Neu', en: 'New', fr: 'Nouveau', it: 'Nuovo', es: 'Nuevo' },
@@ -263,6 +281,10 @@ export const UI_TITLES = {
 
 /** `placeholder`-Attribut je Element-ID. */
 export const UI_PLACEHOLDERS = {
+  'segment-shortcut': {
+    de: 'R10, RD23, RW12,5', en: 'R10, RD23, RW12.5', fr: 'R10, RD23, RW12,5',
+    it: 'R10, RD23, RW12,5', es: 'R10, RD23, RW12,5',
+  },
   'ai-notes': {
     de: 'z. B. Gerätebezeichnungen, Sprache, Region',
     en: 'e.g. device names, language, region',
@@ -524,6 +546,41 @@ export function translatePromptHint(id, lang) {
 
 /** Vorlagen für dynamische Statusmeldungen, Validierungshinweise usw. */
 export const MESSAGES = {
+  'shortcut.format': {
+    de: 'Ein Kürzel mit Länge eingeben, z. B. R10 oder RD23.',
+    en: 'Enter a code and length, e.g. R10 or RD23.',
+    fr: 'Saisir un code et une longueur, p. ex. R10 ou RD23.',
+    it: 'Inserisci un codice e una lunghezza, ad es. R10 o RD23.',
+    es: 'Introduce un código y una longitud, p. ej. R10 o RD23.',
+  },
+  'shortcut.ambiguous': {
+    de: 'W ist mehrdeutig: WA für WALK oder WE für WEIR verwenden.',
+    en: 'W is ambiguous: use WA for WALK or WE for WEIR.',
+    fr: 'W est ambigu : utiliser WA pour WALK ou WE pour WEIR.',
+    it: 'W è ambiguo: usa WA per WALK o WE per WEIR.',
+    es: 'W es ambiguo: usa WA para WALK o WE para WEIR.',
+  },
+  'shortcut.unknown': {
+    de: 'Unbekanntes Kürzel. Gültig sind R, RD, RW, P, J, S, C, WA und WE.',
+    en: 'Unknown code. Valid codes are R, RD, RW, P, J, S, C, WA and WE.',
+    fr: 'Code inconnu. Codes valides : R, RD, RW, P, J, S, C, WA et WE.',
+    it: 'Codice sconosciuto. Codici validi: R, RD, RW, P, J, S, C, WA e WE.',
+    es: 'Código desconocido. Códigos válidos: R, RD, RW, P, J, S, C, WA y WE.',
+  },
+  'shortcut.length': {
+    de: 'Eine endliche Länge grösser als 0 eingeben, z. B. R10 oder RW12,5. Keine Einheiten oder weiteren Shortcuts.',
+    en: 'Enter a finite length greater than 0, e.g. R10 or RW12.5. No units or additional shortcuts.',
+    fr: 'Saisir une longueur finie supérieure à 0, p. ex. R10 ou RW12,5. Sans unité ni autre raccourci.',
+    it: 'Inserisci una lunghezza finita maggiore di 0, ad es. R10 o RW12,5. Senza unità o altre scorciatoie.',
+    es: 'Introduce una longitud finita mayor que 0, p. ej. R10 o RW12,5. Sin unidades ni otros atajos.',
+  },
+  'status.shortcut_added': {
+    de: '{type} mit {length} m unten angefügt.',
+    en: '{type} with {length} m appended at the end.',
+    fr: '{type} de {length} m ajouté à la fin.',
+    it: '{type} di {length} m aggiunto alla fine.',
+    es: '{type} de {length} m añadido al final.',
+  },
   'status.ready': { de: 'bereit', en: 'ready', fr: 'prêt', it: 'pronto', es: 'listo' },
   'status.restored': {
     de: 'Letzter Stand wiederhergestellt.',

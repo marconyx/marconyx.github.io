@@ -225,7 +225,7 @@ globalThis.FileReader = class {
 import { readFileSync } from 'node:fs';
 
 import { PROMPT_TEMPLATES, getAiSettings, providerById } from '../src/ai.js';
-import { SEGMENT_TYPES, validateTopo, createEmptyTopo } from '../src/model.js';
+import { SEGMENT_TYPES, SEGMENT_SHORTCUTS, parseSegmentShortcut, validateTopo, createEmptyTopo, defaultAngleFor } from '../src/model.js';
 import { symbolOptions } from '../src/symbols.js';
 import { topoToJson } from '../src/io-json.js';
 import { topoToXml } from '../src/io-xml.js';
@@ -605,7 +605,7 @@ test('bestehende Felder bleiben in ihrem Abschnitt und AI-Einstellungen separat 
       'topo-date',
       'topo-length-shortening-threshold',
     ],
-    ['select-new-segment', 'btn-add-segment', 'segment-list'],
+    ['select-new-segment', 'btn-add-segment', 'segment-shortcut', 'hint-segment-shortcut', 'shortcut-mapping', 'segment-shortcut-error', 'segment-list'],
     ['file-photo', 'photo-page-row', 'photo-opacity', 'photo-scale', 'photo-x', 'photo-y', 'btn-photo-clear'],
     ['btn-photo-ai', 'btn-ai-cancel', 'ai-status', 'ai-settings', 'ai-provider', 'ai-model', 'ai-key'],
     ['inspector'],
@@ -909,6 +909,110 @@ test('die Verkürzungsschwelle ist leer deaktiviert und Undo/Redo-fähig', () =>
   state.topo.length_shortening_threshold_meters = null;
   input.value = '';
   input.dispatch('input');
+});
+
+test('Shortcuts decken jeden Segmenttyp eindeutig ab und parsen echte Meterwerte', () => {
+  assert.deepEqual(Object.values(SEGMENT_SHORTCUTS).sort(), [...SEGMENT_TYPES].sort());
+  for (const [code, type] of Object.entries(SEGMENT_SHORTCUTS)) {
+    assert.deepEqual(parseSegmentShortcut(`${code}23`), { type, length_in_meters: 23 });
+    assert.deepEqual(parseSegmentShortcut(`  ${code.toLowerCase()} 12,5  `), { type, length_in_meters: 12.5 });
+  }
+  assert.deepEqual(parseSegmentShortcut('R10'), { type: 'RAPPEL', length_in_meters: 10 });
+  assert.deepEqual(parseSegmentShortcut('RD23'), { type: 'RAPPEL_DRY', length_in_meters: 23 });
+  assert.deepEqual(parseSegmentShortcut('rW0.25'), { type: 'RAPPEL_WET', length_in_meters: 0.25 });
+  assert.equal(parseSegmentShortcut('W10').error, 'shortcut.ambiguous');
+  for (const value of [
+    '', '10', 'R', 'RD ', 'R0', 'R0,0', 'R-10', 'R+10', 'R1e3', 'RNaN',
+    'RInfinity', `R${'9'.repeat(400)}`, 'R10m', 'R10 RD23', 'R1,2.3',
+    'R1.', 'R.5', 'R1/2', 'R1 000', 'X10', 'RAPPEL10', 'constructor10',
+  ]) {
+    assert.ok(parseSegmentShortcut(value).error, `abgewiesen: ${value}`);
+  }
+});
+
+test('Enter hängt Shortcuts genau einmal am Ende an, erhält Auswahl und speichert echte Längen', () => {
+  elementById('btn-new').dispatch('click');
+  state.selection = { kind: 'segment', segmentIndex: 0 };
+  const selection = state.selection;
+  const before = [...state.topo.segments];
+  const input = elementById('segment-shortcut');
+  assert.match(markup, /<label for="segment-shortcut">/);
+  assert.match(markup, /id="segment-shortcut"[^>]*aria-describedby="hint-segment-shortcut shortcut-mapping segment-shortcut-error"/);
+  assert.match(markup, /id="segment-shortcut"[^>]*enterkeyhint="done"/);
+  assert.match(markup, /id="segment-shortcut-error" aria-live="polite"/);
+
+  const expected = [];
+  for (const [code, type] of Object.entries(SEGMENT_SHORTCUTS)) {
+    input.value = `${code.toLowerCase()}12,5`;
+    input.dispatch('input');
+    input.dispatch('keydown', { key: 'Tab' });
+    assert.equal(state.topo.segments.length, before.length + expected.length);
+    let prevented = false;
+    let stopped = false;
+    input.dispatch('keydown', {
+      key: 'Enter',
+      preventDefault() { prevented = true; },
+      stopPropagation() { stopped = true; },
+    });
+    assert.ok(prevented && stopped, 'kein Formular-Submit oder übergeordnetes Enter');
+    expected.push(type);
+    assert.deepEqual(state.topo.segments.slice(0, before.length), before);
+    assert.deepEqual(state.topo.segments.slice(before.length).map((segment) => segment.type), expected);
+    const segment = state.topo.segments.at(-1);
+    assert.equal(segment.length_in_meters, 12.5);
+    assert.equal(segment.angle_in_degrees, defaultAngleFor(type));
+    assert.equal(state.selection, selection);
+    assert.equal(input.value, '');
+    assert.equal(document.activeElement, input);
+    assert.equal(input.getAttribute('aria-invalid'), 'false');
+    assert.equal(elementById('segment-shortcut-error').textContent, '');
+    assert.match(elementById('segment-list').children.at(-1).children[0].textContent, new RegExp(`${type} 12.5 m`));
+    assert.equal(JSON.parse(storage.get('canyon-topo-generator/state/v1')).topo.segments.at(-1).length_in_meters, 12.5);
+  }
+  const after = topoToJson(state.topo);
+  input.value = 'R10';
+  for (const extra of [{ repeat: true }, { isComposing: true }, { keyCode: 229 }]) {
+    input.dispatch('keydown', { key: 'Enter', ...extra });
+    assert.equal(topoToJson(state.topo), after);
+  }
+  for (const value of ['W10', 'R', 'R0', 'R-2', 'R10m', 'R10 RD23', '', 'X10']) {
+    input.value = value;
+    input.dispatch('input');
+    input.dispatch('keydown', { key: 'Enter' });
+    assert.equal(topoToJson(state.topo), after);
+    assert.equal(state.selection, selection);
+    assert.equal(input.value, value);
+    assert.equal(input.getAttribute('aria-invalid'), 'true');
+    assert.ok(elementById('segment-shortcut-error').textContent);
+  }
+  input.value = 'W10';
+  input.dispatch('keydown', { key: 'Enter' });
+  const language = elementById('select-language');
+  language.value = 'en';
+  language.dispatch('change');
+  assert.match(elementById('segment-shortcut-error').textContent, /ambiguous/);
+  assert.match(elementById('hint-segment-shortcut').textContent, /Enter appends/);
+  language.value = 'de';
+  language.dispatch('change');
+  input.dispatch('input');
+  assert.equal(input.getAttribute('aria-invalid'), 'false');
+  assert.equal(elementById('segment-shortcut-error').textContent, '');
+  elementById('btn-undo').dispatch('click');
+  assert.equal(state.topo.segments.length, before.length + expected.length - 1, 'Fehler erzeugen keinen Undo-Schritt');
+  elementById('btn-redo').dispatch('click');
+  assert.equal(topoToJson(state.topo), after);
+  elementById('btn-undo').dispatch('click');
+  input.value = 'R10';
+  input.dispatch('keydown', { key: 'Enter' });
+  const branched = topoToJson(state.topo);
+  elementById('btn-redo').dispatch('click');
+  assert.equal(topoToJson(state.topo), branched, 'neuer Shortcut verwirft Redo wie jede Editieraktion');
+  // Die bestehende Plus-Aktion fügt weiterhin hinter der Auswahl ein.
+  state.selection = { kind: 'segment', segmentIndex: 0 };
+  elementById('select-new-segment').value = 'JUMP';
+  elementById('btn-add-segment').dispatch('click');
+  assert.equal(state.topo.segments[1].type, 'JUMP');
+  assert.equal(state.selection.segmentIndex, 1);
 });
 
 /* ------------------------------------------------------- Format und Layout */

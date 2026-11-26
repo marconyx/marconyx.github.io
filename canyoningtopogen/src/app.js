@@ -15,6 +15,7 @@ import {
   defaultAngleFor,
   defaultLengthFor,
   normalizeTopo,
+  parseSegmentShortcut,
   validateTopo,
 } from './model.js';
 import { topoFromJson, topoToJson } from './io-json.js';
@@ -89,6 +90,14 @@ function applyTranslations() {
   renderPalette();
   refreshStatusTranslation();
   refreshAiTranslations();
+  refreshShortcutError();
+}
+
+let shortcutError = null;
+
+function refreshShortcutError() {
+  $('segment-shortcut-error').textContent = shortcutError ? t(lang(), shortcutError) : '';
+  $('segment-shortcut').setAttribute('aria-invalid', String(!!shortcutError));
 }
 
 /* ----------------------------------------------------------------- Zustand */
@@ -686,16 +695,16 @@ function addSymbol(type, { dead = false } = {}) {
   );
 }
 
-function addSegment(type) {
+function addSegment(type, { length = defaultLengthFor(type), append = false } = {}) {
   pushHistory();
   const segment = createSegment(type, {
-    length_in_meters: defaultLengthFor(type),
+    length_in_meters: length,
     angle_in_degrees: defaultAngleFor(type),
   });
   const index = selectedSegmentIndex();
-  const insertAt = index < 0 ? state.topo.segments.length : index + 1;
+  const insertAt = append || index < 0 ? state.topo.segments.length : index + 1;
   state.topo.segments.splice(insertAt, 0, segment);
-  state.selection = { kind: 'segment', segmentIndex: insertAt };
+  if (!append) state.selection = { kind: 'segment', segmentIndex: insertAt };
   render();
 }
 
@@ -1311,6 +1320,25 @@ function bindToolbar() {
   }
   $('btn-add-segment').addEventListener('click', () => {
     addSegment(segmentSelect.value);
+  });
+  const shortcutInput = $('segment-shortcut');
+  shortcutInput.addEventListener('input', () => {
+    shortcutError = null;
+    refreshShortcutError();
+  });
+  shortcutInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.repeat) return;
+    const parsed = parseSegmentShortcut(shortcutInput.value);
+    shortcutError = parsed.error || null;
+    refreshShortcutError();
+    if (shortcutError) return;
+    addSegment(parsed.type, { length: parsed.length_in_meters, append: true });
+    shortcutInput.value = '';
+    shortcutInput.focus();
+    setStatusKey('status.shortcut_added', { type: parsed.type, length: parsed.length_in_meters });
   });
 }
 

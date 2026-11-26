@@ -11,7 +11,7 @@
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/bachab-logo.png" alt="bachab" width="400" height="133" />
-          <span class="toolbar__version" id="app-version">v0.1</span>
+          <span class="toolbar__version" id="app-version">v0.2</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
@@ -118,6 +118,12 @@
               <select id="select-new-segment"></select>
               <button type="button" id="btn-add-segment" title="Segment hinzufügen" aria-label="Segment hinzufügen">+</button>
             </div>
+            <label for="segment-shortcut"><span id="lbl-segment-shortcut">Segment-Shortcut (m)</span>
+              <input type="text" id="segment-shortcut" placeholder="R10, RD23, RW12,5" aria-describedby="hint-segment-shortcut shortcut-mapping segment-shortcut-error" aria-invalid="false" enterkeyhint="done" autocomplete="off" spellcheck="false" />
+            </label>
+            <p class="hint" id="hint-segment-shortcut">Kürzel + positive Länge in Metern; Enter hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.</p>
+            <p class="hint" id="shortcut-mapping">R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W ist mehrdeutig)</p>
+            <p class="hint shortcut-error" id="segment-shortcut-error" aria-live="polite"></p>
             <ol class="segment-list" id="segment-list"></ol>
           </div>
         </details>

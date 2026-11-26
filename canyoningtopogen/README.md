@@ -13,6 +13,20 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
   bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
+- **Segment-Shortcuts**: Das beschriftete Feld unter der Segmentauswahl hängt mit
+  Enter genau ein Segment **am Listenende** an, unabhängig von der aktuellen Auswahl.
+  `R10` ergibt RAPPEL mit 10 m, `RD23` RAPPEL_DRY mit 23 m, `RW12,5`
+  RAPPEL_WET mit 12.5 m. Alle Kürzel: `R`=RAPPEL, `RD`=RAPPEL_DRY,
+  `RW`=RAPPEL_WET, `P`=POOL, `J`=JUMP, `S`=SLIDE, `C`=CLIMB,
+  `WA`=WALK und `WE`=WEIR. **`W` ist mehrdeutig und wird abgewiesen**;
+  alle Kürzel stehen auch direkt beim Feld. Gross-/Kleinschreibung, äusserer
+  Leerraum und Leerraum zwischen Kürzel und Zahl sind erlaubt. Die Länge muss
+  endlich und grösser als 0 sein; Dezimalpunkt und Dezimalkomma sind möglich.
+  Fehlende/negative Zahlen, Einheiten, Exponentialschreibweise und mehrere
+  Shortcuts pro Eingabe werden mit einer übersetzten Meldung abgewiesen, ohne
+  das Topo oder die Undo-Historie zu ändern. Nach Erfolg bleibt der Fokus im
+  geleerten Feld; bestehende Auswahl, normale Plus-Aktion und Autosave bleiben
+  erhalten. Jeder angehängte Shortcut ist ein Undo/Redo-Schritt.
 - **Symbole**: 43 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Helikopter, Funk- und Liftmasten,
   Fluchtwege, Gefahrenzeichen wie Lebensgefahr, Baum- und Felsblockverhau, Steinschlag,
   Unterspülung, Siphon, Wege und Umgehungen …)

@@ -17,6 +17,32 @@ export const SEGMENT_TYPES = [
   'WEIR',
 ];
 
+export const SEGMENT_SHORTCUTS = {
+  WA: 'WALK',
+  P: 'POOL',
+  R: 'RAPPEL',
+  RD: 'RAPPEL_DRY',
+  RW: 'RAPPEL_WET',
+  J: 'JUMP',
+  S: 'SLIDE',
+  C: 'CLIMB',
+  WE: 'WEIR',
+};
+
+/** Parse one shortcut strictly; never let normalization replace an invalid length. */
+export function parseSegmentShortcut(value) {
+  const match = /^([a-z]+)\s*(.*)$/i.exec(String(value).trim());
+  if (!match) return { error: 'shortcut.format' };
+  const code = match[1].toUpperCase();
+  if (code === 'W') return { error: 'shortcut.ambiguous' };
+  if (!Object.hasOwn(SEGMENT_SHORTCUTS, code)) return { error: 'shortcut.unknown' };
+  const number = match[2];
+  if (!/^\d+(?:[.,]\d+)?$/.test(number)) return { error: 'shortcut.length' };
+  const length = Number(number.replace(',', '.'));
+  if (!Number.isFinite(length) || length <= 0) return { error: 'shortcut.length' };
+  return { type: SEGMENT_SHORTCUTS[code], length_in_meters: length };
+}
+
 /** Kurzlabel im Topo, z. B. R_d10 / J6 / S6. */
 export const SEGMENT_LABELS = {
   RAPPEL: { base: 'R', sub: '' },

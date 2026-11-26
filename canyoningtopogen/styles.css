@@ -265,6 +265,14 @@ input[type='date'] {
   line-height: 1.4;
 }
 
+.shortcut-error {
+  color: #b42318;
+}
+
+.shortcut-error:empty {
+  display: none;
+}
+
 .row {
   display: flex;
   align-items: stretch;
