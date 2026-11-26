@@ -14,7 +14,8 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
   bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
 - **Segment-Shortcuts**: Das beschriftete Feld unter der Segmentauswahl hängt mit
-  Enter genau ein Segment **am Listenende** an, unabhängig von der aktuellen Auswahl.
+  Enter oder dem Plus-Knopf rechts daneben genau ein Segment **am Listenende** an,
+  unabhängig von der aktuellen Auswahl.
   `R10` ergibt RAPPEL mit 10 m, `RD23` RAPPEL_DRY mit 23 m, `RW12,5`
   RAPPEL_WET mit 12.5 m. Alle Kürzel: `R`=RAPPEL, `RD`=RAPPEL_DRY,
   `RW`=RAPPEL_WET, `P`=POOL, `J`=JUMP, `S`=SLIDE, `C`=CLIMB,

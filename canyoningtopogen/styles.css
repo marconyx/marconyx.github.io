@@ -346,11 +346,16 @@ input[type='date'] {
 
 /* Kompakt: Auswahl und „+“ auf einer niedrigen Zeile. */
 .segment-add select,
+.segment-add input,
 .segment-add button {
   height: 1.6rem;
   padding-top: 0;
   padding-bottom: 0;
   line-height: 1;
+}
+
+.segment-add input {
+  min-width: 0;
 }
 
 .segment-add button {
@@ -737,6 +742,10 @@ input[type='date'] {
 
   button,
   .button {
+    min-width: 44px;
+  }
+
+  .segment-add button {
     min-width: 44px;
   }
 

@@ -1352,11 +1352,7 @@ function bindToolbar() {
     shortcutError = null;
     refreshShortcutError();
   });
-  shortcutInput.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.repeat) return;
+  const addShortcut = () => {
     const parsed = parseSegmentShortcut(shortcutInput.value);
     shortcutError = parsed.error || null;
     refreshShortcutError();
@@ -1365,6 +1361,14 @@ function bindToolbar() {
     shortcutInput.value = '';
     shortcutInput.focus();
     setStatusKey('status.shortcut_added', { type: parsed.type, length: parsed.length_in_meters });
+  };
+  $('btn-add-shortcut').addEventListener('click', addShortcut);
+  shortcutInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.repeat) return;
+    addShortcut();
   });
 }
 

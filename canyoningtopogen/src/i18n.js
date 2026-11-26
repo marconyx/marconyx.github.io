@@ -42,11 +42,11 @@ export const UI_TEXT = {
     it: 'Scorciatoia segmento (m)', es: 'Atajo de segmento (m)',
   },
   'hint-segment-shortcut': {
-    de: 'Kürzel + positive Länge in Metern; Enter hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.',
-    en: 'Code + positive length in metres; Enter appends one segment at the end. Decimal point or comma, any letter case.',
-    fr: 'Code + longueur positive en mètres ; Entrée ajoute un segment à la fin. Point ou virgule décimale, majuscules ou minuscules.',
-    it: 'Codice + lunghezza positiva in metri; Invio aggiunge un segmento alla fine. Punto o virgola decimale, maiuscole o minuscole.',
-    es: 'Código + longitud positiva en metros; Intro añade un segmento al final. Punto o coma decimal, mayúsculas o minúsculas.',
+    de: 'Kürzel + positive Länge in Metern; Enter oder + hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.',
+    en: 'Code + positive length in metres; Enter or + appends one segment at the end. Decimal point or comma, any letter case.',
+    fr: 'Code + longueur positive en mètres ; Entrée ou + ajoute un segment à la fin. Point ou virgule décimale, majuscules ou minuscules.',
+    it: 'Codice + lunghezza positiva in metri; Invio o + aggiunge un segmento alla fine. Punto o virgola decimale, maiuscole o minuscole.',
+    es: 'Código + longitud positiva en metros; Intro o + añade un segmento al final. Punto o coma decimal, mayúsculas o minúsculas.',
   },
   'shortcut-mapping': {
     de: 'R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W ist mehrdeutig)',
@@ -241,6 +241,11 @@ export const UI_HTML = {
 
 /** `title`-Attribut je Element-ID. */
 export const UI_TITLES = {
+  'btn-add-shortcut': {
+    de: 'Segment aus Shortcut hinzufügen', en: 'Add segment from shortcut',
+    fr: 'Ajouter un segment à partir du raccourci', it: 'Aggiungi segmento dalla scorciatoia',
+    es: 'Añadir segmento desde el atajo',
+  },
   'btn-add-segment': {
     de: 'Segment hinzufügen',
     en: 'Add segment',
@@ -303,6 +308,11 @@ export const UI_PLACEHOLDERS = {
 
 /** `aria-label`-Attribut je Element-ID. */
 export const UI_ARIA_LABELS = {
+  'btn-add-shortcut': {
+    de: 'Segment aus Shortcut hinzufügen', en: 'Add segment from shortcut',
+    fr: 'Ajouter un segment à partir du raccourci', it: 'Aggiungi segmento dalla scorciatoia',
+    es: 'Añadir segmento desde el atajo',
+  },
   'btn-add-segment': {
     de: 'Segment hinzufügen',
     en: 'Add segment',

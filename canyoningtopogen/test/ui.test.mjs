@@ -361,6 +361,57 @@ try {
 
 
 
+test('Plus neben Shortcut verwendet dieselbe Validierung und Undo-Historie wie Enter', () => {
+  assert.match(markup, /<label for="segment-shortcut">[\s\S]*?<\/label>\s*<div class="segment-add">\s*<input[^>]*id="segment-shortcut"[^>]*\/>\s*<button type="button" id="btn-add-shortcut"[^>]*aria-label="[^"]+"[^>]*>\+<\/button>/);
+  elementById('btn-new').dispatch('click');
+  state.selection = { kind: 'segment', segmentIndex: 0 };
+  const selection = state.selection;
+  const before = topoToJson(state.topo);
+  const count = state.topo.segments.length;
+  const input = elementById('segment-shortcut');
+  const button = elementById('btn-add-shortcut');
+  for (const invalid of ['W10', 'RD', 'R0', 'R10 J3', '']) {
+    input.value = invalid;
+    input.dispatch('input');
+    button.dispatch('click');
+    assert.equal(topoToJson(state.topo), before);
+    assert.equal(state.selection, selection);
+    assert.equal(input.value, invalid);
+    assert.equal(input.getAttribute('aria-invalid'), 'true');
+    assert.ok(elementById('segment-shortcut-error').textContent);
+  }
+  input.value = 'rd23,5';
+  input.dispatch('input');
+  button.dispatch('click');
+  assert.equal(state.topo.segments.length, count + 1);
+  assert.equal(state.topo.segments.at(-1).type, 'RAPPEL_DRY');
+  assert.equal(state.topo.segments.at(-1).length_in_meters, 23.5);
+  assert.equal(state.selection, selection);
+  assert.equal(input.value, '');
+  assert.equal(document.activeElement, input);
+  assert.equal(input.getAttribute('aria-invalid'), 'false');
+  assert.equal(JSON.parse(storage.get('canyon-topo-generator/state/v1')).topo.segments.at(-1).length_in_meters, 23.5);
+  const clicked = topoToJson(state.topo);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), before);
+  elementById('btn-redo').dispatch('click');
+  assert.equal(topoToJson(state.topo), clicked);
+  input.value = 'R10';
+  let prevented = false;
+  input.dispatch('keydown', { key: 'Enter', preventDefault() { prevented = true; } });
+  assert.ok(prevented);
+  assert.equal(state.topo.segments.at(-1).type, 'RAPPEL');
+  assert.equal(state.topo.segments.at(-1).length_in_meters, 10);
+  const language = elementById('select-language');
+  language.value = 'en';
+  language.dispatch('change');
+  assert.equal(button.getAttribute('aria-label'), 'Add segment from shortcut');
+  assert.equal(button.title, 'Add segment from shortcut');
+  language.value = 'de';
+  language.dispatch('change');
+});
+
+
 /** Tippen wie im Browser: `input` pro Zeichen, `change` beim Verlassen. */
 function type(id, text, { commit = false } = {}) {
   const node = elementById(id);
@@ -692,7 +743,7 @@ test('bestehende Felder bleiben in ihrem Abschnitt und AI-Einstellungen separat 
       'topo-date',
       'topo-length-shortening-threshold',
     ],
-    ['select-new-segment', 'btn-add-segment', 'segment-shortcut', 'hint-segment-shortcut', 'shortcut-mapping', 'segment-shortcut-error', 'segment-list'],
+    ['select-new-segment', 'btn-add-segment', 'segment-shortcut', 'btn-add-shortcut', 'hint-segment-shortcut', 'shortcut-mapping', 'segment-shortcut-error', 'segment-list'],
     ['file-photo', 'photo-page-row', 'photo-opacity', 'photo-scale', 'photo-x', 'photo-y', 'btn-photo-clear'],
     ['btn-photo-ai', 'btn-ai-cancel', 'ai-status', 'ai-settings', 'ai-provider', 'ai-model', 'ai-key'],
     ['inspector'],
@@ -1078,7 +1129,7 @@ test('Enter hängt Shortcuts genau einmal am Ende an, erhält Auswahl und speich
   language.value = 'en';
   language.dispatch('change');
   assert.match(elementById('segment-shortcut-error').textContent, /ambiguous/);
-  assert.match(elementById('hint-segment-shortcut').textContent, /Enter appends/);
+  assert.match(elementById('hint-segment-shortcut').textContent, /Enter or \+ appends/);
   language.value = 'de';
   language.dispatch('change');
   input.dispatch('input');
