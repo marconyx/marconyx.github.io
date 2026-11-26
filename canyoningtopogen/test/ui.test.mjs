@@ -312,6 +312,7 @@ try {
     ['RAPPEL', 10], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5], ['WALK', 7],
   ]);
   assert.match(elementById('status').textContent, /nur Typ und Länge/);
+  assert.equal(elementById('status').title, elementById('status').textContent);
   const imported = topoToJson(state.topo);
   elementById('btn-undo').dispatch('click');
   assert.equal(topoToJson(state.topo), previous);
@@ -332,10 +333,12 @@ try {
   assert.equal(topoToJson(state.topo), imported);
   assert.equal(storage.get('canyon-topo-generator/state/v1'), persisted);
   assert.match(elementById('status').textContent, /Zeile 3:.*ungültig.*Zeile 4:/);
+  assert.equal(elementById('status').title, elementById('status').textContent);
   const language = elementById('select-language');
   language.value = 'en';
   language.dispatch('change');
   assert.match(elementById('status').textContent, /Line 3:.*invalid.*Line 4:/);
+  assert.equal(elementById('status').title, elementById('status').textContent);
   language.value = 'de';
   language.dispatch('change');
   elementById('btn-undo').dispatch('click');
@@ -629,7 +632,7 @@ test('Touch-Scrollen wird nur auf Symbolen verhindert, nicht auf freiem Gelände
 test('bachab-Logo steht nur in der responsiven App-Kopfzeile neben Titel und Status', () => {
   const header = /<header class="toolbar">([\s\S]*?)<\/header>/.exec(markup)?.[1];
   assert.ok(header);
-  assert.match(header, /<div class="toolbar__brand">\s*<div class="toolbar__logo-wrap">\s*<img class="toolbar__logo" src="assets\/logo\.png" alt="bachab" width="35" height="29" \/>\s*<span class="toolbar__version" id="app-version">v0\.\d+<\/span>\s*<\/div>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<span class="toolbar__hint" id="status">bereit<\/span>/);
+  assert.match(header, /<div class="toolbar__brand">\s*<div class="toolbar__logo-wrap">\s*<img class="toolbar__logo" src="assets\/logo\.png" alt="bachab" width="35" height="29" \/>\s*<span class="toolbar__version" id="app-version">v0\.\d+<\/span>\s*<\/div>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<span class="toolbar__hint" id="status" title="bereit">bereit<\/span>/);
   assert.equal((markup.match(/assets\/logo\.png/g) || []).length, 1);
   const image = readFileSync(new URL('../assets/logo.png', import.meta.url));
   assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
@@ -639,7 +642,8 @@ test('bachab-Logo steht nur in der responsiven App-Kopfzeile neben Titel und Sta
   assert.match(css, /\.toolbar\s*\{[^}]*flex-wrap: wrap;/);
   assert.match(css, /\.toolbar__brand\s*\{[^}]*align-items: center;[^}]*min-width: 0;[^}]*max-width: 100%;/);
   assert.match(css, /\.toolbar__logo\s*\{[^}]*flex: none;[^}]*width: auto;[^}]*height: 1rem;/);
-  assert.match(css, /\.toolbar__brand-text\s*\{[^}]*min-width: 0;[^}]*overflow-wrap: anywhere;/);
+  assert.match(css, /\.toolbar__brand-text\s*\{[^}]*display: grid;[^}]*grid-template-columns: minmax\(0, max-content\);[^}]*min-width: 0;[^}]*overflow-wrap: anywhere;/);
+  assert.match(css, /\.toolbar__hint\s*\{[^}]*width: 0;[^}]*min-width: 100%;[^}]*overflow: hidden;[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis;/);
   assert.match(css, /\.toolbar__group\s*\{[^}]*flex-wrap: wrap;[^}]*max-width: 100%;/);
   for (const id of ['btn-new', 'btn-save-json', 'btn-export-svg', 'btn-export-png', 'btn-print', 'btn-undo']) {
     assert.ok(header.includes(`id="${id}"`), `${id} bleibt in der Kopfzeile`);

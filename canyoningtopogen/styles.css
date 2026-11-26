@@ -67,13 +67,18 @@ body {
 }
 
 .toolbar__brand-text {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, max-content);
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
 .toolbar__hint {
+  width: 0;
+  min-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 0.75rem;
   color: var(--muted);
 }
