@@ -6,18 +6,18 @@
  * aus `sheet.js`, damit Layoutoptimierung, Drag-Hit-Testing und SVG dieselben
  * Grenzen verwenden. Themen ändern nur die Darstellung, nicht die Geometrie.
  */
-import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.9';
+import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.10';
 import {
   symbolFor,
   renderUnknownSymbol,
   renderEauFroideSymbol,
   renderEauFroideRange,
   EAU_FROIDE_PALETTE,
-} from './symbols.js?v=0.9';
+} from './symbols.js?v=0.10';
 import {
   DEFAULT_LANGUAGE,
   translateLegendLabel,
-} from './i18n.js?v=0.9';
+} from './i18n.js?v=0.10';
 import {
   PAPER_PRESETS,
   contentBoundsFor,
@@ -33,7 +33,7 @@ import {
   paperPreset,
   poolDepthLabelFor,
   poolDrawingDepthOf,
-} from './sheet.js?v=0.9';
+} from './sheet.js?v=0.10';
 
 export { PAPER_PRESETS };
 

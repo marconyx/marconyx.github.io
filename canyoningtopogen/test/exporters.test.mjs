@@ -163,12 +163,22 @@ test('alle Typen und extreme endliche Werte überleben Export und Import', () =>
   assert.ok(restored.segments.every((segment) => segment.elements.length === 0));
 });
 
-test('Import akzeptiert alte Kurzlisten-Exporte mit Zeilenenden, BOM und WA-Alias', () => {
-  const topo = topoFromShortList('\uFEFF  r10\r\n\rWA120\nRD23\r rw12,5 \n4. WALK: 0.0000001 m\n5. RAPPEL_DRY: 1e+21 m\n');
+test('Import akzeptiert Kurzlisten-Exporte mit Zeilenenden, BOM und altem nummeriertem Format', () => {
+  const topo = topoFromShortList('\uFEFF  r10\r\n\rW120\nRD23\r rw12,5 \n4. WALK: 0.0000001 m\n5. RAPPEL_DRY: 1e+21 m\n');
   assert.deepEqual(topo.segments.map((s) => [s.type, s.length_in_meters]), [
     ['RAPPEL', 10], ['WALK', 120], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5],
     ['WALK', 1e-7], ['RAPPEL_DRY', 1e21],
   ]);
+});
+
+test('WA wird in Kurzlisten mit Zeilennummer abgewiesen', () => {
+  for (const entry of ['WA120', 'wa 120', 'Wa12,5']) {
+    assert.throws(() => topoFromShortList(`R10\n${entry}\nW20`), (error) => {
+      assert.ok(error instanceof ShortListError);
+      assert.deepEqual(error.issues, [{ position: 2, code: 'shortcut.unknown' }]);
+      return true;
+    });
+  }
 });
 
 test('alte WEIR-Kürzel werden mit Zeilennummer abgewiesen', () => {

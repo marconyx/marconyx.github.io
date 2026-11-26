@@ -2,10 +2,10 @@
  * Verlustarme Kurzlisten (TXT) mit genau einem Segmentkürzel und einer Länge
  * pro Zeile. Das Format speichert absichtlich keine Topo-Metadaten oder
  * Elementdaten; der Import normalisiert nur dann, wenn jede nichtleere Zeile
- * gültig ist. `SEGMENT_SHORTCUTS` enthält ausschliesslich Exportkürzel, daher
- * wird WALK neu als `W` ausgegeben, während der Parser alte `WA`-Dateien liest.
+ * gültig ist. `SEGMENT_SHORTCUTS` enthält ausschliesslich Exportkürzel: WALK
+ * wird als `W` ausgegeben und das alte `WA` beim Kurzlistenimport abgewiesen.
  */
-import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js?v=0.9';
+import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js?v=0.10';
 
 // Die Werte sind eindeutig; das Modell führt hier nur kanonische Kürzel auf.
 const CODE_BY_TYPE = Object.fromEntries(
@@ -96,6 +96,12 @@ export function topoFromShortList(text) {
         return;
       }
       input = `${code}${decimalString(length)}`;
+    }
+    // Der gemeinsame Parser akzeptiert WA weiterhin interaktiv, nicht im TXT-Format.
+    const code = /^([a-z]+)/i.exec(input)?.[1].toUpperCase();
+    if (code === 'WA') {
+      issues.push({ position: index + 1, code: 'shortcut.unknown' });
+      return;
     }
     const parsed = parseSegmentShortcut(input);
     if (parsed.error) {

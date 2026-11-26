@@ -307,7 +307,7 @@ try {
   assert.match(markup, /id="file-open" accept="[^"]*\.txt/);
   elementById('btn-new').dispatch('click');
   const previous = topoToJson(state.topo);
-  await open('route.TXT', 'R10\r\nRD23\nrw12,5\nWA7\n');
+  await open('route.TXT', 'R10\r\nRD23\nrw12,5\nW7\n');
   assert.deepEqual(state.topo.segments.map((s) => [s.type, s.length_in_meters]), [
     ['RAPPEL', 10], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5], ['WALK', 7],
   ]);
@@ -319,6 +319,10 @@ try {
   elementById('btn-redo').dispatch('click');
   assert.equal(topoToJson(state.topo), imported);
   const persisted = storage.get('canyon-topo-generator/state/v1');
+  await open('old-wa.txt', 'R10\nWA20\nW30');
+  assert.equal(topoToJson(state.topo), imported);
+  assert.equal(storage.get('canyon-topo-generator/state/v1'), persisted);
+  assert.match(elementById('status').textContent, /Zeile 2:.*Unbekanntes Kürzel/);
   for (const [name, text] of [
     ['old.json', JSON.stringify({ segments: [{ type: 'WALK' }, { type: 'WEIR', depth_in_meters: 4 }] })],
     ['old.xml', '<topo><segment type="WALK"/><segment type="WEIR" depth_in_meters="4"/></topo>'],

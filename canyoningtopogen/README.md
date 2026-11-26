@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.9`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.10`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -25,7 +25,7 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
   `R10` ergibt RAPPEL mit 10 m, `RD23` RAPPEL_DRY mit 23 m, `RW12,5`
   RAPPEL_WET mit 12.5 m. Alle Kürzel: `R`=RAPPEL, `RD`=RAPPEL_DRY,
   `RW`=RAPPEL_WET, `P`=POOL, `J`=JUMP, `S`=SLIDE, `C`=CLIMB,
-  `W`=WALK. Das alte `WA` wird beim Import von Kurzlisten weiterhin akzeptiert;
+  `W`=WALK. Das alte `WA` wird beim Import von Kurzlisten abgewiesen;
   das frühere WEIR-Kürzel `WE` wird abgewiesen;
   alle Kürzel stehen auch in der Hilfe hinter dem `?` neben dem Feld. Das
   Pop-up lässt sich mit dem Schliessen-Knopf, Escape oder einem Klick ausserhalb
@@ -114,7 +114,8 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
   Über **Öffnen…** lassen sich `.txt`-Kurzlisten als neues Topo öffnen. Dabei
   erhalten alle nicht enthaltenen Daten Standardwerte; für vollständige Topos
   JSON oder XML verwenden. Punkt und Komma, Gross-/Kleinschreibung, Leerzeilen
-  und übliche Zeilenenden sind erlaubt; alte `WA`-Einträge bleiben lesbar.
+  und übliche Zeilenenden sind erlaubt; alte `WA`-Einträge sind ungültig und
+  müssen vor dem Import durch `W` ersetzt werden.
   Auch das frühere Format wie
   `2. RAPPEL_DRY: 12.5 m` wird für bekannte Typen importiert. Ungültige Zeilen
   werden mit Zeilennummern gemeldet und es wird nichts teilweise importiert.
