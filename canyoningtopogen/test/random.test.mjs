@@ -270,7 +270,7 @@ test('die Gehzeit steht nur bei WALK und am Fluchtweg', () => {
   }
 });
 
-test('der Zufall-Knopf steht neben dem Beispiel-Knopf in der Toolbar', () => {
+test('der Zufall-Knopf steht neben dem Beispiel-Knopf in der Neu-Auswahl', () => {
   assert.match(
     html,
     /id="btn-example"[\s\S]{0,200}id="btn-random"/,

@@ -4,18 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Canyoning Topo Generator</title>
-    <link rel="stylesheet" href="styles.css?v=0.10" />
+    <link rel="stylesheet" href="styles.css?v=0.11" />
   </head>
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/logo.png" alt="bachab" width="35" height="29" />
-          <span class="toolbar__version" id="app-version">v0.10</span>
+          <span class="toolbar__version" id="app-version">v0.11</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
-          <span class="toolbar__hint" id="status" title="bereit">bereit</span>
+          <span class="toolbar__hint" id="status" title="bereit" role="status" aria-live="polite">bereit</span>
         </div>
       </div>
 
@@ -37,10 +37,15 @@
             <option value="es">ES</option>
           </select>
         </label>
-        <button type="button" id="btn-new">Neu</button>
-        <button type="button" id="btn-example">Beispiel</button>
-        <button type="button" id="btn-random" title="Zufälliges Topo mit allen Segmenttypen und Symbolen">Zufall</button>
-        <label class="button" for="file-open"><span id="lbl-file-open">Öffnen…</span></label>
+        <button type="button" id="btn-new" popovertarget="new-menu" aria-controls="new-menu" aria-expanded="false">Neu</button>
+        <div id="new-menu" class="save-menu" popover="auto" role="group" aria-label="Neu">
+          <button type="button" id="btn-new-default">Neu</button>
+          <button type="button" id="btn-new-empty">Leer</button>
+          <button type="button" id="btn-example">Beispiel</button>
+          <button type="button" id="btn-random" title="Zufälliges Topo mit allen Segmenttypen und Symbolen">Zufall</button>
+          <button type="button" id="btn-open-file"><span id="lbl-file-open">Öffnen…</span></button>
+          <button type="button" id="btn-open-oc">Von OC öffnen</button>
+        </div>
         <input type="file" id="file-open" accept=".json,.xml,.txt,application/json,text/xml,text/plain" hidden />
       </div>
 
@@ -53,6 +58,7 @@
           <button type="button" id="btn-export-png">PNG</button>
           <button type="button" id="btn-export-shortlist">Kurzliste</button>
           <button type="button" id="btn-print">Drucken / PDF</button>
+          <button type="button" id="btn-save-oc">Auf OC speichern</button>
         </div>
       </div>
 
@@ -285,6 +291,6 @@
         </div>
       </form>
     </dialog>
-    <script type="module" src="src/app.js?v=0.10"></script>
+    <script type="module" src="src/app.js?v=0.11"></script>
   </body>
 </html>

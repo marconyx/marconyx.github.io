@@ -76,6 +76,7 @@ class FakeNode {
     this.listeners.get(type).push(handler);
   }
   removeEventListener() {}
+  click() { this.dispatch('click'); }
   focus() { document.activeElement = this; }
   contains(node) { return node === this || this.descendants().includes(node); }
   matches(selector) { return selector === ':popover-open' && !!this.popoverOpen; }
@@ -305,7 +306,7 @@ try {
     await fileInput.listeners.get('change')[0]({ target: fileInput });
   };
   assert.match(markup, /id="file-open" accept="[^"]*\.txt/);
-  elementById('btn-new').dispatch('click');
+  elementById('btn-new-default').dispatch('click');
   const previous = topoToJson(state.topo);
   await open('route.TXT', 'R10\r\nRD23\nrw12,5\nW7\n');
   assert.deepEqual(state.topo.segments.map((s) => [s.type, s.length_in_meters]), [
@@ -441,7 +442,7 @@ test('Segmentauswahl folgt dem Shortcut-Feld und dessen Fehleranzeige', () => {
 
 test('Plus neben Shortcut verwendet dieselbe Validierung und Undo-Historie wie Enter', () => {
   assert.match(markup, /<div class="segment-add">\s*<input[^>]*id="segment-shortcut"[^>]*\/>\s*<button type="button" id="btn-add-shortcut"[^>]*aria-label="[^"]+"[^>]*>\+<\/button>/);
-  elementById('btn-new').dispatch('click');
+  elementById('btn-new-default').dispatch('click');
   state.selection = { kind: 'segment', segmentIndex: 0 };
   const selection = state.selection;
   const before = topoToJson(state.topo);
@@ -521,7 +522,7 @@ test('freies Pointer-Dragging behält SVG-Ziel, Maßstab, Range-Spanne und eine 
   for (const layout of ['serpentine', 'cascaded', 'linear']) {
     for (const paper of ['screen', 'a4_portrait']) {
       for (const threshold of [null, 10]) {
-        elementById('btn-new').dispatch('click');
+        elementById('btn-new-default').dispatch('click');
         Object.assign(state.topo, {
           length_shortening_threshold_meters: threshold,
           segments: [{
@@ -615,7 +616,7 @@ test('freies Pointer-Dragging behält SVG-Ziel, Maßstab, Range-Spanne und eine 
     }
   }
   Object.assign(state.view, { layout: 'serpentine', paper: 'screen', zoom: 1 });
-  elementById('btn-new').dispatch('click');
+  elementById('btn-new-default').dispatch('click');
   elementById('btn-zoom-fit').dispatch('click');
 });
 
@@ -636,7 +637,7 @@ test('Touch-Scrollen wird nur auf Symbolen verhindert, nicht auf freiem Gelände
 test('bachab-Logo steht nur in der responsiven App-Kopfzeile neben Titel und Status', () => {
   const header = /<header class="toolbar">([\s\S]*?)<\/header>/.exec(markup)?.[1];
   assert.ok(header);
-  assert.match(header, /<div class="toolbar__brand">\s*<div class="toolbar__logo-wrap">\s*<img class="toolbar__logo" src="assets\/logo\.png" alt="bachab" width="35" height="29" \/>\s*<span class="toolbar__version" id="app-version">v0\.\d+<\/span>\s*<\/div>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<span class="toolbar__hint" id="status" title="bereit">bereit<\/span>/);
+  assert.match(header, /<div class="toolbar__brand">\s*<div class="toolbar__logo-wrap">\s*<img class="toolbar__logo" src="assets\/logo\.png" alt="bachab" width="35" height="29" \/>\s*<span class="toolbar__version" id="app-version">v0\.\d+<\/span>\s*<\/div>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<span class="toolbar__hint" id="status" title="bereit" role="status" aria-live="polite">bereit<\/span>/);
   assert.equal((markup.match(/assets\/logo\.png/g) || []).length, 1);
   const image = readFileSync(new URL('../assets/logo.png', import.meta.url));
   assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
@@ -871,7 +872,7 @@ test('Foto-Funktionen und ein neues Topo ändern keine Klappzustände', () => {
   }
   elementById('btn-photo-clear').dispatch('click');
   assert.equal(state.photo.src, null);
-  elementById('btn-new').dispatch('click');
+  elementById('btn-new-default').dispatch('click');
   assert.ok(svg().startsWith('<svg'));
   assert.ok(PANEL_SECTION_IDS.every((id) => !elementById(id).open));
   assert.ok(freshPanels().every((node) => !node.open));
@@ -1163,7 +1164,7 @@ test('Shortcuts decken jeden Segmenttyp eindeutig ab und parsen echte Meterwerte
 });
 
 test('Shortcut-Stapel wird atomar angehängt und in einem Schritt rückgängig gemacht', () => {
-  elementById('btn-new').dispatch('click');
+  elementById('btn-new-default').dispatch('click');
   const select = elementById('select-new-segment');
   assert.ok(!select.options.some((option) => option.value === 'WEIR'));
   const input = elementById('segment-shortcut');
@@ -1196,7 +1197,7 @@ test('Shortcut-Stapel wird atomar angehängt und in einem Schritt rückgängig g
 });
 
 test('Enter hängt Shortcuts genau einmal am Ende an, erhält Auswahl und speichert echte Längen', () => {
-  elementById('btn-new').dispatch('click');
+  elementById('btn-new-default').dispatch('click');
   state.selection = { kind: 'segment', segmentIndex: 0 };
   const selection = state.selection;
   const before = [...state.topo.segments];
@@ -1976,8 +1977,13 @@ function fakeResponsiveRoot() {
     addEventListener: (type, handler) => listeners.push(handler),
   };
   node('btn-save');
+  node('btn-new');
+  const newMenu = node('new-menu', 'div');
+  for (const id of ['btn-new-default', 'btn-new-empty', 'btn-example', 'btn-random', 'btn-open-file', 'btn-open-oc']) {
+    newMenu.appendChild(node(id));
+  }
   const saveMenu = node('save-menu', 'div');
-  for (const id of ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print']) {
+  for (const id of ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print', 'btn-save-oc']) {
     saveMenu.appendChild(node(id));
   }
   const root = new FakeNode('document');
@@ -1994,11 +2000,103 @@ function fakeResponsiveRoot() {
   return { nodes, api, root, win, setMobile, get: (id) => nodes.get(id) };
 }
 
-test('Speichern-Popover bündelt genau sechs Exportaktionen inkl. Kurzliste', () => {
+test('Neu-Popover bündelt die sechs Aktionen ohne doppelte Toolbar-Knöpfe', () => {
+  assert.match(markup, /id="btn-new" popovertarget="new-menu" aria-controls="new-menu" aria-expanded="false">Neu/);
+  const menu = /<div id="new-menu"[^>]*popover="auto"[^>]*>([\s\S]*?)<\/div>/.exec(markup)[1];
+  const ids = ['btn-new-default', 'btn-new-empty', 'btn-example', 'btn-random', 'btn-open-file', 'btn-open-oc'];
+  assert.deepEqual([...menu.matchAll(/<button[^>]*id="([^"]+)"/g)].map((match) => match[1]), ids);
+  for (const id of ids) assert.equal((markup.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1);
+});
+
+test('Neu-Auswahl: Tastatur, Fokus, Aussenklick und Smartphone-Toolbar', () => {
+  const { get, root, win } = fakeResponsiveRoot();
+  const menu = get('new-menu');
+  get('btn-menu').dispatch('click');
+  menu.showPopover();
+  assert.equal(get('btn-menu').getAttribute('aria-expanded'), 'true', 'Auslöser bleibt sichtbar');
+  assert.equal(get('btn-new').getAttribute('aria-expanded'), 'true');
+  assert.equal(get('btn-new-default').focused, true);
+  menu.dispatch('keydown', { key: 'End', target: get('btn-new-default') });
+  assert.equal(get('btn-open-oc').focused, true);
+  menu.dispatch('keydown', { key: 'ArrowDown', target: get('btn-open-oc') });
+  assert.equal(get('btn-new-default').focused, true);
+  menu.dispatch('keydown', { key: 'Escape' });
+  assert.equal(menu.popoverOpen, false);
+  assert.equal(get('btn-new').focused, true);
+  assert.equal(get('btn-new').getAttribute('aria-expanded'), 'false');
+  menu.showPopover();
+  root.dispatch('focusin', { target: get('btn-example') });
+  assert.equal(menu.popoverOpen, true);
+  root.dispatch('focusin', { target: get('view-tab-topo') });
+  assert.equal(menu.popoverOpen, false);
+  menu.showPopover();
+  win.dispatch('resize');
+  assert.equal(menu.popoverOpen, false);
+  for (const id of ['btn-new-default', 'btn-new-empty', 'btn-example', 'btn-random', 'btn-open-file', 'btn-open-oc']) {
+    menu.showPopover();
+    get(id).dispatch('click');
+    assert.equal(menu.popoverOpen, false);
+    assert.equal(get('btn-new').focused, true);
+  }
+  menu.showPopover();
+  get('btn-menu').dispatch('click');
+  assert.equal(menu.popoverOpen, false);
+});
+
+test('Leer erzeugt ein Topo ohne Segmente und unterstützt Undo, Redo und Autosave', () => {
+  elementById('btn-new-default').dispatch('click');
+  const before = topoToJson(state.topo);
+  assert.equal(state.topo.segments.length, 3);
+  elementById('btn-new-empty').dispatch('click');
+  assert.deepEqual(state.topo.segments, []);
+  assert.equal(state.selection, null);
+  assert.deepEqual(JSON.parse(storage.get('canyon-topo-generator/state/v1')).topo.segments, []);
+  assert.match(elementById('status').textContent, /ohne Segmente/);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), before);
+  elementById('btn-redo').dispatch('click');
+  assert.deepEqual(state.topo.segments, []);
+  elementById('btn-undo').dispatch('click');
+});
+
+test('Öffnen startet den Dateidialog; OC-Platzhalter ändern keine Daten und senden keine Anfrage', () => {
+  const fileInput = elementById('file-open');
+  let clicks = 0;
+  const oldClick = fileInput.click;
+  fileInput.click = () => { clicks += 1; };
+  try {
+    elementById('btn-open-file').listeners.get('click').at(-1)();
+    assert.equal(clicks, 1);
+  } finally {
+    fileInput.click = oldClick;
+  }
+  const previous = topoToJson(state.topo);
+  elementById('btn-new-default').dispatch('click');
+  const before = topoToJson(state.topo);
+  const stored = storage.get('canyon-topo-generator/state/v1');
+  const oldFetch = globalThis.fetch;
+  let requests = 0;
+  globalThis.fetch = () => { requests += 1; throw new Error('unexpected request'); };
+  try {
+    for (const id of ['btn-open-oc', 'btn-save-oc']) {
+      elementById(id).dispatch('click');
+      assert.equal(topoToJson(state.topo), before);
+      assert.equal(storage.get('canyon-topo-generator/state/v1'), stored);
+      assert.match(elementById('status').textContent, /API.*noch bereitgestellt/);
+    }
+    assert.equal(requests, 0);
+    elementById('btn-undo').dispatch('click');
+    assert.equal(topoToJson(state.topo), previous, 'OC erzeugt keinen Undo-Schritt');
+  } finally {
+    globalThis.fetch = oldFetch;
+  }
+});
+
+test('Speichern-Popover bündelt Exportaktionen und OC-Platzhalter', () => {
   assert.match(markup, /id="btn-save" popovertarget="save-menu" aria-controls="save-menu" aria-expanded="false">Speichern…/);
   const menu = /<div id="save-menu"[^>]*popover="auto"[^>]*>([\s\S]*?)<\/div>/.exec(markup)[1];
-  const ids = ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print'];
-  assert.equal((menu.match(/<button /g) || []).length, 6);
+  const ids = ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print', 'btn-save-oc'];
+  assert.equal((menu.match(/<button /g) || []).length, 7);
   assert.match(menu, /id="btn-export-shortlist">Kurzliste</);
   for (const id of ids) {
     assert.equal((markup.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1);
@@ -2015,8 +2113,8 @@ test('Speichern-Auswahl: Fokus, Pfeile, Escape, Fokus-aussen, Resize und Aktions
   assert.equal(get('btn-save').getAttribute('aria-expanded'), 'true');
   assert.equal(get('btn-save-json').focused, true);
   menu.dispatch('keydown', { key: 'End', target: get('btn-save-json') });
-  assert.equal(get('btn-print').focused, true);
-  menu.dispatch('keydown', { key: 'ArrowDown', target: get('btn-print') });
+  assert.equal(get('btn-save-oc').focused, true);
+  menu.dispatch('keydown', { key: 'ArrowDown', target: get('btn-save-oc') });
   assert.equal(get('btn-save-json').focused, true);
   menu.dispatch('keydown', { key: 'Escape' });
   assert.equal(menu.popoverOpen, false);
@@ -2030,7 +2128,7 @@ test('Speichern-Auswahl: Fokus, Pfeile, Escape, Fokus-aussen, Resize und Aktions
   menu.showPopover();
   win.dispatch('resize');
   assert.equal(menu.popoverOpen, false);
-  for (const id of ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print']) {
+  for (const id of ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print', 'btn-save-oc']) {
     menu.showPopover();
     get(id).dispatch('click');
     assert.equal(menu.popoverOpen, false);
@@ -2112,8 +2210,8 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
     assert.equal(storage.get(key), legacy);
     assert.ok(restored.state.topo.segments.every((segment) => segment.type !== 'WEIR'));
     assert.match(elementById('status').textContent, /WEIR.*Autosave/);
-    const handler = elementById('btn-new').listeners.get('click').at(-1);
-    handler({ target: elementById('btn-new') });
+    const handler = elementById('btn-new-default').listeners.get('click').at(-1);
+    handler({ target: elementById('btn-new-default') });
     assert.equal(storage.get(key), legacy);
     assert.match(elementById('status').textContent, /WEIR.*Autosave/);
   });

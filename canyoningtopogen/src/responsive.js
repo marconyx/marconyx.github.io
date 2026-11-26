@@ -2,7 +2,7 @@
  * Responsive Bedienung für schmale Bildschirme (Smartphone):
  *  - Ansichtsumschaltung „Bearbeiten | Topo | Symbole“ als zugängliche Tabs
  *  - Menü-Knopf, der die Toolbar-Gruppen ein- und ausblendet
- *  - Speichern-Popover mit den bestehenden Exportaktionen auf allen Breiten
+ *  - Neu- und Speichern-Popover mit den bestehenden Aktionen auf allen Breiten
  * Ab Tablet-Breite blendet das CSS beides aus; dann gelten wieder alle
  * Bereiche gleichzeitig und die Tab-Rollen werden entfernt.
  */
@@ -18,7 +18,7 @@ export const VIEWS = [
 export const DEFAULT_VIEW = 'topo';
 
 /**
- * Verdrahtet die mobile Ansichtsleiste, Toolbar und Speichern-Popover.
+ * Verdrahtet die mobile Ansichtsleiste, Toolbar und Aktions-Popover.
  *
  * Die Tab-Rollen werden nur am Smartphone gesetzt, weil Desktop alle drei
  * Bereiche gleichzeitig zeigt. Die Rückgabe erlaubt dem Editor, die aktuelle
@@ -84,61 +84,71 @@ export function initResponsive({ root = document, win = globalThis.window } = {}
     toolbar?.classList.toggle('is-menu-open', open);
   }
 
-  const saveButton = root.getElementById('btn-save');
-  const saveMenu = root.getElementById('save-menu');
-  const saveActions = ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print']
-    .map((id) => root.getElementById(id));
-  saveButton.setAttribute('aria-expanded', 'false');
-  saveMenu.addEventListener('beforetoggle', (event) => {
-    if (event.newState !== 'open') return;
-    setMenuOpen(false);
-  });
-  saveMenu.addEventListener('toggle', (event) => {
-    const open = event.newState === 'open';
-    saveButton.setAttribute('aria-expanded', String(open));
-    if (open) {
-      const rect = saveButton.getBoundingClientRect();
-      saveMenu.style.left = `${Math.max(8, Math.min(rect.left, win.innerWidth - saveMenu.offsetWidth - 8))}px`;
-      saveMenu.style.top = `${Math.max(8, Math.min(rect.bottom + 4, win.innerHeight - saveMenu.offsetHeight - 8))}px`;
-      saveActions[0].focus?.();
+  function bindActionPopover(buttonId, menuId, actionIds, { closeToolbar = false } = {}) {
+    const button = root.getElementById(buttonId);
+    const menu = root.getElementById(menuId);
+    const actions = actionIds.map((id) => root.getElementById(id));
+    button.setAttribute('aria-expanded', 'false');
+    menu.addEventListener('beforetoggle', (event) => {
+      if (event.newState === 'open' && closeToolbar) setMenuOpen(false);
+    });
+    menu.addEventListener('toggle', (event) => {
+      const open = event.newState === 'open';
+      button.setAttribute('aria-expanded', String(open));
+      if (open) {
+        const rect = button.getBoundingClientRect();
+        menu.style.left = `${Math.max(8, Math.min(rect.left, win.innerWidth - menu.offsetWidth - 8))}px`;
+        menu.style.top = `${Math.max(8, Math.min(rect.bottom + 4, win.innerHeight - menu.offsetHeight - 8))}px`;
+        actions[0].focus?.();
+      }
+    });
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        menu.hidePopover();
+        button.focus?.();
+        return;
+      }
+      const index = actions.indexOf(event.target);
+      let next = null;
+      if (event.key === 'ArrowDown') next = (index + 1) % actions.length;
+      else if (event.key === 'ArrowUp') next = (index - 1 + actions.length) % actions.length;
+      else if (event.key === 'Home') next = 0;
+      else if (event.key === 'End') next = actions.length - 1;
+      if (next != null) {
+        event.preventDefault();
+        actions[next].focus?.();
+      }
+    });
+    for (const action of actions) {
+      action.addEventListener('click', () => {
+        menu.hidePopover();
+        button.focus?.();
+      });
     }
-  });
-  saveMenu.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      saveMenu.hidePopover();
-      saveButton.focus?.();
-      return;
-    }
-    const index = saveActions.indexOf(event.target);
-    let next = null;
-    if (event.key === 'ArrowDown') next = (index + 1) % saveActions.length;
-    else if (event.key === 'ArrowUp') next = (index - 1 + saveActions.length) % saveActions.length;
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = saveActions.length - 1;
-    if (next != null) {
-      event.preventDefault();
-      saveActions[next].focus?.();
-    }
-  });
-  for (const action of saveActions) {
-    action.addEventListener('click', () => {
-      saveMenu.hidePopover();
-      saveButton.focus?.();
+    root.addEventListener?.('focusin', (event) => {
+      if (menu.matches?.(':popover-open') && event.target !== button && !menu.contains(event.target)) {
+        menu.hidePopover();
+      }
+    });
+    win.addEventListener?.('resize', () => {
+      if (menu.matches?.(':popover-open')) menu.hidePopover();
     });
   }
-  root.addEventListener?.('focusin', (event) => {
-    if (saveMenu.matches?.(':popover-open') && event.target !== saveButton && !saveMenu.contains(event.target)) {
-      saveMenu.hidePopover();
-    }
-  });
-  win.addEventListener?.('resize', () => {
-    if (saveMenu.matches?.(':popover-open')) saveMenu.hidePopover();
-  });
+
+  bindActionPopover('btn-new', 'new-menu',
+    ['btn-new-default', 'btn-new-empty', 'btn-example', 'btn-random', 'btn-open-file', 'btn-open-oc']);
+  bindActionPopover('btn-save', 'save-menu',
+    ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print', 'btn-save-oc'],
+    { closeToolbar: true });
 
   menuButton.addEventListener('click', () => {
-    setMenuOpen(menuButton.getAttribute('aria-expanded') !== 'true');
+    const open = menuButton.getAttribute('aria-expanded') !== 'true';
+    if (!open && root.getElementById('new-menu').matches?.(':popover-open')) {
+      root.getElementById('new-menu').hidePopover();
+    }
+    setMenuOpen(open);
   });
   toolbar?.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || menuButton.getAttribute('aria-expanded') !== 'true') return;

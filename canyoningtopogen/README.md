@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.10`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.11`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -17,6 +17,13 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 
 ## Funktionen
 
+- **Neu**: Die Auswahl bündelt das bisherige Start-Topo mit drei Segmenten,
+  **Leer** (ein neues Topo ohne Segmente), **Beispiel**, **Zufall**,
+  **Öffnen…** (JSON/XML/TXT) und **Von OC öffnen**. Letzteres ist ein
+  Platzhalter: Die API ist noch nicht verfügbar; es werden keine Daten geladen
+  oder verändert. **Auf OC speichern** in der Speichern-Auswahl ist ebenfalls
+  ein Platzhalter für das spätere Speichern des generierten XML; es wird noch
+  keine Anfrage gesendet. Die Auswahlen unterstützen Tastatur und Smartphone-Toolbar.
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
   bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
 - **Segment-Shortcuts**: Das beschriftete Feld über der Segmentauswahl hängt mit
@@ -102,7 +109,8 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
   Seite zu scrollen; ausserhalb der Elemente scrollt und zoomt der Browser normal.
   Druck und Exporte sind davon nicht betroffen.
 - **Speichern…**: Die Auswahl bündelt **JSON speichern**, **XML speichern**,
-  **SVG**, **PNG**, **Kurzliste** und **Drucken / PDF**. **Kurzliste** lädt
+  **SVG**, **PNG**, **Kurzliste**, **Drucken / PDF** und den Platzhalter
+  **Auf OC speichern**. **Kurzliste** lädt
   `<canyon-name>-kurzliste.txt` (UTF-8) herunter: ein Shortcut pro Segment in
   Topo-Reihenfolge, z. B. `W120` oder `RD12.5`, mit denselben Kürzeln wie das Eingabefeld.
   Angegeben wird die tatsächliche Länge, auch wenn die Darstellung verkürzt ist.
@@ -376,7 +384,7 @@ nutzt die Serpentine das Format meist besser.
 
 ### Zufalls-Topo
 
-Der Knopf **Zufall** neben *Beispiel* erzeugt bei jedem Klick ein neues, zufälliges
+Die Aktion **Zufall** in der Auswahl *Neu* erzeugt bei jedem Klick ein neues, zufälliges
 Topo. Es enthält garantiert jeden Segmenttyp aus `SEGMENT_TYPES` und jede Variante der
 Symbolpalette (inklusive Sonderformen wie *abgestorbener Baum*) mindestens einmal —
 beide Listen leitet `src/random-topo.js` aus den bestehenden Katalogen ab, neue Typen

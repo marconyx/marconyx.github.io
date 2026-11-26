@@ -25,21 +25,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.10';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.10';
-import { createRandomTopo } from './random-topo.js?v=0.10';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.10';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.10';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.10';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.10';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.10';
+} from './model.js?v=0.11';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.11';
+import { createRandomTopo } from './random-topo.js?v=0.11';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.11';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.11';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.11';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.11';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.11';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.10';
+} from './exporters.js?v=0.11';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -55,12 +55,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.10';
-import { isPdfFile, openPdf } from './pdf.js?v=0.10';
-import { initPanelSections } from './panel-sections.js?v=0.10';
-import { initAiLock } from './ai-lock.js?v=0.10';
-import { initResponsive } from './responsive.js?v=0.10';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.10';
+} from './ai.js?v=0.11';
+import { isPdfFile, openPdf } from './pdf.js?v=0.11';
+import { initPanelSections } from './panel-sections.js?v=0.11';
+import { initAiLock } from './ai-lock.js?v=0.11';
+import { initResponsive } from './responsive.js?v=0.11';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.11';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -71,7 +71,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.10';
+} from './i18n.js?v=0.11';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -1162,7 +1162,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.10');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.11');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();
@@ -1265,10 +1265,15 @@ function syncTopoFields() {
 }
 
 function bindToolbar() {
-  $('btn-new').addEventListener('click', () => {
+  $('btn-new-default').addEventListener('click', () => {
     pushHistory();
     replaceTopo(createEmptyTopo());
     setStatusKey('status.new_topo');
+  });
+  $('btn-new-empty').addEventListener('click', () => {
+    pushHistory();
+    replaceTopo(normalizeTopo({ segments: [] }));
+    setStatusKey('status.empty_topo');
   });
   $('btn-example').addEventListener('click', loadExample);
   $('btn-random').addEventListener('click', () => {
@@ -1277,6 +1282,9 @@ function bindToolbar() {
     fitZoom();
     setStatusKey('status.random_topo_created', { name: state.topo.canyon_name });
   });
+  $('btn-open-file').addEventListener('click', () => $('file-open').click());
+  $('btn-open-oc').addEventListener('click', () => setStatusKey('status.oc_unavailable'));
+  $('btn-save-oc').addEventListener('click', () => setStatusKey('status.oc_save_unavailable'));
   $('file-open').addEventListener('change', async (event) => {
     const [file] = event.target.files;
     if (file) await openFile(file);

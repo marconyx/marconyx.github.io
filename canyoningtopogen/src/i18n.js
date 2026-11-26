@@ -65,9 +65,13 @@ export const UI_TEXT = {
   'lbl-menu': { de: 'Menü', en: 'Menu', fr: 'Menu', it: 'Menu', es: 'Menú' },
   'lbl-language': { de: 'Sprache', en: 'Language', fr: 'Langue', it: 'Lingua', es: 'Idioma' },
   'btn-new': { de: 'Neu', en: 'New', fr: 'Nouveau', it: 'Nuovo', es: 'Nuevo' },
+  'btn-new-default': { de: 'Neu', en: 'New', fr: 'Nouveau', it: 'Nuovo', es: 'Nuevo' },
+  'btn-new-empty': { de: 'Leer', en: 'Empty', fr: 'Vide', it: 'Vuoto', es: 'Vacío' },
   'btn-example': { de: 'Beispiel', en: 'Example', fr: 'Exemple', it: 'Esempio', es: 'Ejemplo' },
   'btn-random': { de: 'Zufall', en: 'Random', fr: 'Aléatoire', it: 'Casuale', es: 'Aleatorio' },
   'lbl-file-open': { de: 'Öffnen…', en: 'Open…', fr: 'Ouvrir…', it: 'Apri…', es: 'Abrir…' },
+  'btn-open-oc': { de: 'Von OC öffnen', en: 'Open from OC', fr: 'Ouvrir depuis OC', it: 'Apri da OC', es: 'Abrir desde OC' },
+  'btn-save-oc': { de: 'Auf OC speichern', en: 'Save to OC', fr: 'Enregistrer sur OC', it: 'Salva su OC', es: 'Guardar en OC' },
   'btn-save': { de: 'Speichern…', en: 'Save…', fr: 'Enregistrer…', it: 'Salva…', es: 'Guardar…' },
   'btn-save-json': { de: 'JSON speichern', en: 'Save JSON', fr: 'Enregistrer JSON', it: 'Salva JSON', es: 'Guardar JSON' },
   'btn-save-xml': { de: 'XML speichern', en: 'Save XML', fr: 'Enregistrer XML', it: 'Salva XML', es: 'Guardar XML' },
@@ -351,6 +355,7 @@ export const UI_ARIA_LABELS = {
     es: 'Selección, símbolos y verificación',
   },
   'save-menu': { de: 'Speichern', en: 'Save', fr: 'Enregistrer', it: 'Salva', es: 'Guardar' },
+  'new-menu': { de: 'Neu', en: 'New', fr: 'Nouveau', it: 'Nuovo', es: 'Nuevo' },
 };
 
 /** Kategorie-Labels der Symbolpalette, je Kategorie-ID. */
@@ -578,6 +583,25 @@ export function translatePromptHint(id, lang) {
 
 /** Vorlagen für dynamische Statusmeldungen, Validierungshinweise usw. */
 export const MESSAGES = {
+  'status.empty_topo': {
+    de: 'Leeres Topo ohne Segmente.', en: 'Empty topo without segments.',
+    fr: 'Topo vide sans segments.', it: 'Topo vuoto senza segmenti.',
+    es: 'Topo vacío sin segmentos.',
+  },
+  'status.oc_unavailable': {
+    de: 'Von OC öffnen ist noch nicht verfügbar: Die API wird noch bereitgestellt.',
+    en: 'Open from OC is not available yet: the API is still being provided.',
+    fr: 'L’ouverture depuis OC n’est pas encore disponible : l’API est en cours de mise à disposition.',
+    it: 'L’apertura da OC non è ancora disponibile: l’API sarà fornita in seguito.',
+    es: 'Abrir desde OC aún no está disponible: la API se proporcionará más adelante.',
+  },
+  'status.oc_save_unavailable': {
+    de: 'Auf OC speichern ist noch nicht verfügbar: Die API wird noch bereitgestellt.',
+    en: 'Save to OC is not available yet: the API is still being provided.',
+    fr: 'L’enregistrement sur OC n’est pas encore disponible : l’API est en cours de mise à disposition.',
+    it: 'Il salvataggio su OC non è ancora disponibile: l’API sarà fornita in seguito.',
+    es: 'Guardar en OC aún no está disponible: la API se proporcionará más adelante.',
+  },
   'shortlist.error.type': {
     de: 'Unbekannter oder fehlender Segmenttyp.', en: 'Unknown or missing segment type.',
     fr: 'Type de segment inconnu ou manquant.', it: 'Tipo di segmento sconosciuto o mancante.',
