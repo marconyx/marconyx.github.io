@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Canyoning Topo Generator</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=0.5" />
   </head>
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/logo.png" alt="bachab" width="35" height="29" />
-          <span class="toolbar__version" id="app-version">v0.4</span>
+          <span class="toolbar__version" id="app-version">v0.5</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
@@ -118,14 +118,21 @@
               <select id="select-new-segment"></select>
               <button type="button" id="btn-add-segment" title="Segment hinzufügen" aria-label="Segment hinzufügen">+</button>
             </div>
-            <label for="segment-shortcut"><span id="lbl-segment-shortcut">Segment-Shortcut (m)</span></label>
+            <div class="shortcut-label">
+              <label for="segment-shortcut"><span id="lbl-segment-shortcut">Segment-Shortcut (m)</span></label>
+              <button type="button" class="shortcut-help-button" id="btn-shortcut-help" popovertarget="shortcut-help" aria-controls="shortcut-help" aria-expanded="false" aria-label="Shortcut-Hilfe öffnen" title="Shortcut-Hilfe öffnen">?</button>
+            </div>
             <div class="segment-add">
-              <input type="text" id="segment-shortcut" placeholder="R10, RD23, RW12,5" aria-describedby="hint-segment-shortcut shortcut-mapping segment-shortcut-error" aria-invalid="false" enterkeyhint="done" autocomplete="off" spellcheck="false" />
+              <input type="text" id="segment-shortcut" placeholder="R10, RD23, RW12,5" aria-describedby="segment-shortcut-error" aria-invalid="false" enterkeyhint="done" autocomplete="off" spellcheck="false" />
               <button type="button" id="btn-add-shortcut" title="Segment aus Shortcut hinzufügen" aria-label="Segment aus Shortcut hinzufügen">+</button>
             </div>
-            <p class="hint" id="hint-segment-shortcut">Kürzel + positive Länge in Metern; Enter oder + hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.</p>
-            <p class="hint" id="shortcut-mapping">R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W ist mehrdeutig)</p>
-            <p class="hint" id="hint-shortlist-data">Kurzlisten (TXT) enthalten nur Segmenttyp und Länge; Metadaten, Symbole und weitere Einstellungen werden nicht gespeichert.</p>
+            <div class="shortcut-help" id="shortcut-help" popover="auto" role="dialog" aria-labelledby="shortcut-help-title">
+              <h3 id="shortcut-help-title">Shortcut-Hilfe</h3>
+              <p class="hint" id="hint-segment-shortcut">Kürzel + positive Länge in Metern; Enter hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.</p>
+              <p class="hint" id="shortcut-mapping">R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W ist mehrdeutig)</p>
+              <p class="hint" id="hint-shortlist-data">Kurzlisten (TXT) enthalten nur Segmenttyp und Länge; Metadaten, Symbole und weitere Einstellungen werden nicht gespeichert.</p>
+              <button type="button" id="btn-close-shortcut-help" popovertarget="shortcut-help" popovertargetaction="hide">Schliessen</button>
+            </div>
             <p class="hint shortcut-error" id="segment-shortcut-error" aria-live="polite"></p>
             <ol class="segment-list" id="segment-list"></ol>
           </div>
@@ -278,6 +285,6 @@
         </div>
       </form>
     </dialog>
-    <script type="module" src="src/app.js"></script>
+    <script type="module" src="src/app.js?v=0.5"></script>
   </body>
 </html>

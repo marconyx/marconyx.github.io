@@ -1,4 +1,4 @@
-import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js';
+import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js?v=0.5';
 
 const CODE_BY_TYPE = Object.fromEntries(
   Object.entries(SEGMENT_SHORTCUTS).map(([code, type]) => [type, code]),

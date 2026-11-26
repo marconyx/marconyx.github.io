@@ -17,21 +17,21 @@ import {
   normalizeTopo,
   parseSegmentShortcut,
   validateTopo,
-} from './model.js';
-import { topoFromJson, topoToJson } from './io-json.js';
-import { createRandomTopo } from './random-topo.js';
-import { topoFromXml, topoToXml } from './io-xml.js';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js';
-import { layoutTopo, worldToLocal } from './layout.js';
-import { legendRectFor, renderTopoSvg } from './renderer.js';
-import { SYMBOLS, symbolOptions } from './symbols.js';
+} from './model.js?v=0.5';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.5';
+import { createRandomTopo } from './random-topo.js?v=0.5';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.5';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.5';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.5';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.5';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.5';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js';
+} from './exporters.js?v=0.5';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -47,12 +47,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js';
-import { isPdfFile, openPdf } from './pdf.js';
-import { initPanelSections } from './panel-sections.js';
-import { initAiLock } from './ai-lock.js';
-import { initResponsive } from './responsive.js';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js';
+} from './ai.js?v=0.5';
+import { isPdfFile, openPdf } from './pdf.js?v=0.5';
+import { initPanelSections } from './panel-sections.js?v=0.5';
+import { initAiLock } from './ai-lock.js?v=0.5';
+import { initResponsive } from './responsive.js?v=0.5';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.5';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -63,7 +63,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js';
+} from './i18n.js?v=0.5';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -1348,6 +1348,26 @@ function bindToolbar() {
     addSegment(segmentSelect.value);
   });
   const shortcutInput = $('segment-shortcut');
+  const shortcutHelp = $('shortcut-help');
+  const shortcutHelpButton = $('btn-shortcut-help');
+  shortcutHelp.addEventListener('toggle', (event) => {
+    const open = event.newState === 'open';
+    shortcutHelpButton.setAttribute('aria-expanded', String(open));
+    if (open) $('btn-close-shortcut-help').focus();
+  });
+  shortcutHelp.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    shortcutHelp.hidePopover();
+    shortcutHelpButton.focus();
+  });
+  $('btn-close-shortcut-help').addEventListener('click', () => shortcutHelpButton.focus());
+  document.addEventListener('focusin', (event) => {
+    if (shortcutHelp.matches(':popover-open') && event.target !== shortcutHelpButton && !shortcutHelp.contains(event.target)) {
+      shortcutHelp.hidePopover();
+    }
+  });
   shortcutInput.addEventListener('input', () => {
     shortcutError = null;
     refreshShortcutError();

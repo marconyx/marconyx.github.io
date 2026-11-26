@@ -28,9 +28,9 @@ import {
   defaultLengthFor,
   normalizeTopo,
   todayIso,
-} from './model.js';
-import { SYMBOLS } from './symbols.js';
-import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js';
+} from './model.js?v=0.5';
+import { SYMBOLS } from './symbols.js?v=0.5';
+import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.5';
 
 const SETTINGS_KEY = 'canyon-topo-generator/ai/v1';
 

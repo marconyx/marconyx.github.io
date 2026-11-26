@@ -344,6 +344,41 @@ input[type='date'] {
   gap: 0.35rem;
 }
 
+.shortcut-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.shortcut-help-button {
+  padding: 0;
+  width: 1.4rem;
+  height: 1.4rem;
+  line-height: 1;
+}
+
+.shortcut-help {
+  box-sizing: border-box;
+  width: min(28rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
+}
+
+.shortcut-help:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.shortcut-help h3 {
+  margin: 0;
+}
+
 /* Kompakt: Auswahl und „+“ auf einer niedrigen Zeile. */
 .segment-add select,
 .segment-add input,

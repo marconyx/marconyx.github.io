@@ -30,6 +30,13 @@ function pick(entry, lang) {
 
 /** Statischer Text (`textContent`) je Element-ID. */
 export const UI_TEXT = {
+  'shortcut-help-title': {
+    de: 'Shortcut-Hilfe', en: 'Shortcut help', fr: 'Aide aux raccourcis',
+    it: 'Aiuto scorciatoie', es: 'Ayuda de atajos',
+  },
+  'btn-close-shortcut-help': {
+    de: 'Schliessen', en: 'Close', fr: 'Fermer', it: 'Chiudi', es: 'Cerrar',
+  },
   'hint-shortlist-data': {
     de: 'Kurzlisten (TXT) enthalten nur Segmenttyp und Länge; Metadaten, Symbole und weitere Einstellungen werden nicht gespeichert.',
     en: 'Short lists (TXT) contain only segment type and length; metadata, symbols and other settings are not saved.',
@@ -42,7 +49,7 @@ export const UI_TEXT = {
     it: 'Scorciatoia segmento (m)', es: 'Atajo de segmento (m)',
   },
   'hint-segment-shortcut': {
-    de: 'Kürzel + positive Länge in Metern; Enter oder + hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.',
+    de: 'Kürzel + positive Länge in Metern; Enter hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.',
     en: 'Code + positive length in metres; Enter or + appends one segment at the end. Decimal point or comma, any letter case.',
     fr: 'Code + longueur positive en mètres ; Entrée ou + ajoute un segment à la fin. Point ou virgule décimale, majuscules ou minuscules.',
     it: 'Codice + lunghezza positiva in metri; Invio o + aggiunge un segmento alla fine. Punto o virgola decimale, maiuscole o minuscole.',
@@ -241,6 +248,10 @@ export const UI_HTML = {
 
 /** `title`-Attribut je Element-ID. */
 export const UI_TITLES = {
+  'btn-shortcut-help': {
+    de: 'Shortcut-Hilfe öffnen', en: 'Open shortcut help', fr: 'Ouvrir l’aide aux raccourcis',
+    it: 'Apri aiuto scorciatoie', es: 'Abrir ayuda de atajos',
+  },
   'btn-add-shortcut': {
     de: 'Segment aus Shortcut hinzufügen', en: 'Add segment from shortcut',
     fr: 'Ajouter un segment à partir du raccourci', it: 'Aggiungi segmento dalla scorciatoia',
@@ -308,6 +319,10 @@ export const UI_PLACEHOLDERS = {
 
 /** `aria-label`-Attribut je Element-ID. */
 export const UI_ARIA_LABELS = {
+  'btn-shortcut-help': {
+    de: 'Shortcut-Hilfe öffnen', en: 'Open shortcut help', fr: 'Ouvrir l’aide aux raccourcis',
+    it: 'Apri aiuto scorciatoie', es: 'Abrir ayuda de atajos',
+  },
   'btn-add-shortcut': {
     de: 'Segment aus Shortcut hinzufügen', en: 'Add segment from shortcut',
     fr: 'Ajouter un segment à partir du raccourci', it: 'Aggiungi segmento dalla scorciatoia',

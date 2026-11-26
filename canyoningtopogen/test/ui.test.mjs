@@ -189,11 +189,12 @@ function elementById(id) {
   return registry.get(id);
 }
 
+const documentEvents = new FakeNode('document');
 const documentStub = {
   getElementById: elementById,
   createElement: (tag) => new FakeNode(tag),
   body: new FakeNode('body'),
-  addEventListener() {},
+  addEventListener: (...args) => documentEvents.addEventListener(...args),
 };
 
 const storage = new Map();
@@ -222,9 +223,8 @@ globalThis.FileReader = class {
   readAsDataURL() {}
 };
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
-import { PROMPT_TEMPLATES, getAiSettings, providerById } from '../src/ai.js';
 import { SEGMENT_TYPES, SEGMENT_SHORTCUTS, parseSegmentShortcut, validateTopo, createEmptyTopo, defaultAngleFor, normalizeTopo } from '../src/model.js';
 import { symbolOptions } from '../src/symbols.js';
 import { topoToJson } from '../src/io-json.js';
@@ -234,6 +234,30 @@ import { initPanelSections, PANEL_SECTION_IDS, PANEL_STORAGE_KEY } from '../src/
 import { initResponsive, MOBILE_QUERY, VIEWS, DEFAULT_VIEW } from '../src/responsive.js';
 
 const markup = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+testAssetVersions();
+const appVersion = /id="app-version">v([\d.]+)</.exec(markup)[1];
+const { PROMPT_TEMPLATES, getAiSettings, providerById } = await import(`../src/ai.js?v=${appVersion}`);
+
+function testAssetVersions() {
+  const version = /id="app-version">v([\d.]+)</.exec(markup)?.[1];
+  assert.ok(version);
+  const escaped = version.replaceAll('.', '\\.');
+  assert.match(markup, new RegExp(`src="src/app\\.js\\?v=${escaped}"`));
+  assert.match(markup, new RegExp(`href="styles\\.css\\?v=${escaped}"`));
+  const src = new URL('../src/', import.meta.url);
+  for (const name of readdirSync(src).filter((file) => file.endsWith('.js'))) {
+    const source = readFileSync(new URL(name, src), 'utf8');
+    const imports = [...source.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)['"](\.[^'"]+\.js(?:\?[^'"]*)?)['"]/g)];
+    for (const [, path] of imports) {
+      assert.match(path, new RegExp(`\\?v=${escaped}$`), `${name}: ${path}`);
+      readFileSync(new URL(path, new URL(name, src)));
+    }
+  }
+  const pdf = readFileSync(new URL('pdf.js', src), 'utf8');
+  for (const asset of ['pdf.min.mjs', 'pdf.worker.min.mjs']) {
+    assert.ok(pdf.includes(`${asset}?v=${version}`), `versioned ${asset}`);
+  }
+}
 const panelHeaders = [...markup.matchAll(
   /<details class="panel__section" id="([^"]+)"( open)?>\s*<summary>(.*?)<\/summary>\s*<div class="panel__content">/gs,
 )];
@@ -361,8 +385,36 @@ try {
 
 
 
+test('Shortcut-Hilfe ist ein beschriftetes Popover und mit Escape schliessbar', () => {
+  assert.match(markup, /<label for="segment-shortcut">[\s\S]*?<\/label>\s*<button[^>]*id="btn-shortcut-help"[^>]*popovertarget="shortcut-help"[^>]*aria-controls="shortcut-help"[^>]*aria-expanded="false"[^>]*aria-label="[^"]+"[^>]*>\?<\/button>/);
+  assert.match(markup, /id="shortcut-help" popover="auto" role="dialog" aria-labelledby="shortcut-help-title"/);
+  const help = /<div class="shortcut-help" id="shortcut-help"[\s\S]*?<\/div>/.exec(markup)[0];
+  assert.ok(help.includes('Kürzel + positive Länge in Metern; Enter hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.'));
+  assert.ok(help.includes('R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W ist mehrdeutig)'));
+  assert.ok(help.includes('Kurzlisten (TXT) enthalten nur Segmenttyp und Länge; Metadaten, Symbole und weitere Einstellungen werden nicht gespeichert.'));
+  assert.match(help, /id="btn-close-shortcut-help" popovertarget="shortcut-help" popovertargetaction="hide"/);
+  const popover = elementById('shortcut-help');
+  const button = elementById('btn-shortcut-help');
+  popover.showPopover();
+  assert.equal(button.getAttribute('aria-expanded'), 'true');
+  assert.equal(document.activeElement, elementById('btn-close-shortcut-help'));
+  let prevented = false;
+  popover.dispatch('keydown', { key: 'Escape', preventDefault() { prevented = true; } });
+  assert.ok(prevented);
+  assert.equal(popover.popoverOpen, false);
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
+  assert.equal(document.activeElement, button);
+  popover.showPopover();
+  popover.hidePopover();
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
+  popover.showPopover();
+  documentEvents.dispatch('focusin', { target: elementById('segment-shortcut') });
+  assert.equal(popover.popoverOpen, false);
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
+});
+
 test('Plus neben Shortcut verwendet dieselbe Validierung und Undo-Historie wie Enter', () => {
-  assert.match(markup, /<label for="segment-shortcut">[\s\S]*?<\/label>\s*<div class="segment-add">\s*<input[^>]*id="segment-shortcut"[^>]*\/>\s*<button type="button" id="btn-add-shortcut"[^>]*aria-label="[^"]+"[^>]*>\+<\/button>/);
+  assert.match(markup, /<div class="segment-add">\s*<input[^>]*id="segment-shortcut"[^>]*\/>\s*<button type="button" id="btn-add-shortcut"[^>]*aria-label="[^"]+"[^>]*>\+<\/button>/);
   elementById('btn-new').dispatch('click');
   state.selection = { kind: 'segment', segmentIndex: 0 };
   const selection = state.selection;
@@ -402,6 +454,19 @@ test('Plus neben Shortcut verwendet dieselbe Validierung und Undo-Historie wie E
   assert.ok(prevented);
   assert.equal(state.topo.segments.at(-1).type, 'RAPPEL');
   assert.equal(state.topo.segments.at(-1).length_in_meters, 10);
+  const beforeRw = topoToJson(state.topo);
+  input.value = 'RW3';
+  input.dispatch('input');
+  button.dispatch('click');
+  assert.equal(state.topo.segments.at(-1).type, 'RAPPEL_WET');
+  assert.equal(state.topo.segments.at(-1).length_in_meters, 3);
+  assert.match(elementById('segment-list').children.at(-1).children[0].textContent, /RAPPEL_WET 3 m/);
+  assert.match(svg(), /> ?3<\/tspan>/);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), beforeRw);
+  elementById('btn-redo').dispatch('click');
+  assert.equal(state.topo.segments.at(-1).type, 'RAPPEL_WET');
+  assert.equal(state.topo.segments.at(-1).length_in_meters, 3);
   const language = elementById('select-language');
   language.value = 'en';
   language.dispatch('change');
@@ -1075,7 +1140,7 @@ test('Enter hängt Shortcuts genau einmal am Ende an, erhält Auswahl und speich
   const before = [...state.topo.segments];
   const input = elementById('segment-shortcut');
   assert.match(markup, /<label for="segment-shortcut">/);
-  assert.match(markup, /id="segment-shortcut"[^>]*aria-describedby="hint-segment-shortcut shortcut-mapping segment-shortcut-error"/);
+  assert.match(markup, /id="segment-shortcut"[^>]*aria-describedby="segment-shortcut-error"/);
   assert.match(markup, /id="segment-shortcut"[^>]*enterkeyhint="done"/);
   assert.match(markup, /id="segment-shortcut-error" aria-live="polite"/);
 

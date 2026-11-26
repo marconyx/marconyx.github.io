@@ -8,6 +8,12 @@ App-Version (`#app-version` in `index.html`). Sie beginnt bei `v0.1` und wird mi
 Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
+Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.5`). Bei
+jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
+prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
+ältere Browser-Cache-Versionen der Module verwenden.
+
 
 ## Funktionen
 
@@ -20,7 +26,9 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
   RAPPEL_WET mit 12.5 m. Alle Kürzel: `R`=RAPPEL, `RD`=RAPPEL_DRY,
   `RW`=RAPPEL_WET, `P`=POOL, `J`=JUMP, `S`=SLIDE, `C`=CLIMB,
   `WA`=WALK und `WE`=WEIR. **`W` ist mehrdeutig und wird abgewiesen**;
-  alle Kürzel stehen auch direkt beim Feld. Gross-/Kleinschreibung, äusserer
+  alle Kürzel stehen auch in der Hilfe hinter dem `?` neben dem Feld. Das
+  Pop-up lässt sich mit dem Schliessen-Knopf, Escape oder einem Klick ausserhalb
+  schliessen. Gross-/Kleinschreibung, äusserer
   Leerraum und Leerraum zwischen Kürzel und Zahl sind erlaubt. Die Länge muss
   endlich und grösser als 0 sein; Dezimalpunkt und Dezimalkomma sind möglich.
   Fehlende/negative Zahlen, Einheiten, Exponentialschreibweise und mehrere
