@@ -12,7 +12,11 @@ const CODE_BY_TYPE = Object.fromEntries(
   Object.entries(SEGMENT_SHORTCUTS).map(([code, type]) => [type, code]),
 );
 
-/** Fehler einer atomar abgebrochenen Kurzlistenoperation samt Zeilenpositionen. */
+/**
+ * Fehler einer atomar abgebrochenen Kurzlistenoperation.
+ * `issues` enthält `{position, code}` mit einsbasierter Quellzeile bzw.
+ * Segmentposition; Position 0 bezeichnet eine vollständig leere Datei.
+ */
 export class ShortListError extends Error {
   constructor(issues) {
     super('Invalid short list');
@@ -39,6 +43,7 @@ function decimalString(value) {
  * wird keine teilweise Kurzliste zurückgegeben.
  *
  * @returns {{text: string, count: number}} UTF-8-Textinhalt und Segmentanzahl
+ * @param {object} topo Modell mit Segmenten und numerischen Längen
  * @throws {ShortListError} wenn ein Segment nicht verlustfrei exportiert werden kann
  */
 export function topoToShortList(topo) {
@@ -67,6 +72,8 @@ export function topoToShortList(topo) {
  * gesammelt und verhindern den gesamten Import. Nicht gespeicherte Topo-Felder
  * erhalten Modell-Defaults.
  *
+ * @param {string} text Dateiinhalt; Zeilenenden CR, LF und CRLF sind zulässig
+ * @returns {object} normalisiertes Topo mit den gelesenen Segmenten
  * @throws {ShortListError} bei ungültigen Zeilen oder einer leeren Datei
  */
 export function topoFromShortList(text) {

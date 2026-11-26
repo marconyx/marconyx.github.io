@@ -80,7 +80,12 @@ export function topoToJsonObject(topo) {
   return Object.assign(out, topo._extra || {});
 }
 
-/** Serialisiert ein Topo als JSON-Text; `indent` folgt `JSON.stringify`. */
+/**
+ * Serialisiert die externe Objektform, nicht den internen `_extra`-Container.
+ * @param {object} topo normalisiertes Topo
+ * @param {number|string} [indent=1] Einrückung wie bei `JSON.stringify`
+ * @returns {string} JSON-Text
+ */
 export function topoToJson(topo, indent = 1) {
   return JSON.stringify(topoToJsonObject(topo), null, indent);
 }
@@ -88,6 +93,10 @@ export function topoToJson(topo, indent = 1) {
 /**
  * Parst JSON-Text (oder übernimmt bereits geparste Rohdaten) und normalisiert
  * das Ergebnis. Syntax- und WEIR-Fehler werden an den Aufrufer weitergegeben.
+ * @param {string|object} text JSON-Text oder bereits geparstes Objekt
+ * @returns {object} normalisiertes Topo
+ * @throws {SyntaxError} bei fehlerhaftem JSON
+ * @throws {RemovedSegmentError} bei einem entfernten WEIR-Segment
  */
 export function topoFromJson(text) {
   const raw = typeof text === 'string' ? JSON.parse(text) : text;

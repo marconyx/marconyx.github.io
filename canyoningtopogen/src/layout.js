@@ -56,7 +56,13 @@ function toRadians(degrees) {
   return (degrees * Math.PI) / 180;
 }
 
-/** Gezeichnete Segmentlänge nach optionaler globaler Verkürzungsschwelle. */
+/**
+ * Gibt die sichtbare Länge zurück, ohne die fachliche Länge zu verändern.
+ * Eine positive Schwelle kappt jedes längere Segment; 0 deaktiviert die Kürzung.
+ * @param {object} segment Segment mit `length_in_meters`
+ * @param {number} [shorteningThreshold=0] maximale Zeichenlänge in Metern
+ * @returns {number} Zeichenlänge in Metern
+ */
 export function drawnLengthOf(segment, shorteningThreshold = 0) {
   let drawn = segment.length_in_meters;
   if (
@@ -105,7 +111,14 @@ function placeElements(segment, placement) {
   });
 }
 
-/** Weltkoordinate -> lokale Segmentkoordinate (entlang / quer), inkl. Walk-Stauchung. */
+/**
+ * Invertiert die Segmenttransformation für Drag-Interaktionen: Projektion auf
+ * Richtung und Normale liefert entlang/quer; nur entlang wird die Verkürzung
+ * zurückgerechnet. So speichert das Modell echte statt gestauchter Abstände.
+ * @param {object} placement Segmentplatzierung aus `layoutTopo`
+ * @param {{x:number,y:number}} point Punkt im SVG-Meterkoordinatensystem
+ * @returns {{horizontal:number,vertical:number}} lokale Koordinaten in Metern
+ */
 export function worldToLocal(placement, point) {
   const dx = point.x - placement.start.x;
   const dy = point.y - placement.start.y;
@@ -192,9 +205,10 @@ function chunksOf(metrics, keepTogether, spanKey = 'horizontalSpan') {
 
 /**
  * Zeilen eines Abschnitts optimal füllen (Knuth-artige DP): minimiert die
- * Summe der quadrierten Restbreiten, die letzte Zeile eines Abschnitts zählt
- * nicht mit. Das nutzt das Format deutlich besser aus als gieriges Füllen und
- * hängt – anders als eine feste Segmentzahl – allein an der Zielbreite.
+ * Summe der quadrierten Restbreiten einschliesslich der letzten Zeile. Das
+ * nutzt das Format gleichmässiger als gieriges Füllen. Ein einzelner zu breiter
+ * Keep-Together-Block bleibt trotzdem zusammen und bekommt keine Überlaufstrafe.
+ * `prefix` enthält kumulierte Blockbreiten; `from` ist inklusiv, `to` exklusiv.
  */
 function solveBlock(prefix, from, to, limit) {
   const best = new Array(to + 1).fill(Number.POSITIVE_INFINITY);
@@ -273,7 +287,9 @@ function round(value) {
  * sind die Basisgrösse und die ausgeglichenen Teilungen der Gesamtausdehnung
  * in 1..n Spuren; gewählt wird der Kandidat, dessen fertiges Blatt (inkl. Rand
  * und Legende) dem Seitenverhältnis am nächsten kommt. Bei Spalten heisst das:
- * A4 hoch bekommt höhere, dafür weniger Spalten als A4 quer.
+ * A4 hoch bekommt höhere, dafür weniger Spalten als A4 quer. Das Verhältnis
+ * wird logarithmisch bewertet, damit Über- und Unterbreite symmetrisch sind.
+ * Die endliche Kandidatensuche ist keine kontinuierliche Optimierung.
  */
 function planTrackLimit(topo, chunks, baseWidth, paperKey, buildFor) {
   const aspect = paperAspectRatio(paperKey);
@@ -552,9 +568,15 @@ function buildColumnLayout(metrics, assignment, columnHeightLimit, mode, frame) 
  * möglichst gut trifft. `frame` friert Zuordnung und Blattmass während des
  * Ziehens ein: Bewegte Elemente dürfen dadurch nicht bei jedem Pointer-Schritt
  * einen neuen Umbruch auslösen oder den Massstab unter dem Cursor ändern.
+ * Jede Platzierung enthält Originalsegment, Index, Start/Ende, orthogonale
+ * Richtungsvektoren, echte und gezeichnete Länge sowie platzierte Elemente.
+ * `rows` bezeichnet auch bei Kaskadiert generisch die Spuren; dort steht
+ * zusätzlich `columns` zur Verfügung. `rowAssignment` ordnet jedem Segment
+ * eine Spur zu und ist Bestandteil des eingefrorenen Drag-Rahmens.
  *
  * @param {object} topo normalisiertes Topo
- * @param {object} [options] `{layout, paper, frame}`
+ * @param {object} [options] `{layout, paper, frame}`; `layout` ist serpentine,
+ *   cascaded oder linear, `frame` ein früheres Layout während des Ziehens
  * @returns {object} Layout mit `placements`, Spuren, Grenzen und Zuordnung
  */
 export function layoutTopo(topo, options = {}) {

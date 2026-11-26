@@ -17,6 +17,13 @@
  *   AI_AUTH_SCHEME  Vorgabe "Bearer ".
  *   AI_API          "openai" (Vorgabe) oder "anthropic".
  *   ALLOWED_ORIGIN  Einzelner Origin oder "*". Für interne Keys unbedingt setzen.
+ *
+ * CORS steuert, welche Browser-Origin die Antwort lesen darf; es authentifiziert
+ * keine Clients und blockiert direkte HTTP-Aufrufe nicht. Der Worker hat keine
+ * eigene Nutzerauthentifizierung oder Quotensteuerung: Ein Deployment mit
+ * Geheimnis braucht zusätzliche Zugriffskontrollen. Die Upstream-URL und
+ * Authentifizierung kommen aus `env`, das Modell darf der Client überschreiben.
+ * Der zurückgegebene Modelltext wird erst in der Browser-App normalisiert.
  */
 
 function cors(origin) {
@@ -107,6 +114,10 @@ export default {
    * @param {Request} request Browser- oder Proxy-Anfrage
    * @param {object} env Worker-Secrets und Deployment-Konfiguration
    * @returns {Promise<Response>} HTTP-Antwort mit CORS-Headern
+   * Ungültige Nutzlasten ergeben 400, fehlender Key 500, Netzwerk- oder
+   * unbrauchbare Upstream-Antworten 502; Upstream-HTTP-Fehler behalten ihren
+   * Status. Für OpenAI-kompatible APIs wird ein abgelehnter Denkschalter
+   * höchstens einmal entfernt und erneut angefragt.
    */
   async fetch(request, env) {
     const origin = env.ALLOWED_ORIGIN || '*';

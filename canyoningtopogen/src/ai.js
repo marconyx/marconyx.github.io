@@ -3,8 +3,11 @@
  *
  * GitHub Pages liefert nur statische Dateien, es gibt also keinen Server, der
  * einen API-Key verwahren könnte. Die App ruft das Modell deshalb direkt aus dem
- * Browser auf; der Key liegt ausschließlich in `localStorage` dieses Browsers und
- * wird nie ins Repository oder an Dritte übertragen.
+ * Browser auf. Ein dort eingetragener Key wird in `localStorage` gespeichert und
+ * bei Direktaufrufen an den konfigurierten Anbieter gesendet; beim automatischen
+ * Fallback wird er auch an den lokalen Proxy übergeben. Er gehört nicht ins
+ * Repository. Wer den Browser-Speicher oder den gewählten Endpoint kontrolliert,
+ * kann den Key lesen bzw. empfangen.
  *
  * Drei Betriebsarten:
  *   1. `openai`    – OpenAI und jede kompatible API (Azure OpenAI, OpenRouter,
@@ -16,6 +19,11 @@
  *
  * `registerTopoProvider(fn)` überschreibt alles und bleibt der Erweiterungspunkt
  * für eigene Implementierungen.
+ *
+ * Datenpfad der eingebauten Provider: Prompt und Bild senden → JSON-Antworttext
+ * extrahieren → mögliche Objekte im Modelltext auswählen → Typen bereinigen →
+ * normalisieren. Die Bereinigung ist nicht gleich der Prüfung, ob das erkannte
+ * Topo der Realität entspricht; die Ausgabe muss vor Ort fachlich geprüft werden.
  */
 import {
   DEAD_CAPABLE_ELEMENT_TYPES,
@@ -198,8 +206,11 @@ export function registerTopoProvider(fn) {
 /**
  * Holt die Liste verfügbarer Modelle. Versucht zuerst direkt, fällt bei
  * CORS-Blockade still auf den lokalen Proxy zurück – genau wie die Topo-Erkennung.
- * Gibt immer ein Ergebnisobjekt zurück statt zu werfen, weil der Aufrufer hier
- * nur eine Auswahlliste füllt und ein Fehlschlag folgenlos bleiben soll.
+ * Ein Netzwerk-`TypeError` kann jedoch auch andere Ursachen als CORS haben.
+ * Abbruch (`AbortError`) wird weitergeworfen; sonst kommt ein Ergebnisobjekt
+ * mit `ok`, entweder `models`/`viaProxy` oder einer erklärenden `reason`.
+ * @param {object} [options] optionales Abort-Signal und Sprache für Fehlertexte
+ * @returns {Promise<object>} Ergebnis der Modellabfrage
  */
 export async function listModels({ signal, lang = DEFAULT_LANGUAGE } = {}) {
   const spec = providerById(settings.providerId);
@@ -782,6 +793,10 @@ export function buildTaskText(hints = {}) {
  * "legacy" und "custom" bleiben bewusst ein einziger User-Text: Der eine soll
  * byte-identisch zum alten Aufruf bleiben, der andere unverändert so
  * abgeschickt werden, wie der Nutzer ihn eingetippt hat.
+ * @param {object} [hints] optionale Hinweise zur Bildaufgabe
+ * @param {object} [options] `template` und ggf. `customPrompt`
+ * @returns {{template:string, system:string, user:string}} Provider-neutrale Teile
+ * @throws {Error} bei leerem oder zu langem eigenem Prompt
  */
 export function buildPromptParts(hints = {}, options = {}) {
   const templateId = promptTemplateById(
@@ -831,6 +846,12 @@ export function buildPrompt(hints = {}, options = {}) {
  * oder plaudern zwischen zwei Objekten. Darum werden alle vollständigen
  * Objekte der obersten Ebene gesammelt und das beste gewählt: bevorzugt das
  * grösste mit einem `segments`-Array.
+ * Der Scanner verfolgt geschachtelte Klammern sowie Zeichenketten und Escape-
+ * Sequenzen; Klammern innerhalb von JSON-Strings beenden kein Objekt. Die
+ * Auswahl nach serialisierter Grösse ist eine Heuristik, keine Inhaltsprüfung.
+ * @param {string} text rohe Modellantwort, ggf. mit Markdown oder Begleittext
+ * @returns {object} geparster Kandidat
+ * @throws {Error} bei fehlendem, unvollständigem oder ungültigem JSON
  */
 export function extractJsonObject(text) {
   if (typeof text !== 'string') throw new Error('Leere Antwort vom Modell.');
@@ -889,6 +910,13 @@ const ELEMENT_SET = new Set(ELEMENT_TYPES);
  * Räumt eine Modellantwort auf: unbekannte Typen werden auf plausible bekannte
  * abgebildet, statt das Topo mit Fantasietypen zu füllen. Was sich nicht
  * zuordnen lässt, fliegt raus und wird gemeldet.
+ * Diese verlustbehaftete Behandlung gilt für AI-Ausgaben, nicht für reguläre
+ * JSON-/XML-Importe. Für Streckensymbole werden fehlende Endpunkte ergänzt;
+ * Punkte erhalten keine Endkoordinaten.
+ * @param {object} raw vom Modell gelieferter Kandidat
+ * @param {string[]} [report] wird um Hinweise zu verworfenen Typen ergänzt
+ * @returns {object} normalisiertes Topo mit mindestens einem Segment
+ * @throws {Error} wenn kein brauchbares Objekt oder Segment vorhanden ist
  */
 export function sanitizeTopoCandidate(raw, report = []) {
   if (!raw || typeof raw !== 'object') {
@@ -1274,6 +1302,10 @@ let localProxyCache = { checkedAt: 0, info: null };
 /**
  * Prüft, ob der lokale Proxy erreichbar ist. Das Ergebnis wird kurz behalten,
  * damit nicht jeder Tastendruck in den Einstellungen eine Anfrage auslöst.
+ * Der Health-Check hat 1,2 s Timeout; Erfolg und Misserfolg werden fünf
+ * Sekunden zwischengespeichert. `force` umgeht nur diesen Cache.
+ * @param {{force?:boolean}} [options] Cache für erneute Erkennung umgehen
+ * @returns {Promise<object|null>} Health-Antwort mit `base`, oder null
  */
 export async function detectLocalProxy({ force = false } = {}) {
   const now = Date.now();
@@ -1353,6 +1385,15 @@ function splitDataUrl(url) {
 /**
  * Wandelt ein Bild (Data-URL) in ein Topo um.
  * Bei PDFs ist das die bereits gerenderte Seite – der Provider sieht immer ein Bild.
+ * Ein registrierter Custom-Provider wird direkt aufgerufen und sein Ergebnis
+ * normalisiert; die eingebauten Provider durchlaufen zusätzlich Antwort-
+ * Extraktion und Sanitizing. Bei abgebrochenem Request erfolgt kein Fallback.
+ *
+ * @param {string} image Bild als Data-URL
+ * @param {object} [options] `signal`, `hints`, Prompt-Auswahl, `report` und
+ *   `onNotice`; wird an einen Custom-Provider unverändert weitergereicht
+ * @returns {Promise<object>} normalisiertes Topo
+ * @throws {Error} bei fehlendem Bild, Konfiguration, API- oder Erkennungsfehler
  */
 export async function photoToTopo(image, options = {}) {
   if (!image) {

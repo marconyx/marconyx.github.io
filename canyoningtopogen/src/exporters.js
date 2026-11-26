@@ -38,6 +38,12 @@ export function slugify(value) {
  * Die SVG-Pixelmasse wird aus den Root-Attributen gelesen; wenn sie fehlen,
  * gelten brauchbare Fallback-Masse. Der weisse Canvas-Hintergrund verhindert
  * transparente PNGs, die je nach Bildbetrachter schwarz erscheinen könnten.
+ * Die temporäre Blob-URL wird nach Laden oder Bildfehler freigegeben; ein
+ * fehlgeschlagenes Canvas-Encoding lehnt das Promise ab.
+ * @param {string} svgText eigenständiges SVG-Markup
+ * @param {number} [scale=2] Raster-Skalierungsfaktor
+ * @returns {Promise<Blob>} PNG-Daten
+ * @throws {Error} als Promise-Ablehnung bei Raster- oder Encodingfehlern
  */
 export function svgToPngBlob(svgText, scale = 2) {
   return new Promise((resolve, reject) => {

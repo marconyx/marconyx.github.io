@@ -30,7 +30,11 @@ function sessionStore() {
  * Speicher, Digest-Funktion und Statuscallback sind injizierbar, damit die
  * Dialogzustände ohne echten Browser-Dialog getestet werden können. Der Hash
  * ist clientseitig prüfbar und stellt ausdrücklich keine Sicherheitsgrenze dar.
+ * Erfolgreiche Prüfung speichert nur den Marker `1` für diese Browsersitzung,
+ * nicht das eingegebene Passwort. Bei nicht verfügbarem sessionStorage gilt die
+ * Freischaltung nur bis zum Reload; ein Digest-Fehler lässt den Dialog gesperrt.
  *
+ * @param {object} [options] `root`, `storage`, asynchrones `digest` und `onMessage`
  * @returns {{isUnlocked: () => boolean}}
  */
 export function initAiLock({

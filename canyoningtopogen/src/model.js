@@ -12,6 +12,18 @@
  * WEIR ist die Ausnahme: Dieser entfernte Typ wird beim Topo-Import explizit
  * abgewiesen, weil ihn still als einen anderen Typ zu deuten Daten verfälschen
  * würde.
+ *
+ * Datenfluss: Die drei Importformate liefern zunächst Rohobjekte; die
+ * Normalisierung erzeugt daraus ein Topo mit `segments[]`, deren Einträge
+ * wiederum `elements[]` besitzen. Segment- und Elementpositionen sind Meter,
+ * Winkel sind Grad. `validateTopo` prüft anschliessend fachliche Regeln, ohne
+ * selbst Werte zu reparieren. Ein normalisiertes Objekt ist daher nicht
+ * automatisch ein fachlich gültiges Topo.
+ *
+ * `_extra` ist ein interner Sammelbehälter für unbekannte Eingabefelder;
+ * JSON und XML schreiben ihn auf ihrer jeweiligen Ebene wieder aus. Vor einem
+ * erneuten Normalisieren eines bereits normalisierten Objekts sollte es über
+ * den JSON-Serialisierer in die externe Form zurückgeführt werden.
  */
 
 /** Unterstützte Segmenttypen, die das Modell normalisiert und die UI anbietet. */
@@ -67,6 +79,16 @@ export function parseSegmentShortcut(value) {
   return { type, length_in_meters: length };
 }
 
+/**
+ * Zerlegt und prüft einen interaktiven Stapel, ohne Modellzustand zu ändern.
+ * Nur ein Komma vor einem Buchstaben beginnt einen neuen Eintrag; `R12,5`
+ * bleibt daher eine Dezimalzahl, `R12,5,P3` wird zu zwei Segmenten. Der erste
+ * Fehler beendet die Prüfung und enthält den betroffenen Eingabetext.
+ *
+ * @param {unknown} value Eingabetext; wird in eine Zeichenkette umgewandelt
+ * @returns {{segments: Array<{type: string, length_in_meters: number}>} |
+ *   {error: string, entry: string}} entweder alle Einträge oder ein Fehler
+ */
 export function parseSegmentShortcutList(value) {
   const entries = String(value).split(/,(?=\s*[a-z])/i);
   const segments = [];
@@ -309,9 +331,13 @@ export function createSegment(type = 'WALK', overrides = {}) {
 }
 
 /**
- * Vereinheitlicht Segment-Rohdaten. Gehzeit, Wandabstand und Tiefe werden nur
- * dort übernommen, wo sie fachlich anwendbar sind; unbekannte Felder bleiben
- * über `_extra` verlustfrei verfügbar.
+ * Vereinheitlicht Segment-Rohdaten. Die Gehzeit bleibt auch bei anderen
+ * Segmenttypen für einen späteren Typwechsel erhalten. Wandabstand und Tiefe
+ * werden nur bei dafür vorgesehenen Typen übernommen; unbekannte Felder
+ * bleiben über `_extra` verfügbar.
+ *
+ * @param {object} raw Rohdaten eines Segments
+ * @returns {object} neues Segment mit normalisierten Elementen
  */
 export function normalizeSegment(raw) {
   const type = String(raw?.type ?? 'WALK');
@@ -379,6 +405,10 @@ export class RemovedSegmentError extends Error {
  * bewahrt unbekannte Felder und Typen, setzt fehlende Werte auf Editor-Defaults
  * und wirft `RemovedSegmentError`, bevor WEIR stillschweigend verändert werden
  * könnte.
+ *
+ * @param {object} raw untrusted Rohdaten; fehlende Felder erhalten Defaults
+ * @returns {object} neues Topo mit normalisierten Segmenten
+ * @throws {RemovedSegmentError} bei einem WEIR-Segment (Index ist einsbasiert)
  */
 export function normalizeTopo(raw) {
   const removedIndex = Array.isArray(raw?.segments)
@@ -438,6 +468,10 @@ export function cloneTopo(topo) {
  * Unbekannte Typen sind Warnungen statt Fehler, weil das Modell ihre Daten
  * erhalten kann; ungültige Längen und fehlende Pflichtwerte sind Fehler.
  * Ergebnisobjekte enthalten stabile `key`/`params` für lokalisierte Meldungen.
+ *
+ * @param {object} topo zu prüfendes Modell
+ * @returns {Array<{level: string, message: string, key: string, params?: object}>}
+ *   Fehler und Warnungen in Anzeigereihenfolge
  */
 export function validateTopo(topo) {
   const issues = [];

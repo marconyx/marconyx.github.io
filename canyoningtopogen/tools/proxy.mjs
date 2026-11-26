@@ -11,6 +11,13 @@
  * Der Proxy serviert zusätzlich die App selbst. Läuft beides auf demselben Origin,
  * entfällt CORS vollständig – das ist der robusteste Weg.
  *
+ * Sicherheitsgrenze: Die Bindung an Loopback ist keine Benutzerauthentifizierung.
+ * API-Antworten erlauben CORS mit `*`; fremde Webseiten können den lokalen
+ * Dienst ansprechen. Mit erlaubter Client-Konfiguration können sie Ziel-URL und
+ * Auth-Parameter beeinflussen. `AI_ALLOW_CLIENT_CONFIG=false` verhindert diese
+ * Overrides, ersetzt aber keine Authentifizierung oder Netzwerkabschottung.
+ * Den Proxy nicht unverändert öffentlich bereitstellen.
+ *
  * Start:
  *   AI_KEY=... node tools/proxy.mjs
  *
@@ -45,7 +52,7 @@ const config = {
   api: (process.env.AI_API || 'openai').toLowerCase(),
   // Erlaubt der App, Endpoint/Key/Modell pro Anfrage mitzuschicken. Damit muss der
   // Proxy nie neu gestartet werden, wenn sich in der Oberfläche etwas ändert.
-  // Nur vertretbar, weil ausschliesslich an 127.0.0.1 gebunden wird.
+  // Loopback reduziert die Netzreichweite, ist aber keine Zugriffskontrolle.
   allowClientConfig: process.env.AI_ALLOW_CLIENT_CONFIG !== 'false',
   maxBody: 32 * 1024 * 1024,
 };
@@ -87,6 +94,13 @@ function sendJson(res, status, payload) {
   res.end(body);
 }
 
+/**
+ * Sammelt den JSON-Request bis `maxBody` Bytes. Ungültiges JSON wird abgewiesen;
+ * bei Überschreiten wird die Verbindung zusätzlich zerstört, weshalb nicht
+ * garantiert noch eine HTTP-Fehlerantwort beim Client ankommt.
+ * @param {import('node:http').IncomingMessage} req Eingabe-Stream
+ * @returns {Promise<object>} geparste Nutzlast
+ */
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];

@@ -7,6 +7,13 @@
  * Datei-Importer normalisieren vor dem Austausch des aktuellen Topos; dadurch
  * schlägt ein fehlerhafter Import nicht teilweise auf den sichtbaren Zustand
  * oder den Undo-Verlauf durch.
+ *
+ * Modell, Auswahl und Ansicht haben getrennte Lebenszyklen: Undo/Redo enthält
+ * JSON-Snapshots des Topos, nicht Foto oder Ansicht. Der Autosave umfasst
+ * zusätzlich `view` und `photo`; ein PDF-Dokument selbst bleibt nur im Speicher.
+ * Die SVG-Exportzeichenkette ist separat vom interaktiven DOM und enthält keine
+ * Auswahl-Hitflächen. Abschnittszustand und AI-Einstellungen verwenden eigene
+ * Speicherschlüssel in ihren Modulen.
  */
 import {
   DEAD_CAPABLE_ELEMENT_TYPES,
@@ -153,6 +160,11 @@ function replaceTopo(topo) {
   syncTopoFields();
 }
 
+/**
+ * Schreibt das externe JSON-Topo und die Editoransicht als einen Autosave.
+ * Bei `storageProtected` bleibt ein nicht unterstützter alter Speicherstand
+ * unangetastet; quota-/speicherbedingte Fehler sind hier bewusst optional.
+ */
 function persist() {
   if (storageProtected) return;
   try {
@@ -169,6 +181,11 @@ function persist() {
   }
 }
 
+/**
+ * Stellt Autosave wieder her und migriert die entfernte Stilwahl `bw` zu Farbe.
+ * @returns {true|false|string} Erfolg, kein lesbarer Stand oder `removed_weir`;
+ *   letzteres schützt den vorhandenen Speicher vor Überschreiben.
+ */
 function restore() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -220,6 +237,12 @@ function refreshStatusTranslation() {
 
 /* ------------------------------------------------------------------ Render */
 
+/**
+ * Berechnet Layout und exportierbares SVG aus dem aktuellen Modell, aktualisiert
+ * interaktive Ansicht, Inspector und Validierung und persistiert den Zustand.
+ * Während eines Element-Drags bleibt der erfasste SVG-Knoten verbunden; nur
+ * sein Transform wird aktualisiert, damit Pointer-Capture nicht verloren geht.
+ */
 function render() {
   // Während des Ziehens bleibt der Rahmen des vorigen Layouts stehen, sonst
   // würde das Bild dem Zeiger davonlaufen (siehe layoutTopo, Option `frame`).
@@ -767,6 +790,12 @@ function deleteSegment(index) {
 
 /* ------------------------------------------------------------- Interaktion */
 
+/**
+ * Transformiert Browser-Pixel über die inverse SVG-Screen-Matrix in Meter.
+ * Ohne SVG oder gültige Matrix kann die Interaktion nicht berechnet werden.
+ * @param {PointerEvent} event Zeigerposition in Client-Pixeln
+ * @returns {DOMPoint|null} Punkt in SVG-Koordinaten oder null
+ */
 function svgPoint(event) {
   const svg = $('svg-host').querySelector('svg');
   if (!svg) return null;
@@ -864,6 +893,12 @@ function finishLegendDrag() {
   persist();
 }
 
+/**
+ * Erfasst Auswahl und Startzustand eines Drags. Ein Element hat Vorrang vor
+ * Legende und Segment; nicht-primäre Pointer starten keine zweite Interaktion.
+ * Bei Streckensymbolen bleibt der lokale Abstand zum Endpunkt als `span`
+ * erhalten. Undo wird erst beim ersten tatsächlichen Verschieben angelegt.
+ */
 function onPointerDown(event) {
   // Zweiter Finger (Pinch) startet keine neue Auswahl und keinen Drag.
   if (event.isPrimary === false) return;
@@ -937,6 +972,11 @@ function onPointerDown(event) {
   render();
 }
 
+/**
+ * Rechnet den Zeiger in lokale Segmentkoordinaten zurück und rastet auf 0,25 m.
+ * Ein Streckenelement wird als Ganzes verschoben; der gespeicherte `span`
+ * verhindert eine unbeabsichtigte Änderung seiner Länge und Richtung.
+ */
 function onPointerMove(event) {
   if (legendDrag) {
     if (legendDrag.pointerId != null && event.pointerId != null && event.pointerId !== legendDrag.pointerId) return;
@@ -975,6 +1015,11 @@ function round(value) {
   return Math.round(value * 4) / 4;
 }
 
+/**
+ * Beendet Pointer-Capture und erlaubt wieder einen vollständigen Layoutlauf.
+ * Beim geänderten Blattmass wird die Kamera so angepasst, dass der Loslasspunkt
+ * sichtbar stabil bleibt, ohne die Modellkoordinaten nachträglich zu verändern.
+ */
 function onPointerUp(event) {
   if (legendDrag) {
     if (legendDrag.pointerId != null && event?.pointerId != null && event.pointerId !== legendDrag.pointerId) return;

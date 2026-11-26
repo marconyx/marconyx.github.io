@@ -23,6 +23,10 @@ export const DEFAULT_VIEW = 'topo';
  * Die Tab-Rollen werden nur am Smartphone gesetzt, weil Desktop alle drei
  * Bereiche gleichzeitig zeigt. Die Rückgabe erlaubt dem Editor, die aktuelle
  * Ansicht bei Bedarf gezielt auszuwählen.
+ * Die Popover-Handler synchronisieren `aria-expanded`, positionieren das
+ * geöffnete Menü innerhalb des Viewports und verwalten Pfeiltasten/Escape.
+ * Bei Fokuswechsel nach aussen oder Resize wird es geschlossen; die eigentlichen
+ * Dateiaktionen bleiben in `app.js` und werden nicht dupliziert.
  *
  * @param {{root?:Document|Element, win?:Window}} options DOM-Abhängigkeiten
  * @returns {{select: Function, setMenuOpen: Function, view: string}}

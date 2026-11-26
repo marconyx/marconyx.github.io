@@ -5,6 +5,10 @@
  * Segmente, Symbole, Hit-Areas und Legende. Blatt- und Legendengeometrie kommt
  * aus `sheet.js`, damit Layoutoptimierung, Drag-Hit-Testing und SVG dieselben
  * Grenzen verwenden. Themen ändern nur die Darstellung, nicht die Geometrie.
+ * `renderTopoSvg` erzeugt Markup als String, keine DOM-Knoten. Die interaktive
+ * Variante trägt Trefferflächen und Modellindizes; die Exportvariante wird
+ * separat ohne Auswahl-/Drag-Markierungen erzeugt. Sichtbare Nutztexte werden
+ * vor dem Einfügen in SVG escaped.
  */
 import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.14';
 import {
@@ -613,10 +617,15 @@ function renderLegend(topo, layout, theme, bounds, lang = DEFAULT_LANGUAGE) {
  * Optionen steuern Thema, Sprache, Zielformat, Meter-zu-Pixel-Skalierung und
  * optionale vorab berechnete Bounds. Die Hit-Areas tragen Datenattribute, damit
  * die App Segment-/Elementinteraktionen im SVG auf Modellindizes abbilden kann.
+ * Die `viewBox` bleibt in Metern; Pixelmasse kommen bei festen Papierformaten
+ * aus dem Preset und sonst aus `pxPerMeter`. Eine unbekannte Stil-ID fällt auf
+ * Farbe zurück. `bounds` überschreibt die übliche Berechnung und hält während
+ * eines Drags den sichtbaren Ausschnitt stabil.
  *
  * @param {object} topo normalisiertes Topo
  * @param {object} layout Ergebnis aus `layoutTopo`
- * @param {object} [options] `{theme, language, pxPerMeter, paper, bounds}`
+ * @param {object} [options] `{theme, language, pxPerMeter, paper, bounds,
+ *   interactive, selection}`; `interactive` aktiviert Trefferflächen
  * @returns {string} serialisierbares SVG-Markup
  */
 export function renderTopoSvg(topo, layout, options = {}) {

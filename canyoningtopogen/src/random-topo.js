@@ -22,7 +22,12 @@ import {
 } from './model.js?v=0.14';
 import { symbolOptions } from './symbols.js?v=0.14';
 
-/** Kleiner, schneller PRNG mit 32-Bit-Zustand (mulberry32). */
+/**
+ * Kleiner deterministischer PRNG mit 32-Bit-Zustand (mulberry32), nicht für
+ * kryptografische Zwecke. Gleicher Seed ergibt dieselbe Zahlenfolge.
+ * @param {number} [seed=1] Startwert, auf 32 Bit abgebildet
+ * @returns {() => number} Zufallsfunktion mit Werten in [0, 1)
+ */
 export function createRng(seed = 1) {
   let state = Math.trunc(seed) >>> 0 || 0x9e3779b9;
   return function next() {
@@ -224,7 +229,8 @@ function buildSegmentTypes(rng) {
  * @param {object} [options]
  * @param {number} [options.seed] Startwert für die eingebaute Zufallsquelle.
  * @param {() => number} [options.rng] Eigene Zufallsquelle (Werte in [0,1)).
- * @returns {object} normalisiertes Topo
+ * @returns {object} normalisiertes Topo mit allen Segmenttypen und mindestens
+ *   einer Instanz jeder Palettenvariante; Marker werden danach nummeriert
  */
 export function createRandomTopo(options = {}) {
   const rng =

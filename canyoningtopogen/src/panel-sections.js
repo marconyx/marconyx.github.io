@@ -2,6 +2,7 @@
  * Persistiert den offenen/geschlossenen Zustand der klappbaren Seitenbereiche.
  * Es werden nur die bekannten Section-IDs gespeichert; defekte oder nicht
  * verfügbare localStorage-Daten lassen die Bedienung mit Standardzustand weiterlaufen.
+ * Dieser UI-Zustand ist unabhängig von Topo-Undo und JSON-/XML-Export.
  */
 export const PANEL_SECTION_IDS = [
   'panel-topo',

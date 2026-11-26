@@ -64,6 +64,8 @@ function extraAttr(node) {
  * Serialisiert das normalisierte Modell in das attributbasierte `<topo>`-XML.
  * Nullwerte werden ausgelassen und unbekannte Modellfelder als JSON im
  * `extra`-Attribut abgelegt, damit Erweiterungen einen Round-Trip überstehen.
+ * @param {object} topo normalisiertes Topo
+ * @returns {string} XML-Dokument mit Attributen statt Elementtext
  */
 export function topoToXml(topo) {
   const lines = ['<?xml version="1.0" encoding="UTF-8"?>'];
@@ -125,7 +127,12 @@ export function topoToXml(topo) {
   return lines.join('\n');
 }
 
-/** Minimaler, abhängigkeitsfreier XML-Tag-Scanner (funktioniert im Browser und in Node). */
+/**
+ * Minimaler Tag-Scanner für das app-eigene Attributformat, kein allgemeiner
+ * XML-Parser und keine XSD-Validierung. Kommentare werden entfernt; Tags oder
+ * Syntax, die das Muster nicht erkennt, werden nicht separat beanstandet.
+ * Externe Entitäten und DTDs werden weder geladen noch ausgewertet.
+ */
 function scanTags(xml) {
   const tags = [];
   const withoutComments = xml.replace(/<!--[\s\S]*?-->/g, '');
@@ -169,6 +176,12 @@ function maybeExtra(attributes) {
  * Der Scanner wertet XML-Attribute und Elementverschachtelung aus, nicht aber
  * beliebigen Elementtext oder externe DTDs. Fehlendes `<topo>` und entfernte
  * WEIR-Segmente sind harte Importfehler.
+ * Ungültiges JSON im `extra`-Attribut wird ignoriert; der Scanner garantiert
+ * keine vollständige Prüfung beliebiger XML-Dokumente gegen die XSD.
+ *
+ * @param {string} xml XML-Text im unterstützten Attributformat
+ * @returns {object} normalisiertes Topo
+ * @throws {Error} bei fehlender Wurzel oder entferntem WEIR-Segment
  */
 export function topoFromXml(xml) {
   const tags = scanTags(xml);

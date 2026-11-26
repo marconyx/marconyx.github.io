@@ -1,10 +1,17 @@
 """Flask-Variante des AI-Proxys und statischer App-Server.
 
 Der Proxy hält den Modell-Key serverseitig, überbrückt Gateway-CORS-Probleme
-und spricht OpenAI-kompatible oder Anthropic-Endpunkte an. Die Umgebungsvariablen
-konfigurieren den Upstream; die Browser-App darf Endpoint und Auth-Parameter
-zusätzlich pro Anfrage überschreiben. Modellparameter und Fehlermeldungen bleiben
-mit der Node- und Worker-Variante kompatibel.
+und erstellt Anfragen für OpenAI-kompatible oder Anthropic-Endpunkte. Die
+Umgebungsvariablen konfigurieren den Upstream; die Browser-App darf Endpoint und
+Auth-Parameter zusätzlich pro Anfrage überschreiben. Die Antwortauswertung
+unterstützt derzeit nicht das native Anthropic-`content`-Format.
+
+Vertrauensgrenze: Die Routen authentifizieren ihre Aufrufer nicht und akzeptieren
+Client-Overrides für Endpoint und Zugangsdaten. `ALLOWED_ORIGIN` setzt lediglich
+einen CORS-Antwortheader; es ist keine serverseitige Zugriffskontrolle für
+nicht-Browser-Clients. Der Entwicklungsserver bindet standardmässig an 0.0.0.0.
+Ein Deployment mit serverseitigem Key benötigt daher vorgeschaltete
+Authentifizierung und geeignete Netzwerk-/Zielbeschränkungen.
 """
 import os
 import re
@@ -86,7 +93,11 @@ def rejects_json_mode(status, text):
     return bool(re.search(r'response_format|json_object|json.mode|json_schema', text or '', re.I))
 
 def extract_text(data):
-    """Vereinheitlicht Text aus OpenAI- und Anthropic-Antwortformen."""
+    """Liest Text aus einer Zeichenkette oder einer OpenAI-`choices`-Antwort.
+
+    Bei Content-Arrays werden Textteile aneinandergehängt; eine native
+    Anthropic-`content`-Liste auf oberster Ebene wird hier nicht ausgewertet.
+    """
     if isinstance(data, str):
         return data
     choices = data.get('choices', [])
@@ -194,7 +205,12 @@ def health():
 
 @app.route('/api/models', methods=['POST', 'OPTIONS'])
 def models():
-    """Leitet die Modellabfrage weiter; POST trägt Endpoint und Auth-Konfiguration."""
+    """Leitet die Modellabfrage weiter; POST trägt Endpoint und Auth-Konfiguration.
+
+    Der Client darf Ziel, API-Typ und Auth-Header überschreiben. Erfolg liefert
+    sortierte, deduplizierte Modell-IDs; Fehler des Upstreams werden als
+    JSON-Antwort mit Status bzw. bei Verbindungsfehlern als 502 zurückgegeben.
+    """
     if request.method == 'OPTIONS':
         resp = Response('', status=204)
         for k, v in cors_headers().items():
@@ -255,10 +271,16 @@ def models():
 def topo():
     """Validiert den Bild-/Prompt-Auftrag und extrahiert den Upstream-Modelltext.
 
-    Bei OpenAI-kompatiblen Gateways werden JSON-Modus und Denkschalter
-    schrittweise entfernt, aber nur wenn die Antwort genau den jeweiligen
-    inkompatiblen Parameter beanstandet. Dadurch bleiben nützliche Vorgaben für
-    kompatible Gateways erhalten und Anthropic erhält sein natives Nachrichtenformat.
+    Ein erkannter Kompatibilitätsfehler löst bis zu zwei Wiederholungen aus:
+    zuerst ohne Denkschalter, dann zusätzlich ohne JSON-Modus. Die Reihenfolge
+    ist fest, auch wenn zuerst der JSON-Modus beanstandet wurde. Anthropic
+    erhält sein natives Nachrichtenformat, aber die gemeinsame Textauswertung
+    unterstützt derzeit kein natives Anthropic-Antwortobjekt.
+
+    Erwartet `image` als base64-Data-URL und `prompt`, optional `system` und
+    Client-Konfiguration. Textteile sind durch MAX_PROMPT_CHARS begrenzt. Der
+    Proxy liefert Modelltext als JSON und prüft oder normalisiert kein Topo;
+    das erledigt der Browser nach der Antwort.
     """
     if request.method == 'OPTIONS':
         resp = Response('', status=204)

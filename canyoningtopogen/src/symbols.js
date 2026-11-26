@@ -5,7 +5,11 @@
  * und (0,0) der Ankerpunkt des Elements ist (y nach unten).
  * Der Renderer setzt `translate(x, y) scale(size)` davor.
  *
- * Neue Symbole lassen sich allein durch einen Eintrag in SYMBOLS ergänzen.
+ * `SYMBOLS` enthält Zeichenfunktion und Kategorie; `symbolOptions()` leitet
+ * daraus die Palette und Varianten ab. Neue persistierte Typen brauchen
+ * zusätzlich Einträge in Modell, Übersetzungen und je nach Exportformat im
+ * Schema. Punkt-Renderer arbeiten um den Anker, Strecken-Renderer erhalten
+ * Anfang und Ende; unbekannte Typen bleiben als sichtbarer Platzhalter erhalten.
  */
 import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.14';
 
@@ -966,13 +970,13 @@ export function renderEauFroideSymbol(type, element) {
   return symbol ? eauFroideRecolor(symbol.render(element, 'color')) : renderUnknownSymbol(element);
 }
 
-/** Streckensymbol im Stil Eau Froide. */
 /**
  * Zeichnet ein Zwei-Punkt-Symbol im Eau-Froide-Stil.
  * @param {string} type Elementtyp
  * @param {{x:number,y:number}} a Startpunkt in lokalen Meterkoordinaten
  * @param {{x:number,y:number}} b Endpunkt in lokalen Meterkoordinaten
  * @param {object} options Skalierung/Textoptionen des Elementrenderers
+ * @returns {string} SVG-Fragment; der Typ muss im Symbolkatalog bekannt sein
  */
 export function renderEauFroideRange(type, a, b, options) {
   const custom = EAU_FROIDE_RANGE[type];
@@ -997,6 +1001,7 @@ export function renderUnknownSymbol(element) {
  * Liefert eine frische, UI-taugliche Palette inklusive toter Baumvarianten.
  * Die generierte Form wird ebenfalls vom Zufallsgenerator als Pflichtkatalog
  * verwendet und sollte deshalb die Modelltypen nicht separat duplizieren.
+ * @returns {Array<object>} Kategorien mit `{type, label, range, dead}`-Einträgen
  */
 export function symbolOptions() {
   return SYMBOL_CATEGORIES.map((category) => ({

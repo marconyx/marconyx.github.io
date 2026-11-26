@@ -38,6 +38,13 @@ export function isPdfFile(file) {
  * Das Dokument bleibt geöffnet, damit ein Seitenwechsel die Datei nicht erneut
  * einlesen muss. `renderPage` begrenzt die Pixeldimensionen und liefert eine
  * PNG-Data-URL; `destroy` gibt die Ressourcen des PDF-Dokuments frei.
+ * Seitennummern werden auf den gültigen einsbasierten Bereich begrenzt.
+ * Lade-, Render- und Canvasfehler werden nicht hier abgefangen.
+ *
+ * @param {File} file lokale PDF-Datei
+ * @returns {Promise<{pageCount:number, name:string,
+ *   renderPage:(pageNumber:number)=>Promise<string>, destroy:()=>void}>}
+ * @throws {Error} wenn die Bibliothek oder das Dokument nicht geladen werden kann
  */
 export async function openPdf(file) {
   const lib = await loadLibrary();

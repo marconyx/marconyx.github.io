@@ -1,10 +1,9 @@
 /**
  * Übersetzungen der Bedienoberfläche (DE/EN/FR/IT/ES).
  *
- * Bewusst ein eigenes, reines Datenmodul ohne DOM-Zugriff: `app.js` liest die
- * Wörterbücher aus und schreibt sie in die konkreten Elemente. So bleibt
- * dieses Modul in Node-Tests (ohne echtes DOM) ebenso benutzbar wie im
- * Browser, und die Trennung hält die riesige Textmenge an einem Ort.
+ * Die Wörterbücher und Übersetzungshilfen benötigen kein globales DOM;
+ * `applyStaticTranslations` erhält einen Lookup und aktualisiert darüber die
+ * konkreten Elemente. So sind sie in Node-Tests und im Browser benutzbar.
  *
  * Deutsch ist überall die erste Sprache UND der Standardwert jeder Anzeige
  * (leeres/undefiniertes `state.view.language`). Die deutschen Einträge sind
@@ -1166,6 +1165,10 @@ export const MESSAGES = {
  * Übersetzt eine Vorlage aus `MESSAGES` und ersetzt `{name}`-Platzhalter.
  * Unbekannte Keys liefern den Key selbst, damit fehlende Übersetzungen sichtbar
  * bleiben statt still eine Erfolgsmeldung zu imitieren.
+ * @param {string} lang Sprachcode, unbekannte Sprachen fallen auf Deutsch zurück
+ * @param {string} key Schlüssel in `MESSAGES`
+ * @param {object} [vars] Werte für Platzhalter
+ * @returns {string} übersetzter Text oder unbekannter Schlüssel
  */
 export function t(lang, key, vars) {
   const entry = MESSAGES[key];
@@ -1176,6 +1179,10 @@ export function t(lang, key, vars) {
 /**
  * Wendet die statischen Wörterbücher auf passende DOM-IDs an.
  * `getById` wird injiziert, damit das Wörterbuchmodul ohne Browser-DOM testbar ist.
+ * `UI_HTML` enthält ausdrücklich HTML-Vorlagen; dynamische Nutzerdaten gehören
+ * nicht ungefiltert hinein. Fehlende DOM-IDs werden übersprungen.
+ * @param {(id:string)=>Element|null} getById DOM-Lookup
+ * @param {string} lang gewünschter Sprachcode
  */
 export function applyStaticTranslations(getById, lang) {
   for (const [id, entry] of Object.entries(UI_TEXT)) {

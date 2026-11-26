@@ -5,6 +5,10 @@
  * der Renderer (`renderer.js`) dieselben Masse brauchen: Die Layout-Engine muss
  * wissen, wie breit eine Zeile im gewählten Format sein darf, und dafür zählt
  * das fertige Blatt inklusive Rand und Legende – nicht nur die nackte Zeile.
+ * Alle Bounds sind Meterkoordinaten `{minX, maxX, minY, maxY}`. Feste
+ * Papierformate ergänzen diese Bounds bis zum Seitenverhältnis; sie skalieren
+ * oder verschieben das Modell nicht. Legendentext und seine geschätzte Breite
+ * müssen für Layout, Interaktion und SVG aus denselben Hilfsfunktionen stammen.
  */
 import { DEFAULT_LANGUAGE, translateLegendLabel } from './i18n.js?v=0.14';
 
@@ -232,7 +236,15 @@ export function legendPanelRectFor(topo, layout, bounds, lang = DEFAULT_LANGUAGE
   return { left, right, width, anchorTop, top: anchorTop - 0.5, height: legendPanelHeightMeters(topo) };
 }
 
-/** Aussenmasse des Blatts in Metern, inkl. Rand und Legendenspalte. */
+/**
+ * Aussenmasse in Metern inklusive Rand und Legende. Eine frei platzierte
+ * Legende vergrössert das Blatt bei Bedarf nach allen Seiten; sonst wird rechts
+ * eine feste Legendenspalte reserviert und die Höhe bei Bedarf erweitert.
+ * @param {object} topo normalisiertes Topo mit optionalem Legendenoffset
+ * @param {object} layout Ergebnis von `layoutTopo`
+ * @param {string} [lang] Sprache für die Breite übersetzter Legendeneinträge
+ * @returns {{minX:number,maxX:number,minY:number,maxY:number}} Blattgrenzen
+ */
 export function contentBoundsFor(topo, layout, lang = DEFAULT_LANGUAGE) {
   if (hasFreeLegendPosition(topo)) {
     // Frei platziert braucht die Legende keine eigene Spalte: Das Blatt umfasst
@@ -263,6 +275,9 @@ export function contentBoundsFor(topo, layout, lang = DEFAULT_LANGUAGE) {
  * unten, damit sich nichts verschiebt. Ohne das würde der Inhalt beim Export
  * auf A4 verzerrt, weil viewBox und Pixelmass unterschiedliche Verhältnisse
  * hätten.
+ * @param {object} bounds Metergrenzen des Inhalts
+ * @param {string} paperKey Schlüssel aus `PAPER_PRESETS`
+ * @returns {object} Kopie der Grenzen, gegebenenfalls nach rechts oder unten erweitert
  */
 export function fitBoundsToPaper(bounds, paperKey) {
   const aspect = paperAspectRatio(paperKey);
