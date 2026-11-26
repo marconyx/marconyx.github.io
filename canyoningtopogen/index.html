@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Canyoning Topo Generator</title>
-    <link rel="stylesheet" href="styles.css?v=0.5" />
+    <link rel="stylesheet" href="styles.css?v=0.6" />
   </head>
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/logo.png" alt="bachab" width="35" height="29" />
-          <span class="toolbar__version" id="app-version">v0.5</span>
+          <span class="toolbar__version" id="app-version">v0.6</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
@@ -114,10 +114,6 @@
         <details class="panel__section" id="panel-segments" open>
           <summary><span class="panel__arrow" aria-hidden="true"></span><h2 id="h-panel-segments">Segmente</h2></summary>
           <div class="panel__content">
-            <div class="segment-add">
-              <select id="select-new-segment"></select>
-              <button type="button" id="btn-add-segment" title="Segment hinzufügen" aria-label="Segment hinzufügen">+</button>
-            </div>
             <div class="shortcut-label">
               <label for="segment-shortcut"><span id="lbl-segment-shortcut">Segment-Shortcut (m)</span></label>
               <button type="button" class="shortcut-help-button" id="btn-shortcut-help" popovertarget="shortcut-help" aria-controls="shortcut-help" aria-expanded="false" aria-label="Shortcut-Hilfe öffnen" title="Shortcut-Hilfe öffnen">?</button>
@@ -134,6 +130,10 @@
               <button type="button" id="btn-close-shortcut-help" popovertarget="shortcut-help" popovertargetaction="hide">Schliessen</button>
             </div>
             <p class="hint shortcut-error" id="segment-shortcut-error" aria-live="polite"></p>
+            <div class="segment-add">
+              <select id="select-new-segment"></select>
+              <button type="button" id="btn-add-segment" title="Segment hinzufügen" aria-label="Segment hinzufügen">+</button>
+            </div>
             <ol class="segment-list" id="segment-list"></ol>
           </div>
         </details>
@@ -285,6 +285,6 @@
         </div>
       </form>
     </dialog>
-    <script type="module" src="src/app.js?v=0.5"></script>
+    <script type="module" src="src/app.js?v=0.6"></script>
   </body>
 </html>

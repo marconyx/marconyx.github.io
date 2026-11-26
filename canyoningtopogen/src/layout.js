@@ -33,14 +33,14 @@
  *    explizitere Ansage und immer erfüllbar. Die UI schliesst die Kombination
  *    zusätzlich aus; alte Dateien bleiben dadurch trotzdem lesbar.
  */
-import { WATER_SEGMENT_TYPES } from './model.js?v=0.5';
+import { WATER_SEGMENT_TYPES } from './model.js?v=0.6';
 import {
   contentBoundsFor,
   paperAspectRatio,
   poolDepthLabelFor,
   poolDrawingDepthOf,
   wallBulgeFor,
-} from './sheet.js?v=0.5';
+} from './sheet.js?v=0.6';
 
 const ROW_GAP_METERS = 14;
 const ROW_PADDING_METERS = 4;

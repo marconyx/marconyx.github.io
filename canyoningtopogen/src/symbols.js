@@ -7,7 +7,7 @@
  *
  * Neue Symbole lassen sich allein durch einen Eintrag in SYMBOLS ergänzen.
  */
-import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.5';
+import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.6';
 
 const esc = (value) =>
   String(value ?? '')

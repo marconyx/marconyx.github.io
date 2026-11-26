@@ -413,6 +413,15 @@ test('Shortcut-Hilfe ist ein beschriftetes Popover und mit Escape schliessbar', 
   assert.equal(button.getAttribute('aria-expanded'), 'false');
 });
 
+test('Segmentauswahl folgt dem Shortcut-Feld und dessen Fehleranzeige', () => {
+  const section = /<details class="panel__section" id="panel-segments"[\s\S]*?<\/details>/.exec(markup)[0];
+  const ids = ['lbl-segment-shortcut', 'btn-shortcut-help', 'segment-shortcut',
+    'btn-add-shortcut', 'segment-shortcut-error', 'select-new-segment', 'btn-add-segment', 'segment-list'];
+  const positions = ids.map((id) => section.indexOf(`id="${id}"`));
+  assert.ok(positions.every((position) => position >= 0));
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+});
+
 test('Plus neben Shortcut verwendet dieselbe Validierung und Undo-Historie wie Enter', () => {
   assert.match(markup, /<div class="segment-add">\s*<input[^>]*id="segment-shortcut"[^>]*\/>\s*<button type="button" id="btn-add-shortcut"[^>]*aria-label="[^"]+"[^>]*>\+<\/button>/);
   elementById('btn-new').dispatch('click');

@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.5`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.6`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -19,7 +19,7 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
   bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
-- **Segment-Shortcuts**: Das beschriftete Feld unter der Segmentauswahl hängt mit
+- **Segment-Shortcuts**: Das beschriftete Feld über der Segmentauswahl hängt mit
   Enter oder dem Plus-Knopf rechts daneben genau ein Segment **am Listenende** an,
   unabhängig von der aktuellen Auswahl.
   `R10` ergibt RAPPEL mit 10 m, `RD23` RAPPEL_DRY mit 23 m, `RW12,5`

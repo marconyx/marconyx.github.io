@@ -17,21 +17,21 @@ import {
   normalizeTopo,
   parseSegmentShortcut,
   validateTopo,
-} from './model.js?v=0.5';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.5';
-import { createRandomTopo } from './random-topo.js?v=0.5';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.5';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.5';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.5';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.5';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.5';
+} from './model.js?v=0.6';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.6';
+import { createRandomTopo } from './random-topo.js?v=0.6';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.6';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.6';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.6';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.6';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.6';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.5';
+} from './exporters.js?v=0.6';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -47,12 +47,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.5';
-import { isPdfFile, openPdf } from './pdf.js?v=0.5';
-import { initPanelSections } from './panel-sections.js?v=0.5';
-import { initAiLock } from './ai-lock.js?v=0.5';
-import { initResponsive } from './responsive.js?v=0.5';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.5';
+} from './ai.js?v=0.6';
+import { isPdfFile, openPdf } from './pdf.js?v=0.6';
+import { initPanelSections } from './panel-sections.js?v=0.6';
+import { initAiLock } from './ai-lock.js?v=0.6';
+import { initResponsive } from './responsive.js?v=0.6';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.6';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -63,7 +63,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.5';
+} from './i18n.js?v=0.6';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
