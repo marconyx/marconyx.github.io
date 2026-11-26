@@ -11,7 +11,7 @@
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/bachab-logo.png" alt="bachab" width="400" height="133" />
-          <span class="toolbar__version" id="app-version">v0.2</span>
+          <span class="toolbar__version" id="app-version">v0.3</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
@@ -41,7 +41,7 @@
         <button type="button" id="btn-example">Beispiel</button>
         <button type="button" id="btn-random" title="Zufälliges Topo mit allen Segmenttypen und Symbolen">Zufall</button>
         <label class="button" for="file-open"><span id="lbl-file-open">Öffnen…</span></label>
-        <input type="file" id="file-open" accept=".json,.xml,application/json,text/xml" hidden />
+        <input type="file" id="file-open" accept=".json,.xml,.txt,application/json,text/xml,text/plain" hidden />
       </div>
 
       <div class="toolbar__group" id="toolbar-export">
@@ -123,6 +123,7 @@
             </label>
             <p class="hint" id="hint-segment-shortcut">Kürzel + positive Länge in Metern; Enter hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.</p>
             <p class="hint" id="shortcut-mapping">R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W ist mehrdeutig)</p>
+            <p class="hint" id="hint-shortlist-data">Kurzlisten (TXT) enthalten nur Segmenttyp und Länge; Metadaten, Symbole und weitere Einstellungen werden nicht gespeichert.</p>
             <p class="hint shortcut-error" id="segment-shortcut-error" aria-live="polite"></p>
             <ol class="segment-list" id="segment-list"></ol>
           </div>

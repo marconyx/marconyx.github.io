@@ -30,6 +30,13 @@ function pick(entry, lang) {
 
 /** Statischer Text (`textContent`) je Element-ID. */
 export const UI_TEXT = {
+  'hint-shortlist-data': {
+    de: 'Kurzlisten (TXT) enthalten nur Segmenttyp und Länge; Metadaten, Symbole und weitere Einstellungen werden nicht gespeichert.',
+    en: 'Short lists (TXT) contain only segment type and length; metadata, symbols and other settings are not saved.',
+    fr: 'Les listes courtes (TXT) contiennent uniquement le type et la longueur des segments ; métadonnées, symboles et autres réglages ne sont pas enregistrés.',
+    it: 'Gli elenchi brevi (TXT) contengono solo tipo e lunghezza dei segmenti; metadati, simboli e altre impostazioni non vengono salvati.',
+    es: 'Las listas breves (TXT) solo contienen el tipo y la longitud de los segmentos; no guardan metadatos, símbolos ni otros ajustes.',
+  },
   'lbl-segment-shortcut': {
     de: 'Segment-Shortcut (m)', en: 'Segment shortcut (m)', fr: 'Raccourci de segment (m)',
     it: 'Scorciatoia segmento (m)', es: 'Atajo de segmento (m)',
@@ -546,6 +553,44 @@ export function translatePromptHint(id, lang) {
 
 /** Vorlagen für dynamische Statusmeldungen, Validierungshinweise usw. */
 export const MESSAGES = {
+  'shortlist.error.type': {
+    de: 'Unbekannter oder fehlender Segmenttyp.', en: 'Unknown or missing segment type.',
+    fr: 'Type de segment inconnu ou manquant.', it: 'Tipo di segmento sconosciuto o mancante.',
+    es: 'Tipo de segmento desconocido o ausente.',
+  },
+  'shortlist.error.length': {
+    de: 'Länge muss endlich und grösser als 0 sein.', en: 'Length must be finite and greater than 0.',
+    fr: 'La longueur doit être finie et supérieure à 0.', it: 'La lunghezza deve essere finita e maggiore di 0.',
+    es: 'La longitud debe ser finita y mayor que 0.',
+  },
+  'shortlist.error.empty': {
+    de: 'Die Kurzliste enthält keine Segmente.', en: 'The short list contains no segments.',
+    fr: 'La liste courte ne contient aucun segment.', it: 'L’elenco breve non contiene segmenti.',
+    es: 'La lista breve no contiene segmentos.',
+  },
+  'shortlist.line': {
+    de: 'Zeile {position}: {message}', en: 'Line {position}: {message}',
+    fr: 'Ligne {position} : {message}', it: 'Riga {position}: {message}', es: 'Línea {position}: {message}',
+  },
+  'shortlist.segment': {
+    de: 'Segment {position}: {message}', en: 'Segment {position}: {message}',
+    fr: 'Segment {position} : {message}', it: 'Segmento {position}: {message}', es: 'Segmento {position}: {message}',
+  },
+  'status.shortlist_import_failed': {
+    de: 'Kurzliste nicht geladen. {errors}', en: 'Short list not loaded. {errors}',
+    fr: 'Liste courte non chargée. {errors}', it: 'Elenco breve non caricato. {errors}', es: 'Lista breve no cargada. {errors}',
+  },
+  'status.shortlist_export_failed': {
+    de: 'Kurzliste nicht exportiert. {errors}', en: 'Short list not exported. {errors}',
+    fr: 'Liste courte non exportée. {errors}', it: 'Elenco breve non esportato. {errors}', es: 'Lista breve no exportada. {errors}',
+  },
+  'status.shortlist_loaded': {
+    de: '{name} geladen. TXT enthält nur Typ und Länge; weitere Daten wurden auf Standardwerte gesetzt.',
+    en: '{name} loaded. TXT contains only type and length; other data was set to defaults.',
+    fr: '{name} chargé. Le TXT ne contient que le type et la longueur ; les autres données ont leurs valeurs par défaut.',
+    it: '{name} caricato. Il TXT contiene solo tipo e lunghezza; gli altri dati sono stati impostati ai valori predefiniti.',
+    es: '{name} cargado. El TXT solo contiene tipo y longitud; los demás datos tienen valores predeterminados.',
+  },
   'shortcut.format': {
     de: 'Ein Kürzel mit Länge eingeben, z. B. R10 oder RD23.',
     en: 'Enter a code and length, e.g. R10 or RD23.',
@@ -694,11 +739,11 @@ export const MESSAGES = {
   'status.svg_exported': { de: 'SVG exportiert.', en: 'SVG exported.', fr: 'SVG exporté.', it: 'SVG esportato.', es: 'SVG exportado.' },
   'status.png_exported': { de: 'PNG exportiert.', en: 'PNG exported.', fr: 'PNG exporté.', it: 'PNG esportato.', es: 'PNG exportado.' },
   'status.shortlist_exported': {
-    de: 'Kurzliste exportiert ({count} Segmente).',
-    en: 'Short list exported ({count} segments).',
-    fr: 'Liste courte exportée ({count} segments).',
-    it: 'Elenco breve esportato ({count} segmenti).',
-    es: 'Lista breve exportada ({count} segmentos).',
+    de: 'Kurzliste exportiert ({count} Segmente). TXT enthält nur Typ und Länge, keine weiteren Daten.',
+    en: 'Short list exported ({count} segments). TXT contains only type and length, no other data.',
+    fr: 'Liste courte exportée ({count} segments). Le TXT contient uniquement le type et la longueur.',
+    it: 'Elenco breve esportato ({count} segmenti). Il TXT contiene solo tipo e lunghezza.',
+    es: 'Lista breve exportada ({count} segmentos). El TXT solo contiene tipo y longitud.',
   },
   'status.ai_unlocked': {
     de: 'AI-Erkennung entsperrt.',

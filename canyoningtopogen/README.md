@@ -89,11 +89,23 @@ Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
   Druck und Exporte sind davon nicht betroffen.
 - **Speichern…**: Die Auswahl bündelt **JSON speichern**, **XML speichern**,
   **SVG**, **PNG**, **Kurzliste** und **Drucken / PDF**. **Kurzliste** lädt
-  `<canyon-name>-kurzliste.txt` (UTF-8) herunter: pro Segment mit positiver
-  Längenangabe eine Zeile in Topo-Reihenfolge, z. B. `2. RAPPEL_DRY: 12.5 m`.
-  Angegeben wird die tatsächliche Länge, auch wenn die Darstellung verkürzt ist;
-  Symbole, Metadaten und Legende fehlen bewusst. Ohne solche Segmente wird keine
-  Datei erzeugt, die Statuszeile meldet das. Sie bleibt auch auf Smartphones direkt
+  `<canyon-name>-kurzliste.txt` (UTF-8) herunter: ein Shortcut pro Segment in
+  Topo-Reihenfolge, z. B. `RD12.5`, mit denselben Kürzeln wie das Eingabefeld.
+  Angegeben wird die tatsächliche Länge, auch wenn die Darstellung verkürzt ist.
+  **TXT speichert ausschliesslich Segmenttypen und Längen**; Metadaten, Winkel,
+  Symbole, Gehzeiten, Tiefen und andere Einstellungen fehlen. Bei unbekannten
+  Typen oder fehlenden, nicht endlichen bzw. nicht positiven Längen wird keine
+  unvollständige Datei erzeugt; die Statuszeile nennt die betroffenen Segmente.
+  Ein leeres Topo wird ebenfalls nicht exportiert.
+  Über **Öffnen…** lassen sich `.txt`-Kurzlisten als neues Topo öffnen. Dabei
+  erhalten alle nicht enthaltenen Daten Standardwerte; für vollständige Topos
+  JSON oder XML verwenden. Punkt und Komma, Gross-/Kleinschreibung, Leerzeilen
+  und übliche Zeilenenden sind erlaubt. Auch das frühere Format wie
+  `2. RAPPEL_DRY: 12.5 m` wird für bekannte Typen importiert. Ungültige Zeilen
+  werden mit Zeilennummern gemeldet und es wird nichts teilweise importiert.
+  Frühere Kurzlisten können bereits beim damaligen Export ungültige Längen
+  ausgelassen haben; solche fehlenden Segmente lassen sich nicht rekonstruieren.
+  Die Auswahl bleibt auch auf Smartphones direkt
   erreichbar, unabhängig vom Toolbar-Menü. Tab oder Pfeiltasten/Pos1/Ende wählen
   eine Aktion; Escape, Klick ausserhalb oder Fokuswechsel schliessen die Auswahl.
 - **Freies Symbolziehen**: Das ursprüngliche SVG-Ziel bleibt während der Maus-

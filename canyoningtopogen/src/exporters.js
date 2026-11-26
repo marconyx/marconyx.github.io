@@ -30,21 +30,6 @@ export function slugify(value) {
   );
 }
 
-/**
- * Kurzliste: pro Segment mit gesetzter positiver Länge eine Zeile in
- * Topo-Reihenfolge. Die Meterangabe ist der Modellwert, nicht die (bei aktiver
- * Darstellungsverkürzung) gekappte Zeichenlänge.
- */
-export function topoToShortList(topo) {
-  const lines = [];
-  for (const segment of topo?.segments ?? []) {
-    const length = segment?.length_in_meters;
-    if (typeof length !== 'number' || !Number.isFinite(length) || length <= 0) continue;
-    lines.push(`${lines.length + 1}. ${segment.type}: ${length} m`);
-  }
-  return { text: lines.length ? `${lines.join('\n')}\n` : '', count: lines.length };
-}
-
 /** Rastert ein SVG-Dokument über ein Offscreen-Canvas nach PNG. */
 export function svgToPngBlob(svgText, scale = 2) {
   return new Promise((resolve, reject) => {

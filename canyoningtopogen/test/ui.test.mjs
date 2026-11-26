@@ -225,7 +225,7 @@ globalThis.FileReader = class {
 import { readFileSync } from 'node:fs';
 
 import { PROMPT_TEMPLATES, getAiSettings, providerById } from '../src/ai.js';
-import { SEGMENT_TYPES, SEGMENT_SHORTCUTS, parseSegmentShortcut, validateTopo, createEmptyTopo, defaultAngleFor } from '../src/model.js';
+import { SEGMENT_TYPES, SEGMENT_SHORTCUTS, parseSegmentShortcut, validateTopo, createEmptyTopo, defaultAngleFor, normalizeTopo } from '../src/model.js';
 import { symbolOptions } from '../src/symbols.js';
 import { topoToJson } from '../src/io-json.js';
 import { topoToXml } from '../src/io-xml.js';
@@ -273,6 +273,93 @@ function test(name, fn) {
 }
 
 const svg = () => elementById('svg-host').innerHTML;
+
+try {
+  const fileInput = elementById('file-open');
+  const open = async (name, text) => {
+    fileInput.files = [{ name, text: async () => text }];
+    await fileInput.listeners.get('change')[0]({ target: fileInput });
+  };
+  assert.match(markup, /id="file-open" accept="[^"]*\.txt/);
+  elementById('btn-new').dispatch('click');
+  const previous = topoToJson(state.topo);
+  await open('route.TXT', 'R10\r\nRD23\nrw12,5\nWA7\nWE4\n');
+  assert.deepEqual(state.topo.segments.map((s) => [s.type, s.length_in_meters]), [
+    ['RAPPEL', 10], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5], ['WALK', 7], ['WEIR', 4],
+  ]);
+  assert.match(elementById('status').textContent, /nur Typ und Länge/);
+  const imported = topoToJson(state.topo);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), previous);
+  elementById('btn-redo').dispatch('click');
+  assert.equal(topoToJson(state.topo), imported);
+  const persisted = storage.get('canyon-topo-generator/state/v1');
+  await open('bad.txt', 'J3\n\nW10\nRD\n');
+  assert.equal(topoToJson(state.topo), imported);
+  assert.equal(storage.get('canyon-topo-generator/state/v1'), persisted);
+  assert.match(elementById('status').textContent, /Zeile 3:.*mehrdeutig.*Zeile 4:/);
+  const language = elementById('select-language');
+  language.value = 'en';
+  language.dispatch('change');
+  assert.match(elementById('status').textContent, /Line 3:.*ambiguous.*Line 4:/);
+  language.value = 'de';
+  language.dispatch('change');
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), previous, 'fehlgeschlagener Import erzeugt keinen Undo-Schritt');
+  elementById('btn-redo').dispatch('click');
+  await open('old.txt', '1. WALK: 20 m\n2. RAPPEL_DRY: 12.5 m\n');
+  assert.deepEqual(state.topo.segments.map((s) => s.type), ['WALK', 'RAPPEL_DRY']);
+  const old = topoToJson(state.topo);
+  await open('bad.json', '{');
+  assert.equal(topoToJson(state.topo), old);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), imported, 'fehlerhaftes JSON erzeugt keinen Undo-Schritt');
+  fileInput.files = [{ name: 'unreadable.txt', text: async () => { throw new Error('read failed'); } }];
+  await fileInput.listeners.get('change')[0]({ target: fileInput });
+  assert.equal(topoToJson(state.topo), imported);
+  assert.match(elementById('status').textContent, /read failed/);
+  await open('test.json', JSON.stringify({ canyon_name: 'JSON', segments: [{ type: 'POOL', length_in_meters: 9 }] }));
+  assert.equal(state.topo.canyon_name, 'JSON');
+  assert.equal(state.topo.segments[0].length_in_meters, 9);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), imported);
+
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalCreateElement = document.createElement;
+  let downloaded = null;
+  let filename = null;
+  URL.createObjectURL = (blob) => { downloaded = blob; return 'blob:test'; };
+  document.createElement = (tag) => {
+    const node = originalCreateElement(tag);
+    if (tag === 'a') node.click = () => { filename = node.download; };
+    return node;
+  };
+  try {
+    elementById('btn-export-shortlist').dispatch('click');
+    assert.match(filename, /-kurzliste\.txt$/);
+    assert.equal(downloaded.type, 'text/plain;charset=utf-8');
+    assert.equal(await downloaded.text(), 'R10\nRD23\nRW12.5\nWA7\nWE4\n');
+    assert.match(elementById('status').textContent, /nur Typ und Länge/);
+    downloaded = null;
+    state.topo = normalizeTopo({ segments: [
+      { type: 'UNKNOWN', length_in_meters: 4 },
+      { type: 'POOL', length_in_meters: 0 },
+    ] });
+    elementById('btn-export-shortlist').dispatch('click');
+    assert.equal(downloaded, null);
+    assert.match(elementById('status').textContent, /Segment 1:.*Segmenttyp.*Segment 2:.*Länge/);
+  } finally {
+    URL.createObjectURL = originalCreateObjectURL;
+    document.createElement = originalCreateElement;
+  }
+  passed += 1;
+  console.log('  ok  TXT-Download und Import: atomar, lokalisiert, Undo/Redo und alte Listen');
+} catch (error) {
+  console.error(`  FAIL TXT-Download und Import\n       ${error.stack}`);
+  process.exitCode = 1;
+}
+
+
 
 /** Tippen wie im Browser: `input` pro Zeichen, `change` beim Verlassen. */
 function type(id, text, { commit = false } = {}) {
@@ -1834,5 +1921,6 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
   assert.equal(elementById('canvas').getAttribute('role'), null);
   assert.equal(elementById('btn-menu').getAttribute('aria-expanded'), 'false');
 });
+
 
 console.log(`\n${passed} Test(s) bestanden.`);

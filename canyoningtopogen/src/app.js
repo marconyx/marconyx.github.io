@@ -21,6 +21,7 @@ import {
 import { topoFromJson, topoToJson } from './io-json.js';
 import { createRandomTopo } from './random-topo.js';
 import { topoFromXml, topoToXml } from './io-xml.js';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js';
 import { layoutTopo, worldToLocal } from './layout.js';
 import { legendRectFor, renderTopoSvg } from './renderer.js';
 import { SYMBOLS, symbolOptions } from './symbols.js';
@@ -30,7 +31,6 @@ import {
   printSvg,
   slugify,
   svgToPngBlob,
-  topoToShortList,
 } from './exporters.js';
 import {
   AI_PROVIDERS,
@@ -180,11 +180,14 @@ let lastStatusParams = undefined;
 function setStatusKey(key, params) {
   lastStatusKey = key;
   lastStatusParams = params;
-  setStatus(t(lang(), key, params));
+  setStatus(t(lang(), key, typeof params === 'function' ? params() : params));
 }
 
 function refreshStatusTranslation() {
-  if (lastStatusKey) setStatus(t(lang(), lastStatusKey, lastStatusParams));
+  if (lastStatusKey) {
+    const params = typeof lastStatusParams === 'function' ? lastStatusParams() : lastStatusParams;
+    setStatus(t(lang(), lastStatusKey, params));
+  }
 }
 
 /* ------------------------------------------------------------------ Render */
@@ -1100,15 +1103,30 @@ async function loadReferenceFile(file) {
 /* --------------------------------------------------------------- Dateien */
 
 async function openFile(file) {
-  const text = await file.text();
   try {
+    const text = await file.text();
+    const isShortList = /\.txt$/i.test(file.name);
+    const topo = isShortList
+      ? topoFromShortList(text)
+      : /^\s*</.test(text) ? topoFromXml(text) : topoFromJson(text);
     pushHistory();
-    replaceTopo(/^\s*</.test(text) ? topoFromXml(text) : topoFromJson(text));
+    replaceTopo(topo);
     fitZoom();
-    setStatusKey('status.file_loaded', { name: file.name });
+    setStatusKey(isShortList ? 'status.shortlist_loaded' : 'status.file_loaded', { name: file.name });
   } catch (error) {
+    if (error instanceof ShortListError) {
+      setStatusKey('status.shortlist_import_failed', () => ({ errors: shortListErrors(error, 'line') }));
+      return;
+    }
     setStatusKey('status.file_load_failed', { error: error.message });
   }
+}
+
+function shortListErrors(error, context) {
+  return error.issues.map(({ position, code }) => {
+    const message = t(lang(), code.startsWith('shortcut.') ? code : `shortlist.error.${code}`);
+    return position ? t(lang(), `shortlist.${context}`, { position, message }) : message;
+  }).join(' ');
 }
 
 async function loadExample() {
@@ -1267,7 +1285,15 @@ function bindToolbar() {
     }
   });
   $('btn-export-shortlist').addEventListener('click', () => {
-    const { text, count } = topoToShortList(state.topo);
+    let result;
+    try {
+      result = topoToShortList(state.topo);
+    } catch (error) {
+      if (!(error instanceof ShortListError)) throw error;
+      setStatusKey('status.shortlist_export_failed', () => ({ errors: shortListErrors(error, 'segment') }));
+      return;
+    }
+    const { text, count } = result;
     if (count === 0) {
       setStatusKey('status.shortlist_empty');
       return;
