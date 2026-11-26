@@ -28,9 +28,9 @@ import {
   defaultLengthFor,
   normalizeTopo,
   todayIso,
-} from './model.js?v=0.6';
-import { SYMBOLS } from './symbols.js?v=0.6';
-import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.6';
+} from './model.js?v=0.7';
+import { SYMBOLS } from './symbols.js?v=0.7';
+import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.7';
 
 const SETTINGS_KEY = 'canyon-topo-generator/ai/v1';
 
@@ -419,7 +419,7 @@ Schema:
 }
 
 Segmenttypen: ${SEGMENT_TYPES.join(', ')}.
-- WALK = Gehstrecke, POOL = Schwimmstelle/Gumpen, WEIR = Wehr/Verblockung
+- WALK = Gehstrecke, POOL = Schwimmstelle/Gumpen
 - RAPPEL_DRY = trockene Abseilstelle, RAPPEL_WET = Abseilen im Wasserfall, RAPPEL = unspezifisch
 - JUMP = Sprung, SLIDE = Rutsche, CLIMB = Kletterstelle
 
@@ -469,7 +469,6 @@ const SEGMENT_DESCRIPTIONS = {
   JUMP: 'Sprung – Label "J", Pfeil senkrecht nach unten in eine Gumpe.',
   SLIDE: 'Rutsche – Label "S", schräge glatte Rampe ins Wasser.',
   CLIMB: 'Kletterstelle/Abklettern – Label "C" nur bei eindeutigem Klettern ohne Seillinie; C (Cascade) ist RAPPEL_WET.',
-  WEIR: 'Wehr oder Verblockung – Label "W", künstliche Stufe, Betonkante.',
 };
 
 const ELEMENT_DESCRIPTIONS = {
@@ -937,7 +936,6 @@ function mapSegmentType(value) {
     APPROACH: 'WALK',
     SCRAMBLE: 'WALK',
     TOBOGGAN: 'SLIDE',
-    DAM: 'WEIR',
   };
   return aliases[key] || null;
 }

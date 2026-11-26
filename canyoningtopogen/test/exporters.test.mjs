@@ -164,11 +164,19 @@ test('alle Typen und extreme endliche Werte überleben Export und Import', () =>
 });
 
 test('Import akzeptiert Kurzliste und alte eindeutige Exporte mit Zeilenenden und BOM', () => {
-  const topo = topoFromShortList('\uFEFF  r10\r\n\rRD23\r rw12,5 \n4. WALK: 0.0000001 m\n5. RAPPEL_DRY: 1e+21 m\n6. WEIR: 4 m\n');
+  const topo = topoFromShortList('\uFEFF  r10\r\n\rRD23\r rw12,5 \n4. WALK: 0.0000001 m\n5. RAPPEL_DRY: 1e+21 m\n');
   assert.deepEqual(topo.segments.map((s) => [s.type, s.length_in_meters]), [
     ['RAPPEL', 10], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5],
-    ['WALK', 1e-7], ['RAPPEL_DRY', 1e21], ['WEIR', 4],
+    ['WALK', 1e-7], ['RAPPEL_DRY', 1e21],
   ]);
+});
+
+test('alte WEIR-Kürzel werden mit Zeilennummer abgewiesen', () => {
+  for (const text of ['R10\nWE4', 'R10\n2. WEIR: 4 m']) {
+    assert.throws(() => topoFromShortList(text), (error) =>
+      error instanceof ShortListError && error.issues[0].position === 2 &&
+      error.issues[0].code === 'shortcut.removed_weir');
+  }
 });
 
 test('Import meldet jede ungültige Zeile und lehnt leere Dateien ab', () => {

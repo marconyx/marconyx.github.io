@@ -1,4 +1,4 @@
-import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js?v=0.6';
+import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js?v=0.7';
 
 const CODE_BY_TYPE = Object.fromEntries(
   Object.entries(SEGMENT_SHORTCUTS).map(([code, type]) => [type, code]),
@@ -53,6 +53,10 @@ export function topoFromShortList(text) {
     const legacy = /^\d+\.\s*([A-Z_]+):\s*(\d+(?:[.,]\d+)?(?:e[+-]?\d+)?)\s*m$/i.exec(trimmed);
     let input = trimmed;
     if (legacy) {
+      if (legacy[1].toUpperCase() === 'WEIR') {
+        issues.push({ position: index + 1, code: 'shortcut.removed_weir' });
+        return;
+      }
       const code = Object.hasOwn(CODE_BY_TYPE, legacy[1].toUpperCase())
         ? CODE_BY_TYPE[legacy[1].toUpperCase()] : null;
       const length = Number(legacy[2].replace(',', '.'));

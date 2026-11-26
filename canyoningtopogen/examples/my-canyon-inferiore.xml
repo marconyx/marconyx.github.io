@@ -54,10 +54,6 @@
   <segment type="SLIDE" length_in_meters="6" angle_in_degrees="50" do_not_cut_row_after_this_segment="true" force_cut_row_after_this_segment="false">
     <element type="TRAPPED_STONE" horizontal_start_rel_to_segment_start="1" vertical_start_rel_to_segment_start="7" size="1.5" text=""/>
   </segment>
-  <segment type="WEIR" length_in_meters="8" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
-    <element type="TRUNK" horizontal_start_rel_to_segment_start="1" vertical_start_rel_to_segment_start="-0.7" size="1" text=""/>
-    <element type="BACKWATER" horizontal_start_rel_to_segment_start="5" vertical_start_rel_to_segment_start="-2" size="1" text=""/>
-  </segment>
   <segment type="RAPPEL" length_in_meters="10" angle_in_degrees="90" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
     <element type="BOLT_RIGHT" horizontal_start_rel_to_segment_start="-1" vertical_start_rel_to_segment_start="1" size="1" text=""/>
     <element type="ELEMENT_NUMBER" horizontal_start_rel_to_segment_start="-4" vertical_start_rel_to_segment_start="1" size="1" text="1"/>

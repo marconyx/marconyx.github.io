@@ -398,34 +398,6 @@
             ]
         },
         {
-            "type": "WEIR",
-            "length_in_meters": 8,
-            "angle_in_degrees": 0,
-            "duration_to_walk_in_min": null,
-            "do_not_cut_row_after_this_segment": false,
-            "force_cut_row_after_this_segment": false,
-            "elements": [
-                {
-                    "type": "TRUNK",
-                    "horizontal_start_rel_to_segment_start": 1,
-                    "vertical_start_rel_to_segment_start": -0.7,
-                    "horizontal_end_rel_to_segment_start": null,
-                    "vertical_end_rel_to_segment_start": null,
-                    "size": 1,
-                    "text": ""
-                },
-                {
-                    "type": "BACKWATER",
-                    "horizontal_start_rel_to_segment_start": 5,
-                    "vertical_start_rel_to_segment_start": -2,
-                    "horizontal_end_rel_to_segment_start": null,
-                    "vertical_end_rel_to_segment_start": null,
-                    "size": 1.0,
-                    "text": ""
-                }
-            ]
-        },
-        {
             "type": "RAPPEL",
             "length_in_meters": 10,
             "angle_in_degrees": 90,

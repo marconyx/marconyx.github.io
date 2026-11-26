@@ -307,9 +307,9 @@ try {
   assert.match(markup, /id="file-open" accept="[^"]*\.txt/);
   elementById('btn-new').dispatch('click');
   const previous = topoToJson(state.topo);
-  await open('route.TXT', 'R10\r\nRD23\nrw12,5\nWA7\nWE4\n');
+  await open('route.TXT', 'R10\r\nRD23\nrw12,5\nWA7\n');
   assert.deepEqual(state.topo.segments.map((s) => [s.type, s.length_in_meters]), [
-    ['RAPPEL', 10], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5], ['WALK', 7], ['WEIR', 4],
+    ['RAPPEL', 10], ['RAPPEL_DRY', 23], ['RAPPEL_WET', 12.5], ['WALK', 7],
   ]);
   assert.match(elementById('status').textContent, /nur Typ und Länge/);
   const imported = topoToJson(state.topo);
@@ -318,14 +318,24 @@ try {
   elementById('btn-redo').dispatch('click');
   assert.equal(topoToJson(state.topo), imported);
   const persisted = storage.get('canyon-topo-generator/state/v1');
+  for (const [name, text] of [
+    ['old.json', JSON.stringify({ segments: [{ type: 'WALK' }, { type: 'WEIR', depth_in_meters: 4 }] })],
+    ['old.xml', '<topo><segment type="WALK"/><segment type="WEIR" depth_in_meters="4"/></topo>'],
+    ['old.txt', 'R10\nWE4'],
+  ]) {
+    await open(name, text);
+    assert.equal(topoToJson(state.topo), imported);
+    assert.equal(storage.get('canyon-topo-generator/state/v1'), persisted);
+    assert.match(elementById('status').textContent, /WEIR/);
+  }
   await open('bad.txt', 'J3\n\nW10\nRD\n');
   assert.equal(topoToJson(state.topo), imported);
   assert.equal(storage.get('canyon-topo-generator/state/v1'), persisted);
-  assert.match(elementById('status').textContent, /Zeile 3:.*mehrdeutig.*Zeile 4:/);
+  assert.match(elementById('status').textContent, /Zeile 3:.*ungültig.*Zeile 4:/);
   const language = elementById('select-language');
   language.value = 'en';
   language.dispatch('change');
-  assert.match(elementById('status').textContent, /Line 3:.*ambiguous.*Line 4:/);
+  assert.match(elementById('status').textContent, /Line 3:.*invalid.*Line 4:/);
   language.value = 'de';
   language.dispatch('change');
   elementById('btn-undo').dispatch('click');
@@ -362,7 +372,7 @@ try {
     elementById('btn-export-shortlist').dispatch('click');
     assert.match(filename, /-kurzliste\.txt$/);
     assert.equal(downloaded.type, 'text/plain;charset=utf-8');
-    assert.equal(await downloaded.text(), 'R10\nRD23\nRW12.5\nWA7\nWE4\n');
+    assert.equal(await downloaded.text(), 'R10\nRD23\nRW12.5\nWA7\n');
     assert.match(elementById('status').textContent, /nur Typ und Länge/);
     downloaded = null;
     state.topo = normalizeTopo({ segments: [
@@ -389,8 +399,8 @@ test('Shortcut-Hilfe ist ein beschriftetes Popover und mit Escape schliessbar', 
   assert.match(markup, /<label for="segment-shortcut">[\s\S]*?<\/label>\s*<button[^>]*id="btn-shortcut-help"[^>]*popovertarget="shortcut-help"[^>]*aria-controls="shortcut-help"[^>]*aria-expanded="false"[^>]*aria-label="[^"]+"[^>]*>\?<\/button>/);
   assert.match(markup, /id="shortcut-help" popover="auto" role="dialog" aria-labelledby="shortcut-help-title"/);
   const help = /<div class="shortcut-help" id="shortcut-help"[\s\S]*?<\/div>/.exec(markup)[0];
-  assert.ok(help.includes('Kürzel + positive Länge in Metern; Enter hängt ein Segment unten an. Punkt oder Komma als Dezimalzeichen, Gross-/Kleinschreibung beliebig.'));
-  assert.ok(help.includes('R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK · WE=WEIR (W ist mehrdeutig)'));
+  assert.ok(help.includes('R10,RW3, RD23.5; R12,5 ist eine Dezimalzahl.'));
+  assert.ok(help.includes('R=RAPPEL · RD=RAPPEL_DRY · RW=RAPPEL_WET · P=POOL · J=JUMP · S=SLIDE · C=CLIMB · WA=WALK'));
   assert.ok(help.includes('Kurzlisten (TXT) enthalten nur Segmenttyp und Länge; Metadaten, Symbole und weitere Einstellungen werden nicht gespeichert.'));
   assert.match(help, /id="btn-close-shortcut-help" popovertarget="shortcut-help" popovertargetaction="hide"/);
   const popover = elementById('shortcut-help');
@@ -1133,6 +1143,7 @@ test('Shortcuts decken jeden Segmenttyp eindeutig ab und parsen echte Meterwerte
   assert.deepEqual(parseSegmentShortcut('RD23'), { type: 'RAPPEL_DRY', length_in_meters: 23 });
   assert.deepEqual(parseSegmentShortcut('rW0.25'), { type: 'RAPPEL_WET', length_in_meters: 0.25 });
   assert.equal(parseSegmentShortcut('W10').error, 'shortcut.ambiguous');
+  assert.equal(parseSegmentShortcut('WE10').error, 'shortcut.removed_weir');
   for (const value of [
     '', '10', 'R', 'RD ', 'R0', 'R0,0', 'R-10', 'R+10', 'R1e3', 'RNaN',
     'RInfinity', `R${'9'.repeat(400)}`, 'R10m', 'R10 RD23', 'R1,2.3',
@@ -1140,6 +1151,39 @@ test('Shortcuts decken jeden Segmenttyp eindeutig ab und parsen echte Meterwerte
   ]) {
     assert.ok(parseSegmentShortcut(value).error, `abgewiesen: ${value}`);
   }
+});
+
+test('Shortcut-Stapel wird atomar angehängt und in einem Schritt rückgängig gemacht', () => {
+  elementById('btn-new').dispatch('click');
+  const select = elementById('select-new-segment');
+  assert.ok(!select.options.some((option) => option.value === 'WEIR'));
+  const input = elementById('segment-shortcut');
+  const before = topoToJson(state.topo);
+  input.value = 'R10,RW3, RD23.5,WA12,5';
+  elementById('btn-add-shortcut').dispatch('click');
+  assert.deepEqual(state.topo.segments.slice(-4).map((s) => [s.type, s.length_in_meters]),
+    [['RAPPEL', 10], ['RAPPEL_WET', 3], ['RAPPEL_DRY', 23.5], ['WALK', 12.5]]);
+  const after = topoToJson(state.topo);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), before);
+  elementById('btn-redo').dispatch('click');
+  assert.equal(topoToJson(state.topo), after);
+  input.value = ' j2 , p3 ';
+  input.dispatch('keydown', { key: 'Enter' });
+  assert.deepEqual(state.topo.segments.slice(-2).map((s) => [s.type, s.length_in_meters]),
+    [['JUMP', 2], ['POOL', 3]]);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(topoToJson(state.topo), after);
+  for (const value of ['R10, WE4, P3', 'R10,,P3', 'R10,P0', 'R10,']) {
+    input.value = value;
+    input.dispatch('keydown', { key: 'Enter' });
+    assert.equal(topoToJson(state.topo), after);
+    assert.ok(elementById('segment-shortcut-error').textContent);
+  }
+  assert.match(elementById('segment-shortcut-error').textContent, /R10,/);
+  input.value = 'R10, WE4';
+  input.dispatch('keydown', { key: 'Enter' });
+  assert.match(elementById('segment-shortcut-error').textContent, /WE4.*WEIR/);
 });
 
 test('Enter hängt Shortcuts genau einmal am Ende an, erhält Auswahl und speichert echte Längen', () => {
@@ -1202,7 +1246,7 @@ test('Enter hängt Shortcuts genau einmal am Ende an, erhält Auswahl und speich
   const language = elementById('select-language');
   language.value = 'en';
   language.dispatch('change');
-  assert.match(elementById('segment-shortcut-error').textContent, /ambiguous/);
+  assert.match(elementById('segment-shortcut-error').textContent, /invalid/);
   assert.match(elementById('hint-segment-shortcut').textContent, /Enter or \+ appends/);
   language.value = 'de';
   language.dispatch('change');
@@ -1468,7 +1512,7 @@ test('Tiefe (m) erscheint nur bei POOL', () => {
   assert.ok(inspectorHasField('Tiefe (m)'));
   assert.equal(elementById('segment-depth').type, 'number');
   assert.equal(elementById('segment-depth').min, '0');
-  for (const type of ['WALK', 'RAPPEL', 'RAPPEL_DRY', 'RAPPEL_WET', 'JUMP', 'SLIDE', 'CLIMB', 'WEIR']) {
+  for (const type of ['WALK', 'RAPPEL', 'RAPPEL_DRY', 'RAPPEL_WET', 'JUMP', 'SLIDE', 'CLIMB']) {
     selectFirstSegmentAs(type);
     assert.equal(inspectorHas('segment-depth'), false, type);
   }
@@ -1504,7 +1548,7 @@ test('Typwechsel weg von POOL löscht Tiefe auch bei Rückwechsel', () => {
   input.value = '4';
   input.dispatch('change');
   const select = elementById('inspector').descendants().find((node) => node.tagName === 'SELECT');
-  select.value = 'WEIR';
+  select.value = 'WALK';
   select.dispatch('change');
   assert.equal(state.topo.segments[0].depth_in_meters, null);
   assert.equal(inspectorHas('segment-depth'), false);
@@ -2047,5 +2091,23 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
   assert.equal(elementById('btn-menu').getAttribute('aria-expanded'), 'false');
 });
 
+{
+  const key = 'canyon-topo-generator/state/v1';
+  const legacy = JSON.stringify({ topo: { segments: [
+    { type: 'WALK', length_in_meters: 10 },
+    { type: 'WEIR', length_in_meters: 8, depth_in_meters: 3 },
+  ] } });
+  storage.set(key, legacy);
+  const restored = await import('../src/app.js?restore-removed-weir');
+  test('WEIR-Autosave bleibt unverändert und ist während der Sitzung geschützt', () => {
+    assert.equal(storage.get(key), legacy);
+    assert.ok(restored.state.topo.segments.every((segment) => segment.type !== 'WEIR'));
+    assert.match(elementById('status').textContent, /WEIR.*Autosave/);
+    const handler = elementById('btn-new').listeners.get('click').at(-1);
+    handler({ target: elementById('btn-new') });
+    assert.equal(storage.get(key), legacy);
+    assert.match(elementById('status').textContent, /WEIR.*Autosave/);
+  });
+}
 
 console.log(`\n${passed} Test(s) bestanden.`);

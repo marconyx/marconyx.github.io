@@ -53,6 +53,20 @@ function test(name, fn) {
 
 console.log('Topo-Generator Tests');
 
+test('alte WEIR-Dateien werden vor Normalisierung abgewiesen; andere unbekannte Typen bleiben erhalten', () => {
+  for (const [file, parse] of [
+    ['my-canyon-inferiore-legacy.json', topoFromJson],
+    ['my-canyon-inferiore-legacy.xml', topoFromXml],
+  ]) {
+    const text = readFileSync(join(here, '..', 'examples', file), 'utf8');
+    assert.throws(() => parse(text), /WEIR.*no longer supported/);
+  }
+  assert.throws(() => topoFromXml("<topo><segment type='WALK'/><segment type='WE&#x49;R'/></topo>"), /WEIR/);
+  const raw = { segments: [{ type: 'FUTURE_TYPE', length_in_meters: 4, extraField: 'kept' }] };
+  assert.equal(topoToJsonObject(topoFromJson(raw)).segments[0].extraField, 'kept');
+  assert.equal(raw.segments[0].type, 'FUTURE_TYPE');
+});
+
 function exitRegressionTopo(types) {
   return normalizeTopo({
     canyon_name: 'Exit regression',
@@ -902,11 +916,6 @@ test('Alpin klassisch ist ein eigenständiger, vollständiger Renderstil', () =>
       type: 'POOL',
       length_in_meters: 8,
       elements: [],
-    }, {
-      ...original.segments[0],
-      type: 'WEIR',
-      length_in_meters: 5,
-      elements: [],
     }],
   };
   const topo = topoFromJson(input);
@@ -921,8 +930,8 @@ test('Alpin klassisch ist ein eigenständiger, vollständiger Renderstil', () =>
   assert.ok(classic.includes('fill="#5e8799"'), 'Wasserfarbe fehlt');
   assert.equal(
     (classic.match(/fill="#5e8799" stroke="#303a3e" stroke-width="0.1"/g) || []).length,
-    2,
-    'Gumpen und Wehr werden nicht mit dem klassischen Wasserstil gezeichnet',
+    1,
+    'Gumpe wird nicht mit dem klassischen Wasserstil gezeichnet',
   );
   assert.ok(classic.includes('>RG 1<'), 'Rappel Guide fehlt');
   assert.ok(classic.includes('font-style="italic"'), 'Freitext ist nicht kursiv');
@@ -1266,7 +1275,7 @@ test('Gumpentiefe überlebt JSON/XML/XSD inklusive 0 und Dezimalwerten', () => {
     }
     for (const [type, value, expected] of [
       ['POOL', '-1', null], ['POOL', 'x', null], ['POOL', '', null],
-      ['POOL', '2.5', 2.5], ['WEIR', '8', null], ['RAPPEL', '4', null],
+      ['POOL', '2.5', 2.5], ['WALK', '8', null], ['RAPPEL', '4', null],
     ]) {
       assert.equal(
         topoFromXml(xml.replace('type="POOL"', `type="${type}"`).replace(`depth_in_meters="${depth}"`, `depth_in_meters="${value}"`)).segments[0].depth_in_meters,
@@ -1279,8 +1288,8 @@ test('Gumpentiefe überlebt JSON/XML/XSD inklusive 0 und Dezimalwerten', () => {
 test('ohne Gumpentiefe bleiben JSON/XML byte-identisch zum bisherigen Export', () => {
   const topo = normalizeTopo(original);
   const hash = (text) => createHash('sha256').update(text).digest('hex');
-  assert.equal(hash(topoToJson(topo)), 'df52bf90fa40d86e5ef0f44ebb3bc7a4a515f3d57c6daa8df2357f89baacd8db');
-  assert.equal(hash(topoToXml(topo)), '920a47247cf8c21b2e1f0262f12bd33b547f5c7aff12fadfe4d841f3e336f4bf');
+  assert.equal(hash(topoToJson(topo)), '7f7e1d664958fe204989f23c1604f8ea8d1ea0da133e6299d70b4b9f6b6c93f1');
+  assert.equal(hash(topoToXml(topo)), '5d27838590d01eb62488652f54435cd10e216624c57b8732fcebec9edcab1026');
   assert.equal(topoToJson(topo).includes('depth_in_meters'), false);
   assert.equal(topoToXml(topo).includes('depth_in_meters'), false);
 });

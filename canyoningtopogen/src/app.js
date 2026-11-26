@@ -4,6 +4,7 @@
 import {
   DEAD_CAPABLE_ELEMENT_TYPES,
   DEPTH_SEGMENT_TYPES,
+  RemovedSegmentError,
   SEGMENT_TYPES,
   WALK_TIME_ELEMENT_TYPES,
   WALK_TIME_SEGMENT_TYPES,
@@ -15,23 +16,23 @@ import {
   defaultAngleFor,
   defaultLengthFor,
   normalizeTopo,
-  parseSegmentShortcut,
+  parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.6';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.6';
-import { createRandomTopo } from './random-topo.js?v=0.6';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.6';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.6';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.6';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.6';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.6';
+} from './model.js?v=0.7';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.7';
+import { createRandomTopo } from './random-topo.js?v=0.7';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.7';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.7';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.7';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.7';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.7';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.6';
+} from './exporters.js?v=0.7';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -47,12 +48,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.6';
-import { isPdfFile, openPdf } from './pdf.js?v=0.6';
-import { initPanelSections } from './panel-sections.js?v=0.6';
-import { initAiLock } from './ai-lock.js?v=0.6';
-import { initResponsive } from './responsive.js?v=0.6';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.6';
+} from './ai.js?v=0.7';
+import { isPdfFile, openPdf } from './pdf.js?v=0.7';
+import { initPanelSections } from './panel-sections.js?v=0.7';
+import { initAiLock } from './ai-lock.js?v=0.7';
+import { initResponsive } from './responsive.js?v=0.7';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.7';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -63,7 +64,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.6';
+} from './i18n.js?v=0.7';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -79,6 +80,7 @@ const state = {
 let pdfDoc = null;
 
 let history = { past: [], future: [] };
+let storageProtected = false;
 let currentLayout = null;
 let currentSvgText = '';
 const cameraOffset = { x: 0, y: 0 };
@@ -96,7 +98,9 @@ function applyTranslations() {
 let shortcutError = null;
 
 function refreshShortcutError() {
-  $('segment-shortcut-error').textContent = shortcutError ? t(lang(), shortcutError) : '';
+  $('segment-shortcut-error').textContent = shortcutError
+    ? `${shortcutError.entry ? `${shortcutError.entry}: ` : ''}${t(lang(), shortcutError.error)}`
+    : '';
   $('segment-shortcut').setAttribute('aria-invalid', String(!!shortcutError));
 }
 
@@ -135,6 +139,7 @@ function replaceTopo(topo) {
 }
 
 function persist() {
+  if (storageProtected) return;
   try {
     localStorage.setItem(
       STORAGE_KEY,
@@ -162,13 +167,18 @@ function restore() {
     state.photo.pageCount = 0;
     state.photo.page = 1;
     return true;
-  } catch {
+  } catch (error) {
+    if (error instanceof RemovedSegmentError) {
+      storageProtected = true;
+      return 'removed_weir';
+    }
     return false;
   }
 }
 
 function setStatus(message) {
-  $('status').textContent = message;
+  const warning = storageProtected ? t(lang(), 'status.removed_weir_storage') : '';
+  $('status').textContent = warning && message !== warning ? `${warning} ${message}` : message;
 }
 
 // Merkt sich den zuletzt gesetzten Statustext als Übersetzungs-Key, damit ein
@@ -1118,6 +1128,10 @@ async function openFile(file) {
       setStatusKey('status.shortlist_import_failed', () => ({ errors: shortListErrors(error, 'line') }));
       return;
     }
+    if (error instanceof RemovedSegmentError) {
+      setStatusKey('status.removed_weir_import', { index: error.index });
+      return;
+    }
     setStatusKey('status.file_load_failed', { error: error.message });
   }
 }
@@ -1131,10 +1145,11 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.7');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const topo = topoFromJson(await response.text());
     pushHistory();
-    replaceTopo(topoFromJson(await response.text()));
+    replaceTopo(topo);
     fitZoom();
     setStatusKey('status.example_loaded');
   } catch (error) {
@@ -1373,14 +1388,24 @@ function bindToolbar() {
     refreshShortcutError();
   });
   const addShortcut = () => {
-    const parsed = parseSegmentShortcut(shortcutInput.value);
-    shortcutError = parsed.error || null;
+    const parsed = parseSegmentShortcutList(shortcutInput.value);
+    shortcutError = parsed.error ? parsed : null;
     refreshShortcutError();
     if (shortcutError) return;
-    addSegment(parsed.type, { length: parsed.length_in_meters, append: true });
+    pushHistory();
+    state.topo.segments.push(...parsed.segments.map((segment) => createSegment(segment.type, {
+      length_in_meters: segment.length_in_meters,
+      angle_in_degrees: defaultAngleFor(segment.type),
+    })));
+    render();
     shortcutInput.value = '';
     shortcutInput.focus();
-    setStatusKey('status.shortcut_added', { type: parsed.type, length: parsed.length_in_meters });
+    if (parsed.segments.length === 1) {
+      const segment = parsed.segments[0];
+      setStatusKey('status.shortcut_added', { type: segment.type, length: segment.length_in_meters });
+    } else {
+      setStatusKey('status.shortcuts_added', { count: parsed.segments.length });
+    }
   };
   $('btn-add-shortcut').addEventListener('click', addShortcut);
   shortcutInput.addEventListener('keydown', (event) => {
@@ -1779,7 +1804,7 @@ function init() {
   syncTopoFields();
   render();
   fitZoom();
-  setStatusKey(restored ? 'status.restored' : 'status.ready_sentence');
+  setStatusKey(restored === 'removed_weir' ? 'status.removed_weir_storage' : restored ? 'status.restored' : 'status.ready_sentence');
 }
 
 init();

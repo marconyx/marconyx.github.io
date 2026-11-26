@@ -19,8 +19,8 @@ import {
   WALL_DISTANCE_SEGMENT_TYPES,
   normalizeTopo,
   renumberElements,
-} from './model.js?v=0.6';
-import { symbolOptions } from './symbols.js?v=0.6';
+} from './model.js?v=0.7';
+import { symbolOptions } from './symbols.js?v=0.7';
 
 /** Kleiner, schneller PRNG mit 32-Bit-Zustand (mulberry32). */
 export function createRng(seed = 1) {
@@ -134,8 +134,6 @@ function randomLengthFor(rng, type) {
       return between(rng, 10, 60);
     case 'POOL':
       return between(rng, 4, 18);
-    case 'WEIR':
-      return between(rng, 2, 8);
     case 'JUMP':
       return between(rng, 3, 12);
     case 'SLIDE':
@@ -158,8 +156,6 @@ function randomAngleFor(rng, type) {
       return between(rng, -8, 12);
     case 'POOL':
       return between(rng, -3, 3);
-    case 'WEIR':
-      return between(rng, 0, 20);
     case 'JUMP':
       return between(rng, 80, 90);
     case 'SLIDE':

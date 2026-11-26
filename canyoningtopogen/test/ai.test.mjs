@@ -286,15 +286,29 @@ test('ein AI-Ergebnis ist sofort valide, layoutbar und renderbar', () => {
 
 test('der Prompt nennt alle gültigen Typen und das Koordinatensystem', () => {
   const prompt = buildPrompt({ canyonName: 'Boggera', notes: 'Skizze aus dem Führer' });
-  for (const type of ['WALK', 'RAPPEL_WET', 'CLIMB', 'WEIR']) {
+  for (const type of ['WALK', 'RAPPEL_WET', 'CLIMB']) {
     assert.ok(prompt.includes(type), `${type} fehlt im Prompt`);
   }
+  assert.doesNotMatch(prompt, /WEIR/);
   assert.ok(prompt.includes('ROPE_RAILING_LEFT'));
   assert.ok(prompt.includes('Boggera'), 'Hinweis auf den Canyon-Namen fehlt');
   assert.ok(prompt.includes('Skizze aus dem Führer'), 'Nutzer-Zusatzinfo fehlt');
   assert.ok(prompt.includes('"author"'), 'Author-Metadatum fehlt');
   assert.ok(prompt.includes('"duration"'), 'Dauer-Metadatum fehlt');
   assert.ok(prompt.includes('links der Laufrichtung'), 'Koordinatenregel fehlt');
+});
+
+test('AI überspringt entfernte WEIR- und DAM-Typen mit Meldung', () => {
+  const report = [];
+  const topo = sanitizeTopoCandidate({ segments: [
+    { type: 'WALK', length_in_meters: 5 }, { type: 'WEIR' }, { type: 'DAM' },
+  ] }, report);
+  assert.deepEqual(topo.segments.map((s) => s.type), ['WALK']);
+  assert.match(report.join(' '), /WEIR/);
+  assert.match(report.join(' '), /DAM/);
+  for (const prompt of [buildOptimizedInstructions(), buildCompactInstructions()]) {
+    assert.doesNotMatch(prompt, /WEIR/);
+  }
 });
 
 test('pickModelIds versteht alle gängigen Antwortformen', () => {
@@ -494,7 +508,7 @@ test('AI-Prompts übernehmen nur explizite POOL-Tiefen; Normalisierung erhält d
       { type: 'POOL', depth_in_meters: 0 },
       { type: 'POOL', depth_in_meters: -1 },
       { type: 'POOL' },
-      { type: 'WEIR', depth_in_meters: 4 },
+      { type: 'WALK', depth_in_meters: 4 },
     ],
   });
   assert.deepEqual(topo.segments.map((segment) => segment.depth_in_meters), [2.5, 0, null, null, null]);

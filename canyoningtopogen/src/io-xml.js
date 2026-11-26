@@ -8,7 +8,7 @@
  *  - null-Werte      : Attribut wird weggelassen
  *  - unbekannte Felder: als JSON im Attribut `extra`
  */
-import { normalizeTopo } from './model.js?v=0.6';
+import { normalizeTopo } from './model.js?v=0.7';
 
 const ROOT_NUMBER_FIELDS = [
   'maximum_walk_length',
@@ -44,6 +44,7 @@ function unescapeXml(value) {
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
     .replace(/&amp;/g, '&');
 }
@@ -123,7 +124,7 @@ export function topoToXml(topo) {
 function scanTags(xml) {
   const tags = [];
   const withoutComments = xml.replace(/<!--[\s\S]*?-->/g, '');
-  const tagPattern = /<\/?([A-Za-z_][\w.-]*)((?:\s+[\w.:-]+\s*=\s*"[^"]*")*)\s*(\/?)>/g;
+  const tagPattern = /<\/?([A-Za-z_][\w.-]*)((?:\s+[\w.:-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/g;
   let match;
   while ((match = tagPattern.exec(withoutComments)) !== null) {
     const [full, name, rawAttrs, selfClosing] = match;
@@ -139,10 +140,10 @@ function scanTags(xml) {
 
 function parseAttributes(raw) {
   const result = {};
-  const pattern = /([\w.:-]+)\s*=\s*"([^"]*)"/g;
+  const pattern = /([\w.:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
   let match;
   while ((match = pattern.exec(raw || '')) !== null) {
-    result[match[1]] = unescapeXml(match[2]);
+    result[match[1]] = unescapeXml(match[2] ?? match[3]);
   }
   return result;
 }

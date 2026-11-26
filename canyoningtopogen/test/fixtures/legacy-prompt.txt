@@ -36,8 +36,8 @@ Schema:
   ]
 }
 
-Segmenttypen: WALK, POOL, RAPPEL, RAPPEL_DRY, RAPPEL_WET, JUMP, SLIDE, CLIMB, WEIR.
-- WALK = Gehstrecke, POOL = Schwimmstelle/Gumpen, WEIR = Wehr/Verblockung
+Segmenttypen: WALK, POOL, RAPPEL, RAPPEL_DRY, RAPPEL_WET, JUMP, SLIDE, CLIMB.
+- WALK = Gehstrecke, POOL = Schwimmstelle/Gumpen
 - RAPPEL_DRY = trockene Abseilstelle, RAPPEL_WET = Abseilen im Wasserfall, RAPPEL = unspezifisch
 - JUMP = Sprung, SLIDE = Rutsche, CLIMB = Kletterstelle
 

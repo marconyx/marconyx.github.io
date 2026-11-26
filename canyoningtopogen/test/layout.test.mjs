@@ -267,7 +267,6 @@ test('alle Segmenttypen nutzen die Verkürzungsschwelle', () => {
     'JUMP',
     'SLIDE',
     'CLIMB',
-    'WEIR',
   ];
   const topo = normalizeTopo({
     maximum_walk_length: 1000,
@@ -357,7 +356,6 @@ test('SVG-Doppelbruch sitzt exakt in der geometrischen Mitte der Linie', () => {
       { type: 'POOL', length_in_meters: 80, angle_in_degrees: 30, depth_in_meters: 5 },
       { type: 'JUMP', length_in_meters: 80, angle_in_degrees: 0 },
       { type: 'SLIDE', length_in_meters: 80, angle_in_degrees: 120 },
-      { type: 'WEIR', length_in_meters: 80, angle_in_degrees: 60 },
     ],
   });
 
@@ -389,7 +387,7 @@ test('SVG-Doppelbruch sitzt exakt in der geometrischen Mitte der Linie', () => {
             x: (start.x + 2 * wallBulge.control.x + end.x) / 4,
             y: (start.y + 2 * wallBulge.control.y + end.y) / 4,
           };
-        } else if (segment.type === 'POOL' || segment.type === 'WEIR') {
+        } else if (segment.type === 'POOL') {
           const controlY = Math.max(start.y, end.y) + poolDrawingDepthOf(segment);
           expected = {
             x: (start.x + end.x) / 2,
@@ -1449,11 +1447,11 @@ test('ohne Gumpentiefe bleiben alle Layouts und Renderstile byte-identisch', () 
     }
   }
   const hash = (values) => createHash('sha256').update(values.join('\n')).digest('hex');
-  assert.equal(hash(layouts), '99850eca6ac8e423e543ee19352bbf62ce843e0477fd466b16d330d3e2f33c2c');
-  assert.equal(hash(svgs), '562dc1075f90319fb3b509094a731c795d5ca648415457f9a89e9418b08d63bb');
+  assert.equal(hash(layouts), '48b19ff813ae355961afaa00c9059b6d6411db2b332b18b1db0c418ea3d36069');
+  assert.equal(hash(svgs), 'b37f0c147ff7b7829b00e3b1a98f41ac7ceeef78b163e864cc93aad1c91da7b4');
 });
 
-test('Gumpen-Zeichentiefe skaliert gedämpft und begrenzt, WEIR bleibt unverändert', () => {
+test('Gumpen-Zeichentiefe skaliert gedämpft und begrenzt', () => {
   for (const [depth, expected] of [[null, 2.2], [0, 1.2], [0.1, 1.2], [2.5, 2], [4, 2.6], [8, 4.2], [10, 5], [100, 5]]) {
     const topo = flatTopo(1, 8, { 0: { depth_in_meters: depth } });
     assert.equal(poolDrawingDepthOf(topo.segments[0]), expected);
@@ -1465,9 +1463,6 @@ test('Gumpen-Zeichentiefe skaliert gedämpft und begrenzt, WEIR bleibt unveränd
     assert.equal(svg.includes('topo-pool-depth'), depth !== null);
     if (depth !== null) assert.ok(svg.includes(`>T ${depth} m</text>`));
   }
-  const weir = flatTopo(1, 8, { 0: { type: 'WEIR', depth_in_meters: 100 } });
-  assert.equal(poolDrawingDepthOf(weir.segments[0]), 2.2);
-  assert.equal(renderTopoSvg(weir, layoutTopo(weir)).includes('topo-pool-depth'), false);
 });
 
 test('Gumpentiefe und Label passen in alle Layout-/Papiermodi ohne Zeilenkollision', () => {

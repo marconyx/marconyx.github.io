@@ -14,7 +14,6 @@ export const SEGMENT_TYPES = [
   'JUMP',
   'SLIDE',
   'CLIMB',
-  'WEIR',
 ];
 
 export const SEGMENT_SHORTCUTS = {
@@ -26,7 +25,6 @@ export const SEGMENT_SHORTCUTS = {
   J: 'JUMP',
   S: 'SLIDE',
   C: 'CLIMB',
-  WE: 'WEIR',
 };
 
 /** Parse one shortcut strictly; never let normalization replace an invalid length. */
@@ -35,12 +33,24 @@ export function parseSegmentShortcut(value) {
   if (!match) return { error: 'shortcut.format' };
   const code = match[1].toUpperCase();
   if (code === 'W') return { error: 'shortcut.ambiguous' };
+  if (code === 'WE') return { error: 'shortcut.removed_weir' };
   if (!Object.hasOwn(SEGMENT_SHORTCUTS, code)) return { error: 'shortcut.unknown' };
   const number = match[2];
   if (!/^\d+(?:[.,]\d+)?$/.test(number)) return { error: 'shortcut.length' };
   const length = Number(number.replace(',', '.'));
   if (!Number.isFinite(length) || length <= 0) return { error: 'shortcut.length' };
   return { type: SEGMENT_SHORTCUTS[code], length_in_meters: length };
+}
+
+export function parseSegmentShortcutList(value) {
+  const entries = String(value).split(/,(?=\s*[a-z])/i);
+  const segments = [];
+  for (const entry of entries) {
+    const parsed = parseSegmentShortcut(entry);
+    if (parsed.error) return { error: parsed.error, entry: entry.trim() };
+    segments.push(parsed);
+  }
+  return { segments };
 }
 
 /** Kurzlabel im Topo, z. B. R_d10 / J6 / S6. */
@@ -51,7 +61,6 @@ export const SEGMENT_LABELS = {
   JUMP: { base: 'J', sub: '' },
   SLIDE: { base: 'S', sub: '' },
   CLIMB: { base: 'C', sub: '' },
-  WEIR: { base: 'W', sub: '' },
 };
 
 export const ELEMENT_TYPES = [
@@ -116,7 +125,7 @@ export const RANGE_ELEMENT_TYPES = new Set([
 export const DEAD_CAPABLE_ELEMENT_TYPES = new Set(['LEAF_TREE', 'CONIFER_TREE']);
 
 /** Segmenttypen, die Wasser am Grund zeigen. */
-export const WATER_SEGMENT_TYPES = new Set(['POOL', 'WEIR']);
+export const WATER_SEGMENT_TYPES = new Set(['POOL']);
 export const DEPTH_SEGMENT_TYPES = new Set(['POOL']);
 
 /**
@@ -312,11 +321,21 @@ export function defaultAngleFor(type) {
 export function defaultLengthFor(type) {
   if (type === 'WALK') return 20;
   if (type === 'POOL') return 8;
-  if (type === 'WEIR') return 5;
   return 10;
 }
 
+export class RemovedSegmentError extends Error {
+  constructor(index) {
+    super(`Segment ${index}: WEIR is no longer supported; the file was not imported.`);
+    this.index = index;
+  }
+}
+
 export function normalizeTopo(raw) {
+  const removedIndex = Array.isArray(raw?.segments)
+    ? raw.segments.findIndex((segment) => String(segment?.type ?? '').trim().toUpperCase() === 'WEIR')
+    : -1;
+  if (removedIndex !== -1) throw new RemovedSegmentError(removedIndex + 1);
   const topo = {
     canyon_name: String(raw?.canyon_name ?? 'My Canyon'),
     author: raw?.author == null ? '' : String(raw.author),

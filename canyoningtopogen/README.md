@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.6`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.7`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -20,22 +20,26 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
   bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
 - **Segment-Shortcuts**: Das beschriftete Feld über der Segmentauswahl hängt mit
-  Enter oder dem Plus-Knopf rechts daneben genau ein Segment **am Listenende** an,
+  Enter oder dem Plus-Knopf rechts daneben Segmente **am Listenende** an,
   unabhängig von der aktuellen Auswahl.
   `R10` ergibt RAPPEL mit 10 m, `RD23` RAPPEL_DRY mit 23 m, `RW12,5`
   RAPPEL_WET mit 12.5 m. Alle Kürzel: `R`=RAPPEL, `RD`=RAPPEL_DRY,
   `RW`=RAPPEL_WET, `P`=POOL, `J`=JUMP, `S`=SLIDE, `C`=CLIMB,
-  `WA`=WALK und `WE`=WEIR. **`W` ist mehrdeutig und wird abgewiesen**;
+  `WA`=WALK. `W` und das frühere WEIR-Kürzel `WE` werden abgewiesen;
   alle Kürzel stehen auch in der Hilfe hinter dem `?` neben dem Feld. Das
   Pop-up lässt sich mit dem Schliessen-Knopf, Escape oder einem Klick ausserhalb
   schliessen. Gross-/Kleinschreibung, äusserer
   Leerraum und Leerraum zwischen Kürzel und Zahl sind erlaubt. Die Länge muss
   endlich und grösser als 0 sein; Dezimalpunkt und Dezimalkomma sind möglich.
-  Fehlende/negative Zahlen, Einheiten, Exponentialschreibweise und mehrere
-  Shortcuts pro Eingabe werden mit einer übersetzten Meldung abgewiesen, ohne
-  das Topo oder die Undo-Historie zu ändern. Nach Erfolg bleibt der Fokus im
+  Fehlende/negative Zahlen, Einheiten, Exponentialschreibweise und andere
+  ungültige Einträge werden mit einer übersetzten Meldung abgewiesen, ohne
+  das Topo oder die Undo-Historie zu ändern. Mehrere Einträge werden durch
+  Komma vor dem nächsten Kürzel getrennt, z. B. `R10,RW3, RD23.5`.
+  Ein Komma zwischen Ziffern ist ein Dezimalzeichen: `R12,5` ist ein Segment;
+  `R12,5,P3` sind zwei. Der gesamte Stapel ist ein Undo/Redo-Schritt.
+  Nach Erfolg bleibt der Fokus im
   geleerten Feld; bestehende Auswahl, normale Plus-Aktion und Autosave bleiben
-  erhalten. Jeder angehängte Shortcut ist ein Undo/Redo-Schritt.
+  erhalten.
 - **Symbole**: 43 Topo-Symbole (Bolts, Blöcke, Bäume, Brücken, Helikopter, Funk- und Liftmasten,
   Fluchtwege, Gefahrenzeichen wie Lebensgefahr, Baum- und Felsblockverhau, Steinschlag,
   Unterspülung, Siphon, Wege und Umgehungen …)
@@ -233,7 +237,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 
 | Feld | Bedeutung |
 | --- | --- |
-| `type` | `WALK`, `POOL`, `RAPPEL`, `RAPPEL_DRY`, `RAPPEL_WET`, `JUMP`, `SLIDE`, `CLIMB`, `WEIR` |
+| `type` | `WALK`, `POOL`, `RAPPEL`, `RAPPEL_DRY`, `RAPPEL_WET`, `JUMP`, `SLIDE`, `CLIMB` |
 | `length_in_meters` | reale Länge |
 | `angle_in_degrees` | 0 = flach nach rechts, 90 = senkrecht nach unten, > 90 = überhängender Untergrund; bei RAPPEL bleibt der Abseilpfeil senkrecht |
 | `duration_to_walk_in_min` | optionale Gehzeit; im Inspector nur bei `WALK` sichtbar (siehe [Gehzeit](#gehzeit)) |
@@ -466,12 +470,21 @@ Eine bekannte Tiefe wird in allen Stilen als **T 4 m** bzw. **T 2.5 m** unter de
 Gumpe beschriftet. Die Zeichnung skaliert gedämpft: Der Kontrollpunkt der
 Gumpenkurve liegt um `clamp(1 + 0.4 * Tiefe, 1.2, 5)` Meter tiefer; die
 quadratische Kurve selbst ist flacher. Der Platz für Gumpe und Beschriftung wird
-im Layout berücksichtigt. Ohne Angabe bleibt die bisherige Zeichentiefe `2.2`,
-ebenso bei `WEIR`. Die AI übernimmt nur explizit im Topo angegebene Tiefen, sie
-schätzt keine; die historische Prompt-Vorlage bleibt unverändert.
+im Layout berücksichtigt. Ohne Angabe bleibt die bisherige Zeichentiefe `2.2`.
+Die AI übernimmt nur explizit im Topo angegebene Tiefen, sie schätzt keine.
 Zufalls-Topos enthalten gelegentlich Gumpentiefen von 1 bis 8 Metern.
 
 ### XML
+
+Dateien mit dem entfernten Segmenttyp `WEIR` (auch alte TXT-Listen mit `WE`)
+werden vollständig abgewiesen; das aktuelle Topo und die Quelldatei bleiben
+unverändert. Ein automatisch gespeichertes WEIR-Topo bleibt im Browserspeicher
+erhalten; in dieser Sitzung ist Autosave deaktiviert. Zur Weiterbearbeitung
+eine ältere App-Version verwenden und das Topo dort exportieren. Andere
+unbekannte Typen bleiben wie bisher erhalten. Das XSD lässt deshalb weiterhin
+freie Typnamen zu; die App prüft WEIR beim Import. Die ursprünglichen
+Beispieldateien liegen unverändert als `my-canyon-inferiore-legacy.*` vor;
+das aktuelle Beispiel lässt das WEIR-Segment samt seinen Elementen weg.
 
 `topo.xsd` beschreibt das XML-Gegenstück. Die Abbildung ist 1:1:
 
