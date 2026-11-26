@@ -8,6 +8,7 @@ export function downloadText(filename, text, mimeType = 'text/plain') {
   downloadBlob(filename, blob);
 }
 
+/** Startet einen Browser-Download für einen Blob und widerruft seine URL danach. */
 export function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -19,6 +20,7 @@ export function downloadBlob(filename, blob) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Erzeugt einen stabilen, diakritikfreien Dateinamensteil aus Nutzereingabe. */
 export function slugify(value) {
   return (
     String(value || 'topo')
@@ -30,7 +32,13 @@ export function slugify(value) {
   );
 }
 
-/** Rastert ein SVG-Dokument über ein Offscreen-Canvas nach PNG. */
+/**
+ * Rastert ein SVG-Dokument über ein Offscreen-Canvas nach PNG.
+ *
+ * Die SVG-Pixelmasse wird aus den Root-Attributen gelesen; wenn sie fehlen,
+ * gelten brauchbare Fallback-Masse. Der weisse Canvas-Hintergrund verhindert
+ * transparente PNGs, die je nach Bildbetrachter schwarz erscheinen könnten.
+ */
 export function svgToPngBlob(svgText, scale = 2) {
   return new Promise((resolve, reject) => {
     const widthMatch = /width="(\d+(?:\.\d+)?)"/.exec(svgText);

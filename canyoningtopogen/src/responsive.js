@@ -17,6 +17,16 @@ export const VIEWS = [
 
 export const DEFAULT_VIEW = 'topo';
 
+/**
+ * Verdrahtet die mobile Ansichtsleiste, Toolbar und Speichern-Popover.
+ *
+ * Die Tab-Rollen werden nur am Smartphone gesetzt, weil Desktop alle drei
+ * Bereiche gleichzeitig zeigt. Die Rückgabe erlaubt dem Editor, die aktuelle
+ * Ansicht bei Bedarf gezielt auszuwählen.
+ *
+ * @param {{root?:Document|Element, win?:Window}} options DOM-Abhängigkeiten
+ * @returns {{select: Function, setMenuOpen: Function, view: string}}
+ */
 export function initResponsive({ root = document, win = globalThis.window } = {}) {
   const workspace = root.getElementById('workspace');
   const entries = VIEWS.map((entry) => ({

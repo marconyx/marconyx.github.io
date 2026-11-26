@@ -545,17 +545,17 @@ function buildColumnLayout(metrics, assignment, columnHeightLimit, mode, frame) 
 }
 
 /**
+ * Berechnet Segment-, Element- und Spurpositionen für einen Topo-Entwurf.
+ *
+ * `paper` ist ein Schlüssel aus `sheet.js`; für A4 wird die nutzbare Spurbreite
+ * bzw. Spaltenhöhe so gewählt, dass das fertige Blatt sein Seitenverhältnis
+ * möglichst gut trifft. `frame` friert Zuordnung und Blattmass während des
+ * Ziehens ein: Bewegte Elemente dürfen dadurch nicht bei jedem Pointer-Schritt
+ * einen neuen Umbruch auslösen oder den Massstab unter dem Cursor ändern.
+ *
  * @param {object} topo normalisiertes Topo
- * @param {object} [options]
- *   `{ layout: 'serpentine' | 'cascaded' | 'linear', paper, frame }`
- *
- * `paper` ist der Formatschlüssel aus `sheet.js` und bestimmt in der Serpentine
- * die nutzbare Zeilenbreite, bei Kaskadiert die Spaltenhöhe.
- *
- * `frame` ist ein früheres Layout, dessen Zeilenaufteilung, Zeilenversatz und
- * Aussenmasse übernommen werden. Nötig beim Ziehen eines Symbols:
- * Elementpositionen gehen sonst in die Zeilengrenzen ein, das Bild würde bei
- * jedem Mausschritt neu skaliert und verschöbe sich unter dem Zeiger weg.
+ * @param {object} [options] `{layout, paper, frame}`
+ * @returns {object} Layout mit `placements`, Spuren, Grenzen und Zuordnung
  */
 export function layoutTopo(topo, options = {}) {
   const mode = options.layout || 'serpentine';

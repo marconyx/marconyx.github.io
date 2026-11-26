@@ -2,9 +2,19 @@
  * Datenmodell des Canyoning-Topos.
  *
  * Das In-Memory-Modell ist identisch zum Canyon-Explore-JSON, damit Import/Export
- * verlustfrei bleiben. Unbekannte Felder werden in `_extra` konserviert.
+ * verlustfrei bleiben. Importer und AI-Erkennung übergeben Rohdaten zuerst
+ * `normalizeTopo`; UI, Layout und Renderer arbeiten danach mit diesem
+ * einheitlichen Modell statt mit formatabhängigen Varianten.
+ *
+ * Unbekannte Felder werden auf jeder Ebene in `_extra` konserviert und von
+ * Serialisierern wieder ausgegeben. Unbekannte Typen bleiben ebenfalls
+ * erhalten, damit spätere Versionen Daten nicht beim blossen Öffnen zerstören.
+ * WEIR ist die Ausnahme: Dieser entfernte Typ wird beim Topo-Import explizit
+ * abgewiesen, weil ihn still als einen anderen Typ zu deuten Daten verfälschen
+ * würde.
  */
 
+/** Unterstützte Segmenttypen, die das Modell normalisiert und die UI anbietet. */
 export const SEGMENT_TYPES = [
   'WALK',
   'POOL',
@@ -16,6 +26,10 @@ export const SEGMENT_TYPES = [
   'CLIMB',
 ];
 
+/**
+ * Kanonische Eingabe- und Exportkürzel. Historische Aliase gehören nicht in
+ * diese Rückwärtsabbildung, damit Exporte stets genau ein stabiles Kürzel haben.
+ */
 export const SEGMENT_SHORTCUTS = {
   W: 'WALK',
   P: 'POOL',
@@ -27,7 +41,16 @@ export const SEGMENT_SHORTCUTS = {
   C: 'CLIMB',
 };
 
-/** Parse one shortcut strictly; never let normalization replace an invalid length. */
+/**
+ * Parst ein einzelnes Segmentkürzel mit positiver Länge.
+ *
+ * Die Funktion validiert vor der Normalisierung: Ein ungültiger oder fehlender
+ * Wert darf nicht durch einen Segment-Standardwert ersetzt werden. `WA` bleibt
+ * als historischer WALK-Alias lesbar; `W` ist das kanonische Kürzel.
+ *
+ * @param {unknown} value Eingabetext, z. B. `W20` oder `RD12,5`.
+ * @returns {{type: string, length_in_meters: number} | {error: string}}
+ */
 export function parseSegmentShortcut(value) {
   const match = /^([a-z]+)\s*(.*)$/i.exec(String(value).trim());
   if (!match) return { error: 'shortcut.format' };
@@ -65,6 +88,7 @@ export const SEGMENT_LABELS = {
   CLIMB: { base: 'C', sub: '' },
 };
 
+/** Unterstützte Symboltypen; ein Teil der Typen ist ein Streckenobjekt. */
 export const ELEMENT_TYPES = [
   'BOLT',
   'BOLT_LEFT',
@@ -229,14 +253,20 @@ function bool(value, fallback = false) {
   return fallback;
 }
 
+/** Liefert das heutige Datum im date-only ISO-Format `YYYY-MM-DD`. */
 export function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Erzeugt ein Element mit denselben Defaults und Regeln wie ein Import. */
 export function createElement(type, overrides = {}) {
   return normalizeElement({ type, ...overrides });
 }
 
+/**
+ * Ergänzt Element-Rohdaten um Modell-Defaults und begrenzt typabhängige Felder.
+ * `_extra` erhält dabei Eigenschaften, die diese Version noch nicht kennt.
+ */
 export function normalizeElement(raw) {
   const type = String(raw?.type ?? 'STONE');
   const element = {
@@ -272,10 +302,16 @@ export function normalizeElement(raw) {
   return element;
 }
 
+/** Erzeugt ein Segment, ohne einen zweiten Pfad für UI-Defaults einzuführen. */
 export function createSegment(type = 'WALK', overrides = {}) {
   return normalizeSegment({ type, ...overrides });
 }
 
+/**
+ * Vereinheitlicht Segment-Rohdaten. Gehzeit, Wandabstand und Tiefe werden nur
+ * dort übernommen, wo sie fachlich anwendbar sind; unbekannte Felder bleiben
+ * über `_extra` verlustfrei verfügbar.
+ */
 export function normalizeSegment(raw) {
   const type = String(raw?.type ?? 'WALK');
   const segment = {
@@ -310,6 +346,7 @@ export function normalizeSegment(raw) {
   return segment;
 }
 
+/** Standardneigung in Grad für einen neu angelegten Segmenttyp. */
 export function defaultAngleFor(type) {
   if (type === 'RAPPEL' || type === 'RAPPEL_DRY' || type === 'RAPPEL_WET') {
     return 90;
@@ -320,6 +357,7 @@ export function defaultAngleFor(type) {
   return 0;
 }
 
+/** Standardlänge in Metern für einen neu angelegten Segmenttyp. */
 export function defaultLengthFor(type) {
   if (type === 'WALK') return 20;
   if (type === 'POOL') return 8;
@@ -333,6 +371,14 @@ export class RemovedSegmentError extends Error {
   }
 }
 
+/**
+ * Normalisiert ein vollständiges Topo aus JSON-/XML-/AI-Rohdaten.
+ *
+ * Die Funktion ist der gemeinsame Eintrittspunkt für geladene Daten. Sie
+ * bewahrt unbekannte Felder und Typen, setzt fehlende Werte auf Editor-Defaults
+ * und wirft `RemovedSegmentError`, bevor WEIR stillschweigend verändert werden
+ * könnte.
+ */
 export function normalizeTopo(raw) {
   const removedIndex = Array.isArray(raw?.segments)
     ? raw.segments.findIndex((segment) => String(segment?.type ?? '').trim().toUpperCase() === 'WEIR')
@@ -362,6 +408,7 @@ export function normalizeTopo(raw) {
   return topo;
 }
 
+/** Erstellt das Startbeispiel, das beim ersten Öffnen des Editors erscheint. */
 export function createEmptyTopo() {
   return normalizeTopo({
     canyon_name: 'My Canyon',
@@ -379,11 +426,18 @@ export function createEmptyTopo() {
   });
 }
 
+/** Tiefe Kopie eines bereits normalisierten Topos für UI-Zustandsvergleiche. */
 export function cloneTopo(topo) {
   return JSON.parse(JSON.stringify(topo));
 }
 
-/** Prüft die Struktur und liefert Hinweise (keine harten Fehler bei unbekannten Typen). */
+/**
+ * Prüft Modellregeln, ohne das Topo zu verändern.
+ *
+ * Unbekannte Typen sind Warnungen statt Fehler, weil das Modell ihre Daten
+ * erhalten kann; ungültige Längen und fehlende Pflichtwerte sind Fehler.
+ * Ergebnisobjekte enthalten stabile `key`/`params` für lokalisierte Meldungen.
+ */
 export function validateTopo(topo) {
   const issues = [];
   if (!topo || typeof topo !== 'object') {
@@ -448,7 +502,10 @@ export function validateTopo(topo) {
   return issues;
 }
 
-/** Automatische Nummerierung aller ELEMENT_NUMBER-Marker, von unten nach oben gezählt. */
+/**
+ * Nummeriert alle `ELEMENT_NUMBER`-Marker rückwärts zur Zeichenreihenfolge:
+ * Das letzte Element erhält 1 und der erste Marker die höchste Zahl.
+ */
 export function renumberElements(topo) {
   const markers = [];
   topo.segments.forEach((segment) => {

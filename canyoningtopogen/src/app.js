@@ -1,5 +1,12 @@
 /**
- * Editor-Anwendung: Zustand, UI-Bindings, Interaktion.
+ * Editor-Anwendung: Zustand, UI-Bindings, Interaktion und Browser-Persistenz.
+ *
+ * Dieses Modul ist der Zusammenschluss der reinen Fachmodule: Ereignisse
+ * ändern das Topo-Modell, `render()` leitet daraus Liste, Prüfergebnis, Layout
+ * und SVG ab, und erfolgreiche Bearbeitungsschritte werden gespeichert.
+ * Datei-Importer normalisieren vor dem Austausch des aktuellen Topos; dadurch
+ * schlägt ein fehlerhafter Import nicht teilweise auf den sichtbaren Zustand
+ * oder den Undo-Verlauf durch.
  */
 import {
   DEAD_CAPABLE_ELEMENT_TYPES,
@@ -68,6 +75,12 @@ import {
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
+/**
+ * Laufender Editorzustand. `topo` ist stets normalisiert; `selection` referenziert
+ * Segment-/Elementindizes statt DOM-Knoten. `view` und `photo` sind UI-Zustand
+ * und werden getrennt von Topo-Daten behandelt, wenn gespeichert oder exportiert
+ * wird.
+ */
 const state = {
   topo: createEmptyTopo(),
   selection: null,
@@ -79,6 +92,8 @@ const state = {
 // ausschließlich die gerenderte Seite als Data-URL.
 let pdfDoc = null;
 
+// Historie enthält serialisierte Topos: spätere Änderungen können ältere
+// Einträge dadurch nicht über gemeinsam referenzierte Objekte verändern.
 let history = { past: [], future: [] };
 let storageProtected = false;
 let currentLayout = null;
@@ -1811,4 +1826,5 @@ function init() {
 
 init();
 
+/** Der Zustandsexport wird von den UI-Tests zum Prüfen echter Interaktionen benutzt. */
 export { state, cloneTopo };

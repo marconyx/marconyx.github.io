@@ -98,6 +98,16 @@ function extractText(data) {
 }
 
 export default {
+  /**
+   * Verarbeitet Preflight sowie den Bild-/Prompt-Auftrag und gibt ausschliesslich
+   * den Modelltext oder einen JSON-Fehler zurück. Der Worker vertraut dem Client
+   * nur bei begrenzten Textfeldern; Secrets und Upstream-Zugangsdaten stammen aus
+   * der Worker-Umgebung.
+   *
+   * @param {Request} request Browser- oder Proxy-Anfrage
+   * @param {object} env Worker-Secrets und Deployment-Konfiguration
+   * @returns {Promise<Response>} HTTP-Antwort mit CORS-Headern
+   */
   async fetch(request, env) {
     const origin = env.ALLOWED_ORIGIN || '*';
 
@@ -196,6 +206,7 @@ export default {
     let raw = await upstream.text();
     if (!upstream.ok && openAiStyle && rejectsThinkingSwitch(upstream.status, raw)) {
       // Gateways ohne diesen vLLM-Parameter: einmal ohne ihn wiederholen.
+      // Nicht pauschal wiederholen, damit echte Auth-/Validierungsfehler sichtbar bleiben.
       const { chat_template_kwargs: _drop, ...rest } = body;
       try {
         upstream = await fetch(url, { method: 'POST', headers, body: JSON.stringify(rest) });

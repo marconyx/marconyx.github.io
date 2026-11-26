@@ -36,7 +36,8 @@ export function isPdfFile(file) {
 /**
  * Öffnet ein PDF und liefert ein Handle mit Seitenzahl und Render-Funktion.
  * Das Dokument bleibt geöffnet, damit ein Seitenwechsel die Datei nicht erneut
- * einlesen muss.
+ * einlesen muss. `renderPage` begrenzt die Pixeldimensionen und liefert eine
+ * PNG-Data-URL; `destroy` gibt die Ressourcen des PDF-Dokuments frei.
  */
 export async function openPdf(file) {
   const lib = await loadLibrary();

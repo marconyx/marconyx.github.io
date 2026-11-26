@@ -1,3 +1,11 @@
+"""Flask-Variante des AI-Proxys und statischer App-Server.
+
+Der Proxy hält den Modell-Key serverseitig, überbrückt Gateway-CORS-Probleme
+und spricht OpenAI-kompatible oder Anthropic-Endpunkte an. Die Umgebungsvariablen
+konfigurieren den Upstream; die Browser-App darf Endpoint und Auth-Parameter
+zusätzlich pro Anfrage überschreiben. Modellparameter und Fehlermeldungen bleiben
+mit der Node- und Worker-Variante kompatibel.
+"""
 import os
 import re
 import json
@@ -34,6 +42,7 @@ app = Flask(
 )
 
 def cors_headers():
+    """CORS-Header für API-Antworten und Browser-Preflight."""
     return {
         'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
         'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
@@ -42,6 +51,7 @@ def cors_headers():
     }
 
 def json_response(payload, status, extra_headers=None):
+    """Erzeugt JSON-Antworten mit konsistenten CORS- und Zusatzheadern."""
     body_str = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
     resp = Response(body_str, status=status, mimetype='application/json; charset=utf-8')
     for k, v in cors_headers().items():
@@ -52,12 +62,14 @@ def json_response(payload, status, extra_headers=None):
     return resp
 
 def split_data_url(image):
+    """Validiert eine base64-Data-URL und liefert Medientyp und Nutzlast."""
     m = re.match(r'^data:([^;,]+);base64,(.*)$', image or '')
     if not m:
         raise ValueError('image muss eine base64-Data-URL sein.')
     return m.group(1), m.group(2)
 
 def rejects_thinking_switch(status, text):
+    """Erkennt Upstream-Fehler, die den optionalen vLLM-Denkschalter ablehnen."""
     if status not in (400, 422):
         return False
     text = text or ''
@@ -68,11 +80,13 @@ def rejects_thinking_switch(status, text):
     return False
 
 def rejects_json_mode(status, text):
+    """Erkennt Upstream-Fehler, die `response_format` nicht unterstützen."""
     if status not in (400, 404, 422, 500):
         return False
     return bool(re.search(r'response_format|json_object|json.mode|json_schema', text or '', re.I))
 
 def extract_text(data):
+    """Vereinheitlicht Text aus OpenAI- und Anthropic-Antwortformen."""
     if isinstance(data, str):
         return data
     choices = data.get('choices', [])
@@ -87,6 +101,7 @@ def extract_text(data):
     return ''
 
 def empty_answer_message(data):
+    """Erklärt leere Modellantworten, insbesondere erschöpftes Reasoning-Budget."""
     choices = data.get('choices', [])
     choice = choices[0] if choices else {}
     finish = choice.get('finish_reason') or choice.get('stop_reason') or data.get('stop_reason')
@@ -97,6 +112,7 @@ def empty_answer_message(data):
     return 'Upstream-Antwort enthielt keinen Text.'
 
 def extract_models(data):
+    """Normalisiert Modelllisten von Arrays sowie `data`-/`models`-Antworten."""
     if isinstance(data, list):
         lst = data
     else:
@@ -111,6 +127,7 @@ def extract_models(data):
     return sorted(set(ids))
 
 def _http_request(url, headers_dict, method='GET', data=None):
+    """Sendet einen Upstream-Request mit Timeout und schliesst die Verbindung sicher."""
     parsed = urllib.request.urlparse(url)
     host = parsed.hostname or 'localhost'
     port = parsed.port
@@ -131,6 +148,7 @@ def _http_request(url, headers_dict, method='GET', data=None):
         conn.close()
 
 def do_upstream_post(url, headers_dict, body_json):
+    """Serialisiert JSON für POST-Aufrufe und ergänzt die Byte-Länge des Bodys."""
     data = json.dumps(body_json).encode('utf-8')
     headers_dict['Content-Length'] = str(len(data))
     return _http_request(url, headers_dict, method='POST', data=data)
@@ -159,6 +177,7 @@ def static_file(filename):
 
 @app.route('/api/health', methods=['GET'])
 def health():
+    """Liefert dem Browser Proxy-Fähigkeiten und unkritische Laufzeitmetadaten."""
     data = {
         'ok': True,
         'api': AI_API,
@@ -175,6 +194,7 @@ def health():
 
 @app.route('/api/models', methods=['POST', 'OPTIONS'])
 def models():
+    """Leitet die Modellabfrage weiter; POST trägt Endpoint und Auth-Konfiguration."""
     if request.method == 'OPTIONS':
         resp = Response('', status=204)
         for k, v in cors_headers().items():
@@ -233,6 +253,13 @@ def models():
 
 @app.route('/api/topo', methods=['POST', 'OPTIONS'])
 def topo():
+    """Validiert den Bild-/Prompt-Auftrag und extrahiert den Upstream-Modelltext.
+
+    Bei OpenAI-kompatiblen Gateways werden JSON-Modus und Denkschalter
+    schrittweise entfernt, aber nur wenn die Antwort genau den jeweiligen
+    inkompatiblen Parameter beanstandet. Dadurch bleiben nützliche Vorgaben für
+    kompatible Gateways erhalten und Anthropic erhält sein natives Nachrichtenformat.
+    """
     if request.method == 'OPTIONS':
         resp = Response('', status=204)
         for k, v in cors_headers().items():

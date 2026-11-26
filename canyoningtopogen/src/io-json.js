@@ -3,7 +3,16 @@
  */
 import { normalizeTopo } from './model.js?v=0.9';
 
-/** Serialisiert das Modell in exakt die Feldreihenfolge des Originalformats. */
+/**
+ * Baut das JSON-Objekt in der Feldreihenfolge des Originalformats.
+ *
+ * Optionale Erweiterungen werden nur ausgegeben, wenn sie gesetzt sind. So
+ * bleiben unveränderte Topos mit dem bestehenden Canyon-Explore-Format
+ * kompatibel, während `_extra` unbekannte Felder für einen Round-Trip bewahrt.
+ *
+ * @param {object} topo normalisiertes Topo-Modell
+ * @returns {object} serialisierbares Objekt
+ */
 export function topoToJsonObject(topo) {
   const out = {
     canyon_name: topo.canyon_name,
@@ -71,10 +80,15 @@ export function topoToJsonObject(topo) {
   return Object.assign(out, topo._extra || {});
 }
 
+/** Serialisiert ein Topo als JSON-Text; `indent` folgt `JSON.stringify`. */
 export function topoToJson(topo, indent = 1) {
   return JSON.stringify(topoToJsonObject(topo), null, indent);
 }
 
+/**
+ * Parst JSON-Text (oder übernimmt bereits geparste Rohdaten) und normalisiert
+ * das Ergebnis. Syntax- und WEIR-Fehler werden an den Aufrufer weitergegeben.
+ */
 export function topoFromJson(text) {
   const raw = typeof text === 'string' ? JSON.parse(text) : text;
   return normalizeTopo(raw);

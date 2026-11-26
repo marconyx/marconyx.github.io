@@ -24,6 +24,15 @@ function sessionStore() {
   }
 }
 
+/**
+ * Schützt den AI-Abschnitt vor versehentlicher Aktivierung.
+ *
+ * Speicher, Digest-Funktion und Statuscallback sind injizierbar, damit die
+ * Dialogzustände ohne echten Browser-Dialog getestet werden können. Der Hash
+ * ist clientseitig prüfbar und stellt ausdrücklich keine Sicherheitsgrenze dar.
+ *
+ * @returns {{isUnlocked: () => boolean}}
+ */
 export function initAiLock({
   root = document,
   storage = sessionStore(),

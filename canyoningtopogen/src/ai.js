@@ -34,6 +34,12 @@ import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.9';
 
 const SETTINGS_KEY = 'canyon-topo-generator/ai/v1';
 
+/**
+ * Konfiguration der unterstützten API-Familien. `id` ist der persistierte
+ * Schlüssel; Endpoints, Modellnamen und Auth-Varianten sind Vorgaben, die in
+ * `settings` überschrieben werden können. Provider-spezifische Labels werden
+ * für die Oberfläche separat lokalisiert.
+ */
 export const AI_PROVIDERS = [
   {
     id: 'openai',
@@ -79,6 +85,10 @@ let settings = { ...DEFAULT_SETTINGS };
 
 /* ------------------------------------------------------------- Einstellungen */
 
+/**
+ * Lädt Einstellungen, füllt fehlende Werte auf und migriert frühere Defaults.
+ * Gibt eine Kopie zurück, damit Aufrufer den internen Zustand nicht mutieren.
+ */
 export function loadAiSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -153,10 +163,15 @@ function withDefaultsForProvider(candidate) {
   };
 }
 
+/** Liefert eine defensive Kopie der aktuellen Provider-Einstellungen. */
 export function getAiSettings() {
   return { ...settings };
 }
 
+/**
+ * Übernimmt ein partielles UI-Update und persistiert den Gesamtzustand.
+ * Wenn Browser-Speicher nicht verfügbar ist, gelten Werte für diese Sitzung.
+ */
 export function saveAiSettings(patch) {
   settings = { ...settings, ...patch };
   try {
@@ -167,10 +182,15 @@ export function saveAiSettings(patch) {
   return { ...settings };
 }
 
+/** Löst eine Provider-ID auf; unbekannte oder alte IDs fallen auf den ersten Eintrag zurück. */
 export function providerById(id) {
   return AI_PROVIDERS.find((entry) => entry.id === id) || AI_PROVIDERS[0];
 }
 
+/**
+ * Registriert eine projektspezifische Erkennung als Erweiterungspunkt.
+ * `null` oder ein anderer Nicht-Funktionswert setzt den Provider zurück.
+ */
 export function registerTopoProvider(fn) {
   customProvider = typeof fn === 'function' ? fn : null;
 }
@@ -351,6 +371,7 @@ export const DEFAULT_PROMPT_TEMPLATE = 'optimized';
 /** Obergrenze für einen eigenen Prompt – schützt Proxy und Upstream. */
 export const MAX_PROMPT_CHARS = 32000;
 
+/** Liefert eine Prompt-Vorlage oder bei unbekannter ID die empfohlene Vorlage. */
 export function promptTemplateById(id) {
   return (
     PROMPT_TEMPLATES.find((entry) => entry.id === id) ||
@@ -379,6 +400,10 @@ const LEGACY_POINT_ELEMENTS = [
 
 const LEGACY_RANGE_ELEMENTS = ['ROPE_RAILING_LEFT', 'ROPE_RAILING_RIGHT'];
 
+/**
+ * Erstellt die eingefrorene Vergleichsvorlage der früheren Prompt-Version.
+ * Die Listen sind absichtlich nicht von der wachsenden Symbolbibliothek abgeleitet.
+ */
 export function buildLegacyPrompt(hints = {}) {
   return `Du analysierst ein Bild eines Canyoning-Topos (Schluchten-Abstiegsskizze) oder ein Foto einer Schlucht und erzeugst daraus ein strukturiertes Topo.
 
@@ -521,7 +546,7 @@ function symbolLabelFor(type) {
   return SYMBOLS[type]?.label || type;
 }
 
-/** Zeilen "TYPE = Erklärung" für alle Segmenttypen des Modells. */
+/** Zeilen `TYPE = Erklärung` für die Prompt-Dokumentation der Segmenttypen. */
 export function segmentTypeCatalogLines() {
   return SEGMENT_TYPES.map((type) => {
     const label = SEGMENT_LABELS[type];
@@ -530,7 +555,10 @@ export function segmentTypeCatalogLines() {
   });
 }
 
-/** Zeilen "TYPE (Label) = Erklärung" für alle Elementtypen der Symbolpalette. */
+/**
+ * Zeilen `TYPE (Label) = Erklärung`, einschliesslich Range-/Statusfeldern,
+ * damit das Modell nur Typen und Eigenschaften aus dem echten Modell kennenlernt.
+ */
 export function elementTypeCatalogLines() {
   return ELEMENT_TYPES.map((type) => {
     const range = RANGE_ELEMENT_TYPES.has(type) ? ' [Strecke: Start UND Ende]' : '';

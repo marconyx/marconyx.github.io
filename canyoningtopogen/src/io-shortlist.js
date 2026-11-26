@@ -1,9 +1,18 @@
+/**
+ * Verlustarme Kurzlisten (TXT) mit genau einem Segmentkürzel und einer Länge
+ * pro Zeile. Das Format speichert absichtlich keine Topo-Metadaten oder
+ * Elementdaten; der Import normalisiert nur dann, wenn jede nichtleere Zeile
+ * gültig ist. `SEGMENT_SHORTCUTS` enthält ausschliesslich Exportkürzel, daher
+ * wird WALK neu als `W` ausgegeben, während der Parser alte `WA`-Dateien liest.
+ */
 import { SEGMENT_SHORTCUTS, createSegment, normalizeTopo, parseSegmentShortcut } from './model.js?v=0.9';
 
+// Die Werte sind eindeutig; das Modell führt hier nur kanonische Kürzel auf.
 const CODE_BY_TYPE = Object.fromEntries(
   Object.entries(SEGMENT_SHORTCUTS).map(([code, type]) => [type, code]),
 );
 
+/** Fehler einer atomar abgebrochenen Kurzlistenoperation samt Zeilenpositionen. */
 export class ShortListError extends Error {
   constructor(issues) {
     super('Invalid short list');
@@ -23,6 +32,15 @@ function decimalString(value) {
   return `${digits.slice(0, point)}.${digits.slice(point)}`;
 }
 
+/**
+ * Exportiert alle Segmente in Topo-Reihenfolge.
+ *
+ * Fehlerhafte Typen und Längen werden gesammelt; bei mindestens einem Fehler
+ * wird keine teilweise Kurzliste zurückgegeben.
+ *
+ * @returns {{text: string, count: number}} UTF-8-Textinhalt und Segmentanzahl
+ * @throws {ShortListError} wenn ein Segment nicht verlustfrei exportiert werden kann
+ */
 export function topoToShortList(topo) {
   const lines = [];
   const issues = [];
@@ -42,6 +60,15 @@ export function topoToShortList(topo) {
   return { text: lines.length ? `${lines.join('\n')}\n` : '', count: lines.length };
 }
 
+/**
+ * Importiert moderne Kürzelzeilen oder das nummerierte Altformat.
+ *
+ * Leere Zeilen und BOM sind zulässig; alle Fehler werden mit Quellzeile
+ * gesammelt und verhindern den gesamten Import. Nicht gespeicherte Topo-Felder
+ * erhalten Modell-Defaults.
+ *
+ * @throws {ShortListError} bei ungültigen Zeilen oder einer leeren Datei
+ */
 export function topoFromShortList(text) {
   const segments = [];
   const issues = [];

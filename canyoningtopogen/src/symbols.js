@@ -384,6 +384,7 @@ function rappelGuide() {
   };
 }
 
+/** Palettenreihenfolge und gruppierte Labels; die UI leitet ihre Abschnitte daraus ab. */
 export const SYMBOL_CATEGORIES = [
   { id: 'anchors', label: 'Verankerung' },
   { id: 'hazards', label: 'Gefahren' },
@@ -392,6 +393,11 @@ export const SYMBOL_CATEGORIES = [
   { id: 'annotation', label: 'Beschriftung' },
 ];
 
+/**
+ * Standard-SVGs, indexiert nach Elementtyp. Jeder Eintrag liefert sein Label,
+ * die Palette-Kategorie und einen Renderer; `range: true` kennzeichnet Symbole
+ * mit zwei Endpunkten statt einem Ankerpunkt.
+ */
 export const SYMBOLS = {
   BOLT: {
     label: 'Bolt',
@@ -744,6 +750,7 @@ export const SYMBOLS = {
  * Rot (#ff0000) steht für Verankerungen und Dächer, Dunkelrot (#800000) für
  * Weg/Strasse/Pfad, Braun (#993300) für Holz und Hütte, Cyan für Wasser.
  */
+/** Farbwerte des eigenständigen Eau-Froide-Stils, auch vom Haupt-Renderer genutzt. */
 export const EAU_FROIDE_PALETTE = {
   water: '#00ffff',
   waterDark: '#33cccc',
@@ -946,12 +953,20 @@ export function renderEauFroideSymbol(type, element) {
 }
 
 /** Streckensymbol im Stil Eau Froide. */
+/**
+ * Zeichnet ein Zwei-Punkt-Symbol im Eau-Froide-Stil.
+ * @param {string} type Elementtyp
+ * @param {{x:number,y:number}} a Startpunkt in lokalen Meterkoordinaten
+ * @param {{x:number,y:number}} b Endpunkt in lokalen Meterkoordinaten
+ * @param {object} options Skalierung/Textoptionen des Elementrenderers
+ */
 export function renderEauFroideRange(type, a, b, options) {
   const custom = EAU_FROIDE_RANGE[type];
   if (custom) return custom(a, b, options);
   return eauFroideRecolor(SYMBOLS[type].render(a, b, options));
 }
 
+/** Liefert den Symbolkatalogeintrag oder `null`, wenn der Typ unbekannt ist. */
 export function symbolFor(type) {
   return SYMBOLS[type] || null;
 }
@@ -964,6 +979,11 @@ export function renderUnknownSymbol(element) {
     <text x="0" y="-0.8" font-size="0.45" text-anchor="middle" fill="#c81e1e">${esc(element.type)}</text>`;
 }
 
+/**
+ * Liefert eine frische, UI-taugliche Palette inklusive toter Baumvarianten.
+ * Die generierte Form wird ebenfalls vom Zufallsgenerator als Pflichtkatalog
+ * verwendet und sollte deshalb die Modelltypen nicht separat duplizieren.
+ */
 export function symbolOptions() {
   return SYMBOL_CATEGORIES.map((category) => ({
     ...category,

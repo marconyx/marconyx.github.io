@@ -1,3 +1,8 @@
+/**
+ * Persistiert den offenen/geschlossenen Zustand der klappbaren Seitenbereiche.
+ * Es werden nur die bekannten Section-IDs gespeichert; defekte oder nicht
+ * verfügbare localStorage-Daten lassen die Bedienung mit Standardzustand weiterlaufen.
+ */
 export const PANEL_SECTION_IDS = [
   'panel-topo',
   'panel-segments',
@@ -10,6 +15,10 @@ export const PANEL_SECTION_IDS = [
 
 export const PANEL_STORAGE_KEY = 'canyon-topo-generator/panels/v1';
 
+/**
+ * Initialisiert native `<details>`-Bereiche und speichert jeden Toggle.
+ * @param {Document|Element} root Dokument oder Test-Root mit `getElementById`
+ */
 export function initPanelSections(root = document) {
   const sections = PANEL_SECTION_IDS.map((id) => root.getElementById(id));
   let saved = {};

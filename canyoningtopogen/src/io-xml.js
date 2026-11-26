@@ -60,6 +60,11 @@ function extraAttr(node) {
   return node._extra ? [['extra', JSON.stringify(node._extra)]] : [];
 }
 
+/**
+ * Serialisiert das normalisierte Modell in das attributbasierte `<topo>`-XML.
+ * Nullwerte werden ausgelassen und unbekannte Modellfelder als JSON im
+ * `extra`-Attribut abgelegt, damit Erweiterungen einen Round-Trip überstehen.
+ */
 export function topoToXml(topo) {
   const lines = ['<?xml version="1.0" encoding="UTF-8"?>'];
   lines.push(
@@ -157,6 +162,14 @@ function maybeExtra(attributes) {
   }
 }
 
+/**
+ * Liest XML mit dem abhängigenkeitsfreien Scanner ein und übergibt das
+ * rekonstruierte Objekt an dieselbe Modellnormalisierung wie JSON.
+ *
+ * Der Scanner wertet XML-Attribute und Elementverschachtelung aus, nicht aber
+ * beliebigen Elementtext oder externe DTDs. Fehlendes `<topo>` und entfernte
+ * WEIR-Segmente sind harte Importfehler.
+ */
 export function topoFromXml(xml) {
   const tags = scanTags(xml);
   const root = tags.find((tag) => tag.name === 'topo' && !tag.closing);

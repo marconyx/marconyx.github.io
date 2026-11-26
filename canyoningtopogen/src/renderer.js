@@ -1,5 +1,10 @@
 /**
  * SVG-Renderer: zeichnet ein Layout als eigenständiges SVG-Dokument.
+ *
+ * Die Layout-Engine liefert Meterkoordinaten, der Renderer ergänzt Gelände,
+ * Segmente, Symbole, Hit-Areas und Legende. Blatt- und Legendengeometrie kommt
+ * aus `sheet.js`, damit Layoutoptimierung, Drag-Hit-Testing und SVG dieselben
+ * Grenzen verwenden. Themen ändern nur die Darstellung, nicht die Geometrie.
  */
 import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.9';
 import {
@@ -38,6 +43,7 @@ const esc = (value) =>
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
+/** Visuelle Paletten und Stilmerkmale; unbekannte Schlüssel fallen auf Farbe zurück. */
 export const THEMES = {
   color: {
     label: 'Farbe',
@@ -540,7 +546,10 @@ function metaLineSvg(line, right, y, theme) {
   return `<text class="topo-legend-meta" data-meta="${line.key}" x="${right}" y="${y}" font-size="1.05" text-anchor="end" fill="${theme.text}"><tspan font-weight="700">${esc(line.label)}:</tspan> ${esc(line.value)}</text>`;
 }
 
-/** Legendenkasten so, wie ihn der jeweilige Stil zeichnet (auch fürs Ziehen). */
+/**
+ * Gibt die Legenden-Hitbox im selben Stil-Inset wie der Renderer zurück.
+ * Die UI verwendet sie, um den Ziehbereich der Legende zu treffen.
+ */
 export function legendRectFor(topo, layout, bounds, themeKey, lang = DEFAULT_LANGUAGE) {
   const theme = THEMES[themeKey] || THEMES.color;
   return legendPanelRectFor(topo, layout, bounds, lang, theme.eauFroide ? LEGEND_TEXT_INSET_METERS : 0);
@@ -610,9 +619,16 @@ function renderLegend(topo, layout, theme, bounds, lang = DEFAULT_LANGUAGE) {
 }
 
 /**
+ * Rendert das normalisierte Modell und sein Layout zu einem eigenständigen SVG.
+ *
+ * Optionen steuern Thema, Sprache, Zielformat, Meter-zu-Pixel-Skalierung und
+ * optionale vorab berechnete Bounds. Die Hit-Areas tragen Datenattribute, damit
+ * die App Segment-/Elementinteraktionen im SVG auf Modellindizes abbilden kann.
+ *
  * @param {object} topo normalisiertes Topo
- * @param {object} layout Ergebnis aus layoutTopo()
- * @param {object} [options] `{ theme, pxPerMeter, paper }`
+ * @param {object} layout Ergebnis aus `layoutTopo`
+ * @param {object} [options] `{theme, language, pxPerMeter, paper, bounds}`
+ * @returns {string} serialisierbares SVG-Markup
  */
 export function renderTopoSvg(topo, layout, options = {}) {
   const theme = THEMES[options.theme] || THEMES.color;

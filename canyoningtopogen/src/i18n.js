@@ -28,7 +28,7 @@ function pick(entry, lang) {
   return entry[lang] ?? entry[DEFAULT_LANGUAGE] ?? '';
 }
 
-/** Statischer Text (`textContent`) je Element-ID. */
+/** Statischer Text (`textContent`) je Element-ID; alle Sprachen müssen vollständig sein. */
 export const UI_TEXT = {
   'shortcut-help-title': {
     de: 'Shortcut-Hilfe', en: 'Shortcut help', fr: 'Aide aux raccourcis',
@@ -228,7 +228,7 @@ export const UI_TEXT = {
   'h-panel-validation': { de: 'Prüfung', en: 'Validation', fr: 'Vérification', it: 'Verifica', es: 'Verificación' },
 };
 
-/** Text mit erlaubtem Markup (`innerHTML`) je Element-ID. */
+/** Text mit bewusst erlaubtem Markup (`innerHTML`) je Element-ID; keine Nutzerdaten. */
 export const UI_HTML = {
   'hint-ai-cors': {
     de: 'Erzeugt aus dem geladenen Bild bzw. der PDF-Seite ein Topo. Der Aufruf läuft direkt aus deinem Browser zum Modell — blockiert ein Gateway das (CORS), springt automatisch der lokale Proxy ein, sofern er läuft (<code>npm start</code>).',
@@ -1139,14 +1139,21 @@ export const MESSAGES = {
   },
 };
 
-/** Übersetzt eine Vorlage aus `MESSAGES`; unbekannte Keys liefern den Key selbst zurück. */
+/**
+ * Übersetzt eine Vorlage aus `MESSAGES` und ersetzt `{name}`-Platzhalter.
+ * Unbekannte Keys liefern den Key selbst, damit fehlende Übersetzungen sichtbar
+ * bleiben statt still eine Erfolgsmeldung zu imitieren.
+ */
 export function t(lang, key, vars) {
   const entry = MESSAGES[key];
   if (!entry) return key;
   return format(pick(entry, lang), vars);
 }
 
-/** Wendet alle statischen Übersetzungen (Text, HTML, Attribute) auf das DOM an. */
+/**
+ * Wendet die statischen Wörterbücher auf passende DOM-IDs an.
+ * `getById` wird injiziert, damit das Wörterbuchmodul ohne Browser-DOM testbar ist.
+ */
 export function applyStaticTranslations(getById, lang) {
   for (const [id, entry] of Object.entries(UI_TEXT)) {
     const node = getById(id);
