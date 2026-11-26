@@ -6,18 +6,18 @@
  * aus `sheet.js`, damit Layoutoptimierung, Drag-Hit-Testing und SVG dieselben
  * Grenzen verwenden. Themen ändern nur die Darstellung, nicht die Geometrie.
  */
-import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.13';
+import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.14';
 import {
   symbolFor,
   renderUnknownSymbol,
   renderEauFroideSymbol,
   renderEauFroideRange,
   EAU_FROIDE_PALETTE,
-} from './symbols.js?v=0.13';
+} from './symbols.js?v=0.14';
 import {
   DEFAULT_LANGUAGE,
   translateLegendLabel,
-} from './i18n.js?v=0.13';
+} from './i18n.js?v=0.14';
 import {
   PAPER_PRESETS,
   contentBoundsFor,
@@ -33,7 +33,7 @@ import {
   paperPreset,
   poolDepthLabelFor,
   poolDrawingDepthOf,
-} from './sheet.js?v=0.13';
+} from './sheet.js?v=0.14';
 
 export { PAPER_PRESETS };
 
@@ -53,16 +53,6 @@ export const THEMES = {
     water: '#1b3fb5',
     text: '#111111',
     accent: '#111111',
-    background: '#ffffff',
-  },
-  bw: {
-    label: 'Schwarz/Weiß',
-    terrainTop: '#d8d8d8',
-    terrainBottom: '#ffffff',
-    terrainLine: '#000000',
-    water: '#555555',
-    text: '#000000',
-    accent: '#000000',
     background: '#ffffff',
   },
   alpiner_classic: {
@@ -496,10 +486,7 @@ function renderElement(placed, theme, options = {}) {
   let body = theme.eauFroide
     ? renderEauFroideSymbol(element.type, element)
     : symbol
-    ? symbol.render(
-        element,
-        options.theme === 'bw' ? 'bw' : 'color',
-      )
+    ? symbol.render(element, 'color')
     : renderUnknownSymbol(element);
   if (theme.classic) {
     body = classicSymbolStyle(body);

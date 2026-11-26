@@ -85,7 +85,6 @@ function exitRegressionTopo(types) {
 test('Fluchtweg links und Standard bleiben bytegenau unverändert', () => {
   const baselines = {
     color: '250718ce6c51e1c6a4cd7b1a8d87d75371d64742b492deafa16a44c340d33a4f',
-    bw: 'dfe4c1e1cfc70bd9752d8a6b22c16f5b9da898d1c309df3d3a4bc49078471b45',
     alpiner_classic: '7d39c988e44a3165dd9674547759904de95b06b2800162a18ae02d8c3b71cab3',
     eau_froide: '4a79ec3a98bf12a0ccc1833bad63b67f9a59bf38db0c783bda545dc9e00efed4',
   };
@@ -139,7 +138,7 @@ test('Fluchtweg rechts hat einen vollständigen Läufer links und getrennten Rec
     'einzige Pfeilspitze zeigt nach rechts');
   assert.ok(arrowPoints.every(([, y]) => y > -1.05 && y < 0.15));
   const topo = exitRegressionTopo(['ESCAPE_EXIT_RIGHT']);
-  const colors = { color: ['#0b7a45', '#fff'], bw: ['#0b7a45', '#fff'],
+  const colors = { color: ['#0b7a45', '#fff'],
     alpiner_classic: ['#62766e', '#fbfbf8'], pencil_sketch: ['#535353', '#ffffff'] };
   for (const theme of Object.keys(THEMES).filter((key) => key !== 'eau_froide')) {
     for (const interactive of [false, true]) {
@@ -440,7 +439,7 @@ test('neue Infrastrukturtypen bleiben mit Koordinaten, Größe und Text im JSON/
   assert.deepEqual(topoToJsonObject(topoFromXml(xml)), input);
 });
 
-test('neue SVG-Silhouetten sind einzeln unterscheidbar und in Farbe sowie S/W lesbar', () => {
+test('neue SVG-Silhouetten sind einzeln unterscheidbar und in Farbe lesbar', () => {
   const elements = infrastructureTypes.map((type, index) => ({
     type,
     horizontal_start_rel_to_segment_start: index * 5 + 2,
@@ -451,7 +450,7 @@ test('neue SVG-Silhouetten sind einzeln unterscheidbar und in Farbe sowie S/W le
     ...original,
     segments: [{ ...original.segments[0], elements }],
   });
-  for (const mode of ['color', 'bw']) {
+  for (const mode of ['color']) {
     const svg = renderTopoSvg(topo, layoutTopo(topo), { theme: mode, interactive: true });
     assert.ok(svg.startsWith('<svg') && svg.includes('</svg>'));
     const drawings = infrastructureTypes.map((type) => SYMBOLS[type].render({ text: '' }, mode));
@@ -462,11 +461,7 @@ test('neue SVG-Silhouetten sind einzeln unterscheidbar und in Farbe sowie S/W le
       assert.match(drawing, /<path/);
       assert.match(drawing, /stroke="#111"/);
     }
-    if (mode === 'bw') {
-      assert.ok(!drawings.some((drawing) => /#c52b24|#768898|#52687a|#d7d4c9|#aab9c6/i.test(drawing)));
-    } else {
-      assert.ok(drawings.some((drawing) => drawing.includes('#c52b24')));
-    }
+    assert.ok(drawings.some((drawing) => drawing.includes('#c52b24')));
   }
 });
 
@@ -494,7 +489,6 @@ test('Busch steht unter Natur und überlebt JSON/XML in allen Darstellungsstilen
     assert.match(svg, /class="topo-element" data-seg="0" data-el="0"/);
   }
   assert.notEqual(SYMBOLS.BUSH.render({ text: '' }), SYMBOLS.LEAF_TREE.render({ text: '' }));
-  assert.match(SYMBOLS.BUSH.render({ text: '' }, 'bw'), /fill="#fff"/);
 });
 
 test('Busch ist in farbigen Stilen grün und in monochromen Stilen neutral', () => {
@@ -505,7 +499,6 @@ test('Busch ist in farbigen Stilen grün und in monochromen Stilen neutral', () 
     color: ['#2a9d48', '#14532d'],
     alpiner_classic: ['#377b4d', '#214f32'],
     eau_froide: ['#00ff00', '#004d00'],
-    bw: ['#fff', '#111'],
   };
   for (const [theme, [fill, stroke]] of Object.entries(expected)) {
     const svg = renderTopoSvg(topo, layoutTopo(topo), { theme });
@@ -703,7 +696,7 @@ test('Die Wandkurve weicht genau um die Wanddistanz zurück', () => {
 
 test('Die Wand wird gerundet gezeichnet und der Pfeil bleibt senkrecht', () => {
   for (const type of ['RAPPEL', 'RAPPEL_DRY', 'RAPPEL_WET']) {
-    for (const theme of ['color', 'bw']) {
+    for (const theme of ['color']) {
       const topo = rappelTopo({ wall_distance_in_meters: 6 }, type);
       const layout = layoutTopo(topo);
       const svg = renderTopoSvg(topo, layout, { theme });
@@ -875,8 +868,8 @@ test('die neuen Symbole stehen im Modell und mit Kategorie in der Palette', () =
   );
 });
 
-test('jedes neue Punktsymbol zeichnet eigenständig, in Farbe wie in S/W', () => {
-  for (const mode of ['color', 'bw']) {
+test('jedes neue Punktsymbol zeichnet eigenständig', () => {
+  for (const mode of ['color']) {
     const drawings = NEW_POINT_TYPES.map((type) => SYMBOLS[type].render({ text: '' }, mode));
     assert.equal(new Set(drawings).size, NEW_POINT_TYPES.length, `${mode}: Symbole doppelt`);
     for (const [index, drawing] of drawings.entries()) {
@@ -930,7 +923,7 @@ test('die neuen Symbole überleben JSON- und XML-Roundtrip und rendern im SVG', 
   for (const type of NEW_TYPES) assert.ok(xml.includes(`type="${type}"`), `${type} fehlt im XML`);
   assert.deepEqual(topoToJsonObject(topoFromXml(xml)), input);
 
-  for (const mode of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+  for (const mode of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
     const svg = renderTopoSvg(topo, layoutTopo(topo), { theme: mode, interactive: true });
     assert.equal(
       (svg.match(/class="topo-element"/g) || []).length,
@@ -991,12 +984,9 @@ test('Alpin klassisch ist ein eigenständiger, vollständiger Renderstil', () =>
   assert.ok(!classic.includes('#1b3fb5'), 'gesättigtes Symbolblau wurde nicht angepasst');
   assert.equal(/NaN|Infinity/.test(classic), false);
 
-  // Die explizite Farbwahl bleibt exakt der bisherige Default, und S/W wird
-  // durch den zusätzlichen Stil nicht verändert.
+  // Entfernte und unbekannte Stile verwenden den unveränderten Farbstandard.
   assert.equal(renderTopoSvg(topo, layout), renderTopoSvg(topo, layout, { theme: 'color' }));
-  const bw = renderTopoSvg(topo, layout, { theme: 'bw' });
-  assert.ok(bw.includes('stop-color="#d8d8d8"'));
-  assert.ok(!bw.includes('stop-color="#cbd5d8"'));
+  assert.equal(renderTopoSvg(topo, layout, { theme: 'bw' }), renderTopoSvg(topo, layout, { theme: 'color' }));
 });
 
 test('Stil Standard (eau_froide): Palette, eigene Symbole und Regression der anderen Stile', () => {
@@ -1035,7 +1025,7 @@ test('Stil Standard (eau_froide): Palette, eigene Symbole und Regression der and
   assert.equal(ef, renderTopoSvg(topo, layout, { theme: 'eau_froide', interactive: true }), 'nicht deterministisch');
 
   assert.equal(renderTopoSvg(topo, layout), renderTopoSvg(topo, layout, { theme: 'color' }));
-  for (const theme of ['color', 'bw', 'alpiner_classic']) {
+  for (const theme of ['color', 'alpiner_classic']) {
     const other = renderTopoSvg(topo, layout, { theme });
     assert.ok(!other.includes('topo-marble') && !other.includes('topo-title-shadow'), `${theme} enthält Eau-Froide-Marker`);
   }
@@ -1105,7 +1095,7 @@ test('Stil Bleistiftskizze: Graustufen, Schraffur und Regression der anderen Sti
   assert.equal(sketch.includes('>?</text>'), false);
   assert.equal(sketch, renderTopoSvg(topo, layout, { theme: 'pencil_sketch', interactive: true }), 'nicht deterministisch');
 
-  for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide']) {
+  for (const theme of ['color', 'alpiner_classic', 'eau_froide']) {
     const other = renderTopoSvg(topo, layout, { theme });
     assert.ok(!other.includes('topo-sketch-hatch'), `${theme} enthält Skizzen-Marker`);
   }
@@ -1245,7 +1235,7 @@ test('Rappel Guide rendert in allen Layoutmodi und Papierformaten ohne NaN', () 
   for (const layout of ['serpentine', 'cascaded', 'linear']) {
     for (const paper of ['screen', 'a4_landscape', 'a4_portrait']) {
       const layoutData = layoutTopo(topo, { layout, paper });
-      for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+      for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
         const svg = renderTopoSvg(topo, layoutData, { theme, interactive: true });
         assert.ok(svg.includes('>RG<'), `${layout}/${paper}/${theme}: RG fehlt`);
         assert.equal(/NaN|Infinity/.test(svg), false, `${layout}/${paper}/${theme}: NaN/Infinity`);

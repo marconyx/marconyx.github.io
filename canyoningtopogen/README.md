@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.13`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.14`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -26,7 +26,7 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
   keine Anfrage gesendet. Die Auswahlen unterstützen Tastatur und Smartphone-Toolbar.
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
   bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
-- **Segment-Shortcuts**: Das beschriftete Feld über der Segmentauswahl hängt mit
+- **Segment-Shortcuts**: Das Feld `shortcuts` über der Segmentauswahl hängt mit
   Enter oder dem Plus-Knopf rechts daneben Segmente **am Listenende** an,
   unabhängig von der aktuellen Auswahl.
   `R10` ergibt RAPPEL mit 10 m, `RD23` RAPPEL_DRY mit 23 m, `RW12,5`
@@ -34,7 +34,7 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
   `RW`=RAPPEL_WET, `P`=POOL, `J`=JUMP, `S`=SLIDE, `C`=CLIMB,
   `W`=WALK. Das alte `WA` wird beim Import von Kurzlisten abgewiesen;
   das frühere WEIR-Kürzel `WE` wird abgewiesen;
-  alle Kürzel stehen auch in der Hilfe hinter dem `?` neben dem Feld. Das
+  alle Kürzel stehen auch in der Hilfe hinter dem `?` zwischen Feld und Plus. Das
   Pop-up lässt sich mit dem Schliessen-Knopf, Escape oder einem Klick ausserhalb
   schliessen. Gross-/Kleinschreibung, äusserer
   Leerraum und Leerraum zwischen Kürzel und Zahl sind erlaubt. Die Länge muss
@@ -55,7 +55,7 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
   entsteht das neue an derselben Stelle und direkt dahinter in der Reihenfolge —
   sonst in der Segmentmitte und am Ende.
 - **Layout**: Serpentine (automatischer Zeilenumbruch), Kaskadiert (automatische
-  Aufteilung in Spalten) oder Linear, Farbe, Schwarz/Weiß, Alpin klassisch, Standard
+  Aufteilung in Spalten) oder Linear, Farbe, Alpin klassisch, Standard
   oder Bleistiftskizze, Bildschirm / A4 quer / A4 hoch / A5 quer / A5 hoch. In der Serpentine bestimmt das Format die
   nutzbare Zeilenbreite, bei Kaskadiert die Spaltenhöhe — siehe
   [Zeilenumbruch](#zeilenumbruch) und [Kaskadiert (Spalten)](#kaskadiert-spalten).
@@ -167,7 +167,10 @@ handgezeichneten Mehrfachstrich nachzuahmen. Alles ist ohne Zufall berechnet,
 damit Export/Druck/Tests weiterhin bytegleich reproduzierbar bleiben. Auch
 dieser Stil ist nur eine Ansichtspräferenz im Autosave und ändert JSON/XML nicht.
 
-In Farbe, Schwarz/Weiß und Alpin klassisch zeigt das rechte Fluchtweg-Schild
+Die frühere Stilwahl Schwarz/Weiß wird beim Wiederherstellen des Autosaves
+durch Farbe ersetzt; das gespeicherte Topo bleibt unverändert.
+
+In Farbe und Alpin klassisch zeigt das rechte Fluchtweg-Schild
 eine nach rechts laufende Person links und einen getrennten Rechtspfeil rechts.
 Kopf, Arme und Beine bleiben klar erkennbar; Beschriftung und Gehzeit stehen
 aufrecht. Das linke Schild und Standard (`eau_froide`) bleiben unverändert.
@@ -318,8 +321,8 @@ an, im Inspektor lässt sich der Zustand über die Checkbox „Abgestorben" umsc
   gelesen und geschrieben, damit JSON/XML byte-identisch bleiben.
 * **Am Fluchtweg-Symbol** – `ESCAPE_EXIT_LEFT` und `ESCAPE_EXIT_RIGHT` kennen
   dasselbe Feld als geschätzte Gehzeit bis zum sicheren Ort. Ist es gesetzt,
-  zeichnet der Renderer die Zeit („25 min") unter das Fluchtweg-Schild, in Farbe
-  wie in Schwarz/Weiss.
+  zeichnet der Renderer die Zeit („25 min") unter das Fluchtweg-Schild, in allen
+  Darstellungsstilen.
 
 > **Hinweis zur Kompatibilität:** Die Gehzeit am Symbol ist – wie `dead` – eine
 > Erweiterung gegenüber Canyon-Explore. Sie wird nur geschrieben, wenn sie
@@ -410,8 +413,8 @@ Abkürzungen der verwendeten Segmenttypen. **`author` und das Datum schliessen d
 Legende ab**, in dieser Reihenfolge, nach dem letzten Legendeneintrag. Das Datum wird
 lesbar als `TT.MM.JJJJ` ausgegeben (ein Nicht-ISO-Wert bleibt unverändert stehen).
 Leere Werte erzeugen keine Zeile; Legendenkasten, Blattbreite und Blatthöhe wachsen mit
-dem Inhalt, damit nichts überlappt oder abgeschnitten wird — in jedem Format, in Farbe
-wie in Schwarz/Weiss und damit auch in jedem Export. Änderungen an Name, Author, Dauer
+dem Inhalt, damit nichts überlappt oder abgeschnitten wird — in jedem Format und Stil
+und damit auch in jedem Export. Änderungen an Name, Author, Dauer
 und Datum erscheinen sofort beim Tippen im Topo.
 
 **Frei verschiebbar:** Die Legende lässt sich mit Maus oder Finger an jede Stelle im

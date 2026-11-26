@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Canyoning Topo Generator</title>
-    <link rel="stylesheet" href="styles.css?v=0.13" />
+    <link rel="stylesheet" href="styles.css?v=0.14" />
   </head>
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/logo.png" alt="bachab" width="35" height="29" />
-          <span class="toolbar__version" id="app-version">v0.13</span>
+          <span class="toolbar__version" id="app-version">v0.14</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
@@ -78,7 +78,6 @@
         <label><span id="lbl-select-theme">Stil</span>
           <select id="select-theme">
             <option value="color" id="opt-theme-color">Farbe</option>
-            <option value="bw" id="opt-theme-bw">Schwarz/Weiß</option>
             <option value="alpiner_classic" id="opt-theme-alpiner-classic">Alpin klassisch</option>
             <option value="eau_froide" id="opt-theme-eau-froide">Standard</option>
             <option value="pencil_sketch" id="opt-theme-pencil-sketch">Bleistiftskizze</option>
@@ -120,12 +119,10 @@
         <details class="panel__section" id="panel-segments" open>
           <summary><span class="panel__arrow" aria-hidden="true"></span><h2 id="h-panel-segments">Segmente</h2></summary>
           <div class="panel__content">
-            <div class="shortcut-label">
-              <label for="segment-shortcut"><span id="lbl-segment-shortcut">Segment-Shortcut (m)</span></label>
-              <button type="button" class="shortcut-help-button" id="btn-shortcut-help" popovertarget="shortcut-help" aria-controls="shortcut-help" aria-expanded="false" aria-label="Shortcut-Hilfe öffnen" title="Shortcut-Hilfe öffnen">?</button>
-            </div>
+            <label class="sr-only" for="segment-shortcut"><span id="lbl-segment-shortcut">Segment-Shortcut (m)</span></label>
             <div class="segment-add">
-              <input type="text" id="segment-shortcut" placeholder="R10, RD23, RW12,5" aria-describedby="segment-shortcut-error" aria-invalid="false" enterkeyhint="done" autocomplete="off" spellcheck="false" />
+              <input type="text" id="segment-shortcut" placeholder="shortcuts" aria-describedby="segment-shortcut-error" aria-invalid="false" enterkeyhint="done" autocomplete="off" spellcheck="false" />
+              <button type="button" id="btn-shortcut-help" popovertarget="shortcut-help" aria-controls="shortcut-help" aria-expanded="false" aria-label="Shortcut-Hilfe öffnen" title="Shortcut-Hilfe öffnen">?</button>
               <button type="button" id="btn-add-shortcut" title="Segment aus Shortcut hinzufügen" aria-label="Segment aus Shortcut hinzufügen">+</button>
             </div>
             <div class="shortcut-help" id="shortcut-help" popover="auto" role="dialog" aria-labelledby="shortcut-help-title">
@@ -291,6 +288,6 @@
         </div>
       </form>
     </dialog>
-    <script type="module" src="src/app.js?v=0.13"></script>
+    <script type="module" src="src/app.js?v=0.14"></script>
   </body>
 </html>

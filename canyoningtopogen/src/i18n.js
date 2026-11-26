@@ -103,7 +103,6 @@ export const UI_TEXT = {
   },
   'lbl-select-theme': { de: 'Stil', en: 'Style', fr: 'Style', it: 'Stile', es: 'Estilo' },
   'opt-theme-color': { de: 'Farbe', en: 'Color', fr: 'Couleur', it: 'Colore', es: 'Color' },
-  'opt-theme-bw': { de: 'Schwarz/Weiß', en: 'Black/White', fr: 'Noir/Blanc', it: 'Bianco/Nero', es: 'Blanco/Negro' },
   'opt-theme-alpiner-classic': {
     de: 'Alpin klassisch',
     en: 'Alpine classic',
@@ -309,8 +308,7 @@ export const UI_TITLES = {
 /** `placeholder`-Attribut je Element-ID. */
 export const UI_PLACEHOLDERS = {
   'segment-shortcut': {
-    de: 'R10, RD23, RW12,5', en: 'R10, RD23, RW12.5', fr: 'R10, RD23, RW12,5',
-    it: 'R10, RD23, RW12,5', es: 'R10, RD23, RW12,5',
+    de: 'shortcuts', en: 'shortcuts', fr: 'shortcuts', it: 'shortcuts', es: 'shortcuts',
   },
   'ai-notes': {
     de: 'z. B. Gerätebezeichnungen, Sprache, Region',

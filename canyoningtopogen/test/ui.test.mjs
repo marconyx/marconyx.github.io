@@ -404,7 +404,8 @@ try {
 
 
 test('Shortcut-Hilfe ist ein beschriftetes Popover und mit Escape schliessbar', () => {
-  assert.match(markup, /<label for="segment-shortcut">[\s\S]*?<\/label>\s*<button[^>]*id="btn-shortcut-help"[^>]*popovertarget="shortcut-help"[^>]*aria-controls="shortcut-help"[^>]*aria-expanded="false"[^>]*aria-label="[^"]+"[^>]*>\?<\/button>/);
+  assert.match(markup, /<label class="sr-only" for="segment-shortcut"><span id="lbl-segment-shortcut">Segment-Shortcut \(m\)<\/span><\/label>/);
+  assert.match(markup, /<button[^>]*id="btn-shortcut-help"[^>]*popovertarget="shortcut-help"[^>]*aria-controls="shortcut-help"[^>]*aria-expanded="false"[^>]*aria-label="[^"]+"[^>]*>\?<\/button>/);
   assert.match(markup, /id="shortcut-help" popover="auto" role="dialog" aria-labelledby="shortcut-help-title"/);
   const help = /<div class="shortcut-help" id="shortcut-help"[\s\S]*?<\/div>/.exec(markup)[0];
   assert.ok(help.includes('R10,RW3, RD23.5; R12,5 ist eine Dezimalzahl.'));
@@ -433,15 +434,19 @@ test('Shortcut-Hilfe ist ein beschriftetes Popover und mit Escape schliessbar', 
 
 test('Segmentauswahl folgt dem Shortcut-Feld und dessen Fehleranzeige', () => {
   const section = /<details class="panel__section" id="panel-segments"[\s\S]*?<\/details>/.exec(markup)[0];
-  const ids = ['lbl-segment-shortcut', 'btn-shortcut-help', 'segment-shortcut',
+  const ids = ['lbl-segment-shortcut', 'segment-shortcut', 'btn-shortcut-help',
     'btn-add-shortcut', 'segment-shortcut-error', 'select-new-segment', 'btn-add-segment', 'segment-list'];
   const positions = ids.map((id) => section.indexOf(`id="${id}"`));
   assert.ok(positions.every((position) => position >= 0));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+  for (const language of i18n.LANGUAGES) {
+    assert.equal(i18n.UI_PLACEHOLDERS['segment-shortcut'][language], 'shortcuts');
+    assert.ok(i18n.UI_TEXT['lbl-segment-shortcut'][language]);
+  }
 });
 
 test('Plus neben Shortcut verwendet dieselbe Validierung und Undo-Historie wie Enter', () => {
-  assert.match(markup, /<div class="segment-add">\s*<input[^>]*id="segment-shortcut"[^>]*\/>\s*<button type="button" id="btn-add-shortcut"[^>]*aria-label="[^"]+"[^>]*>\+<\/button>/);
+  assert.match(markup, /<div class="segment-add">\s*<input[^>]*id="segment-shortcut"[^>]*placeholder="shortcuts"[^>]*\/>\s*<button[^>]*id="btn-shortcut-help"[^>]*>\?<\/button>\s*<button type="button" id="btn-add-shortcut"[^>]*aria-label="[^"]+"[^>]*>\+<\/button>/);
   elementById('btn-new-default').dispatch('click');
   state.selection = { kind: 'segment', segmentIndex: 0 };
   const selection = state.selection;
@@ -920,6 +925,12 @@ test('die App startet und rendert ein SVG', () => {
   assert.ok(svg().includes(state.topo.canyon_name));
 });
 
+test('die Stilwahl enthält alle verfügbaren Stile ohne Schwarz/Weiß', () => {
+  const options = /<select id="select-theme">([\s\S]*?)<\/select>/.exec(markup)[1];
+  assert.deepEqual([...options.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]),
+    ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']);
+});
+
 test('Alpin klassisch lässt sich auswählen und wird in den Ansichten gespeichert', () => {
   const select = elementById('select-theme');
   select.value = 'alpiner_classic';
@@ -1202,7 +1213,7 @@ test('Enter hängt Shortcuts genau einmal am Ende an, erhält Auswahl und speich
   const selection = state.selection;
   const before = [...state.topo.segments];
   const input = elementById('segment-shortcut');
-  assert.match(markup, /<label for="segment-shortcut">/);
+  assert.match(markup, /<label class="sr-only" for="segment-shortcut">/);
   assert.match(markup, /id="segment-shortcut"[^>]*aria-describedby="segment-shortcut-error"/);
   assert.match(markup, /id="segment-shortcut"[^>]*enterkeyhint="done"/);
   assert.match(markup, /id="segment-shortcut-error" aria-live="polite"/);
@@ -1858,11 +1869,16 @@ async function restoredAppWith(view, tag) {
   });
 
   // Ältere Stände kennen nur Serpentine/Linear oder gar kein Layout.
+  const savedTopo = JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1')).topo;
   const legacy = await restoredAppWith({ theme: 'bw', paper: 'a4_portrait' }, 'restore-legacy');
   test('ältere gespeicherte Zustände bleiben kompatibel', () => {
     assert.equal(legacy.state.view.layout, 'serpentine');
+    assert.equal(legacy.state.view.theme, 'color');
+    assert.equal(elementById('select-theme').value, 'color');
     assert.equal(legacy.state.view.paper, 'a4_portrait');
     assert.equal(elementById('select-layout').value, 'serpentine');
+    assert.deepEqual(JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1')).topo, savedTopo);
+    assert.equal(JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1')).view.theme, 'color');
     assert.ok(svg().startsWith('<svg'));
   });
 }

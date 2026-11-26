@@ -25,21 +25,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.13';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.13';
-import { createRandomTopo } from './random-topo.js?v=0.13';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.13';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.13';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.13';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.13';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.13';
+} from './model.js?v=0.14';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.14';
+import { createRandomTopo } from './random-topo.js?v=0.14';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.14';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.14';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.14';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.14';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.14';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.13';
+} from './exporters.js?v=0.14';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -55,12 +55,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.13';
-import { isPdfFile, openPdf } from './pdf.js?v=0.13';
-import { initPanelSections } from './panel-sections.js?v=0.13';
-import { initAiLock } from './ai-lock.js?v=0.13';
-import { initResponsive } from './responsive.js?v=0.13';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.13';
+} from './ai.js?v=0.14';
+import { isPdfFile, openPdf } from './pdf.js?v=0.14';
+import { initPanelSections } from './panel-sections.js?v=0.14';
+import { initAiLock } from './ai-lock.js?v=0.14';
+import { initResponsive } from './responsive.js?v=0.14';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.14';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -71,7 +71,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.13';
+} from './i18n.js?v=0.14';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -176,6 +176,7 @@ function restore() {
     const saved = JSON.parse(raw);
     state.topo = normalizeTopo(saved.topo);
     Object.assign(state.view, saved.view || {});
+    if (state.view.theme === 'bw') state.view.theme = 'color';
     Object.assign(state.photo, saved.photo || {});
     // Das PDF-Dokument selbst überlebt den Reload nicht, nur das gerenderte
     // Bild. Ohne Dokument gibt es nichts zu blättern.
@@ -1162,7 +1163,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.13');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.14');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();

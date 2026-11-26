@@ -349,19 +349,6 @@ input[type='date'] {
   gap: 0.35rem;
 }
 
-.shortcut-label {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.shortcut-help-button {
-  padding: 0;
-  width: 1.4rem;
-  height: 1.4rem;
-  line-height: 1;
-}
-
 .shortcut-help {
   box-sizing: border-box;
   width: min(28rem, calc(100vw - 2rem));

@@ -293,7 +293,7 @@ test('Doppelbruch erscheint für verkürzte Strecken in allen Stilen, nicht auf 
       angle_in_degrees: 90,
     }],
   });
-  for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+  for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
     const svg = renderTopoSvg(topo, layoutTopo(topo), { theme });
     assert.equal((svg.match(/class="topo-shortening-break"/g) || []).length, 1, theme);
     assert.match(svg, /> ?80<\/tspan>/, `${theme}: echtes Mass fehlt`);
@@ -316,7 +316,7 @@ test('verkürzte Gehstrecke zeigt die echte Länge in m statt der Gehzeit', () =
       { type: 'WALK', length_in_meters: 20, angle_in_degrees: 0, duration_to_walk_in_min: 10 },
     ],
   });
-  for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+  for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
     const svg = renderTopoSvg(topo, layoutTopo(topo), { theme });
     const brackets = [...svg.matchAll(/<g class="topo-length-bracket" data-seg="(\d+)"[\s\S]*?<text[^>]*>([^<]*)<\/text>/g)];
     assert.deepEqual(brackets.map((m) => [m[1], m[2]]), [['0', '|← 120 m →|']], theme);
@@ -361,7 +361,7 @@ test('SVG-Doppelbruch sitzt exakt in der geometrischen Mitte der Linie', () => {
 
   for (const mode of LAYOUT_MODES) {
     const layout = layoutTopo(topo, { layout: mode });
-    for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+    for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
       const svg = renderTopoSvg(topo, layout, { theme });
       const markers = new Map(
         [...svg.matchAll(
@@ -431,7 +431,7 @@ test('Doppelbruch hat immer feste 45-Grad-SVG-Richtung, auch auf gespiegelten Se
   for (const mode of LAYOUT_MODES) {
     for (const paper of Object.keys(PAPER_PRESETS)) {
       const layout = layoutTopo(topo, { layout: mode, paper });
-      for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+      for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
         const svg = renderTopoSvg(topo, layout, { theme, paper });
         const markers = [...svg.matchAll(
           /<g class="topo-shortening-break"[^>]*><path d="([^"]+)"/g,
@@ -894,7 +894,7 @@ test('maximale Abseillänge steht direkt nach der Dauer in der Legende', () => {
     duration: '3-4 h',
     maximum_walk_length: 45,
   });
-  for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+  for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
     const svg = renderTopoSvg(topo, layoutTopo(topo), { theme });
     assert.match(svg, /data-meta="maximum_walk_length"[^>]*>[\s\S]*Max\. Abseil:<\/tspan> 45 m<\/text>/);
     assert.equal(
@@ -1441,14 +1441,14 @@ test('ohne Gumpentiefe bleiben alle Layouts und Renderstile byte-identisch', () 
     for (const paper of Object.keys(PAPER_PRESETS)) {
       const data = layoutTopo(topo, { layout, paper });
       layouts.push(JSON.stringify(data, (key, value) => key === 'segment' ? undefined : value));
-      for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+      for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
         svgs.push(renderTopoSvg(topo, data, { theme, paper }));
       }
     }
   }
   const hash = (values) => createHash('sha256').update(values.join('\n')).digest('hex');
   assert.equal(hash(layouts), '48b19ff813ae355961afaa00c9059b6d6411db2b332b18b1db0c418ea3d36069');
-  assert.equal(hash(svgs), 'b37f0c147ff7b7829b00e3b1a98f41ac7ceeef78b163e864cc93aad1c91da7b4');
+  assert.equal(hash(svgs), '7afcb002177632e65195a6855cdafc9361301b6b04a69a11ea06d1e7a0fed14e');
 });
 
 test('Gumpen-Zeichentiefe skaliert gedämpft und begrenzt', () => {
@@ -1490,7 +1490,7 @@ test('Gumpentiefe und Label passen in alle Layout-/Papiermodi ohne Zeilenkollisi
             assert.ok(data.rows[index - 1].bottom + 14 < data.rows[index].top, 'Gelände ragt in nächste Zeile');
           }
         }
-        for (const theme of ['color', 'bw', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+        for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
           const svg = renderTopoSvg(topo, data, { theme, paper });
           assert.equal((svg.match(/class="topo-pool-depth"/g) || []).length, 4);
           for (const text of ['T 2.5 m', 'T 100 m', 'T 4 m', 'T 0 m']) assert.ok(svg.includes(`>${text}</text>`));
