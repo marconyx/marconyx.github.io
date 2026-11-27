@@ -10,8 +10,8 @@
  * die 1,6 MB niemanden belasten, der nur Bilder benutzt.
  */
 
-const PDF_LIB_URL = new URL('../vendor/pdfjs/pdf.min.mjs?v=0.23', import.meta.url).href;
-const PDF_WORKER_URL = new URL('../vendor/pdfjs/pdf.worker.min.mjs?v=0.23', import.meta.url).href;
+const PDF_LIB_URL = new URL('../vendor/pdfjs/pdf.min.mjs?v=0.24', import.meta.url).href;
+const PDF_WORKER_URL = new URL('../vendor/pdfjs/pdf.worker.min.mjs?v=0.24', import.meta.url).href;
 
 /** Längste Kante der gerenderten Seite in Pixeln. */
 const MAX_EDGE_PX = 2200;

@@ -10,18 +10,18 @@
  * separat ohne Auswahl-/Drag-Markierungen erzeugt. Sichtbare Nutztexte werden
  * vor dem Einfügen in SVG escaped.
  */
-import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.23';
+import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.24';
 import {
   symbolFor,
   renderUnknownSymbol,
   renderEauFroideSymbol,
   renderEauFroideRange,
   EAU_FROIDE_PALETTE,
-} from './symbols.js?v=0.23';
+} from './symbols.js?v=0.24';
 import {
   DEFAULT_LANGUAGE,
   translateLegendLabel,
-} from './i18n.js?v=0.23';
+} from './i18n.js?v=0.24';
 import {
   PAPER_PRESETS,
   contentBoundsFor,
@@ -37,7 +37,7 @@ import {
   paperPreset,
   poolDepthLabelFor,
   poolDrawingDepthOf,
-} from './sheet.js?v=0.23';
+} from './sheet.js?v=0.24';
 
 export { PAPER_PRESETS };
 
@@ -517,19 +517,35 @@ function segmentHitArea(placement, options) {
     stroke="${selected ? '#1668dc' : 'transparent'}" stroke-opacity="${selected ? 0.55 : 1}" stroke-width="1.6" stroke-linecap="round"/>`;
 }
 
-function continuationMarkers(row, layout, theme) {
+function romanNumeral(number) {
+  const values = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ];
+  let result = '';
+  for (const [value, symbol] of values) {
+    while (number >= value) {
+      result += symbol;
+      number -= value;
+    }
+  }
+  return result;
+}
+
+function continuationMarkers(row, theme) {
   const markers = [];
   const first = row.placements[0];
   const last = row.placements[row.placements.length - 1];
   if (!first || !last) return '';
   if (row.continuesBefore) {
     markers.push(
-      `<text x="${first.start.x - 2.2}" y="${first.start.y + 0.4}" font-size="1.1" text-anchor="middle" fill="${theme.text}">(l)</text>`,
+      `<text x="${first.start.x - 2.2}" y="${first.start.y + 0.4}" font-size="1.1" text-anchor="middle" fill="${theme.text}">(${romanNumeral(row.index)})</text>`,
     );
   }
   if (row.continuesAfter) {
     markers.push(
-      `<text x="${last.end.x + 2.2}" y="${last.end.y + 0.4}" font-size="1.1" text-anchor="middle" fill="${theme.text}">(l)</text>`,
+      `<text x="${last.end.x + 2.2}" y="${last.end.y + 0.4}" font-size="1.1" text-anchor="middle" fill="${theme.text}">(${romanNumeral(row.index + 1)})</text>`,
     );
   }
   return markers.join('');
@@ -720,7 +736,7 @@ export function renderTopoSvg(topo, layout, options = {}) {
         ${elements}
         ${labels}
         ${brackets}
-        ${shorteningMarkers}${continuationMarkers(row, layout, theme)}
+        ${shorteningMarkers}${continuationMarkers(row, theme)}
       </g>`;
     })
     .join('');

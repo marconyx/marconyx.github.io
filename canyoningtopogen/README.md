@@ -12,7 +12,7 @@ Tastaturfokus mit Enter/Leertaste die vollständige Meldung. Das Popup lässt si
 mit Escape oder **Schliessen** verlassen.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.23`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.24`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -392,6 +392,8 @@ Im Layout **Serpentine** verteilt der Generator die Segmente selbständig auf Ze
 - **Aufteilung**: Die Zeilen werden per Dynamischer Programmierung gleichmäßig gefüllt
   (minimale Summe der quadrierten Restbreiten), nicht gierig von links nach rechts und
   nicht nach einer festen Segmentzahl.
+- **Fortsetzung**: Jeder Übergang trägt an beiden Enden dieselbe fortlaufende
+  römische Nummer: `(I)`, `(II)`, `(III)` usw.
 - **Zeilenumbruch erzwingen** (`force_cut_row_after_this_segment`) trennt hart nach dem
   Segment — auch wenn die Zeile noch Platz hätte.
 - **Umbruch verhindern** (`do_not_cut_row_after_this_segment`) hält das Segment mit dem
@@ -412,7 +414,7 @@ nach ihrer **Höhe** auf Spalten auf statt nach ihrer Breite auf Zeilen.
 - **Fluss**: Innerhalb einer Spalte läuft das Topo mit seiner echten Geometrie von oben
   nach unten. Beim Spaltenwechsel beginnt das nächste Segment wieder **oben** in der
   nächsten Spalte **rechts** daneben. Alle Spalten laufen gleich, ohne abwechselnde
-  Richtung; Fortsetzungsmarken `(l)` stehen am Spaltenende und -anfang.
+  Richtung; die fortlaufenden Fortsetzungsmarken stehen am Spaltenende und -anfang.
 - **Höhenbedarf** je Segment: `|sin(Winkel)| · gezeichnete Länge` plus die Wanddistanz,
   soweit sie in die Höhe ausweicht (`|cos(Winkel)| · wall_distance_in_meters`). Flache
   Gehstücke kosten keine Höhe, machen die Spalte aber breiter.

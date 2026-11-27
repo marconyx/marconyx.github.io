@@ -99,6 +99,40 @@ function rowMarkupFromSvg(svg) {
 
 /* ------------------------------------------------ automatische Aufteilung */
 
+test('Fortsetzungsmarken nummerieren jeden Übergang paarweise römisch', () => {
+  const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  for (const mode of ['serpentine', 'cascaded']) {
+    for (const count of [1, 2, 3, 4, 5, 11]) {
+      const topo = flatTopo(count, 10, Object.fromEntries(
+        Array.from({ length: count - 1 }, (_, index) => [
+          index, { force_cut_row_after_this_segment: true },
+        ]),
+      ));
+      const layout = layoutTopo(topo, { layout: mode });
+      assert.equal(layout.rows.length, count, `${mode}: ${count} Abschnitte`);
+      for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+        for (const paper of ['screen', 'a4_portrait']) {
+          const rows = rowMarkupFromSvg(renderTopoSvg(topo, layout, { theme, paper }));
+          for (let index = 0; index < count; index += 1) {
+            const labels = [...rows[index].matchAll(/>\(([IVXLCDM]+)\)<\/text>/g)]
+              .map((match) => match[1]);
+            assert.deepEqual(labels, [
+              ...(index > 0 ? [numerals[index - 1]] : []),
+              ...(index < count - 1 ? [numerals[index]] : []),
+            ], `${mode}/${theme}/${paper}, Abschnitt ${index + 1}`);
+          }
+        }
+      }
+    }
+  }
+  const topo = flatTopo(3, 10, {
+    0: { force_cut_row_after_this_segment: true },
+    1: { force_cut_row_after_this_segment: true },
+  });
+  const linear = renderTopoSvg(topo, layoutTopo(topo, { layout: 'linear' }));
+  assert.doesNotMatch(linear, />\(([IVXLCDM]+)\)<\/text>/);
+});
+
 test('Serpentine teilt automatisch auf und hält die Zielbreite ein', () => {
   const topo = flatTopo(12, 10); // 120 m Gesamtbreite, Ziel 60 m
   const layout = layoutTopo(topo);
@@ -1391,7 +1425,7 @@ test('Kaskadiert rendert gültiges SVG für Bildschirm und A4', () => {
     assert.equal((svg.match(/class="topo-row"/g) || []).length, columns);
     const gradientIds = [...svg.matchAll(/linearGradient id="([^"]+)"/g)].map((m) => m[1]);
     assert.equal(new Set(gradientIds).size, columns);
-    assert.equal((svg.match(/>\(l\)</g) || []).length, 2 * (columns - 1));
+    assert.equal((svg.match(/>\([IVXLCDM]+\)</g) || []).length, 2 * (columns - 1));
     // Die Geländefüllung bleibt im Spaltenkasten.
     for (const column of layout.rows) {
       const group = new RegExp(`data-row="${column.index}">\\s*<path d="([^"]+)"`).exec(svg)[1];
@@ -1476,7 +1510,9 @@ test('ohne Gumpentiefe bleiben alle Layouts und Renderstile byte-identisch', () 
       const data = layoutTopo(topo, { layout, paper });
       layouts.push(JSON.stringify(data, (key, value) => key === 'segment' ? undefined : value));
       for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
-        svgs.push(renderTopoSvg(topo, data, { theme, paper }));
+        // Nur die beabsichtigte Änderung an Fortsetzungsmarken ausblenden.
+        svgs.push(renderTopoSvg(topo, data, { theme, paper })
+          .replace(/>\([IVXLCDM]+\)<\/text>/g, '>(l)</text>'));
       }
     }
   }
