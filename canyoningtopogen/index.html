@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Canyoning Topo Generator</title>
-    <link rel="stylesheet" href="styles.css?v=0.16" />
+    <link rel="stylesheet" href="styles.css?v=0.17" />
   </head>
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/logo.png" alt="bachab" width="35" height="29" />
-          <span class="toolbar__version" id="app-version">v0.16</span>
+          <span class="toolbar__version" id="app-version">v0.17</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
@@ -122,7 +122,7 @@
             <label class="sr-only" for="segment-shortcut"><span id="lbl-segment-shortcut">Segment-Shortcut (m)</span></label>
             <div class="segment-add">
               <input type="text" id="segment-shortcut" placeholder="shortcuts" aria-describedby="segment-shortcut-error" aria-invalid="false" enterkeyhint="done" autocomplete="off" spellcheck="false" />
-              <button type="button" id="btn-shortcut-help" popovertarget="shortcut-help" aria-controls="shortcut-help" aria-expanded="false" aria-label="Shortcut-Hilfe öffnen" title="Shortcut-Hilfe öffnen">?</button>
+              <button type="button" id="btn-shortcut-help" popovertarget="shortcut-help" aria-controls="shortcut-help" aria-expanded="false" aria-label="Shortcut-Hilfe öffnen" title="Shortcut-Hilfe öffnen"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8"/><path d="M10 9v5"/><circle cx="10" cy="6" r=".5" fill="currentColor" stroke="none"/></svg></button>
               <button type="button" id="btn-add-shortcut" title="Segment aus Shortcut hinzufügen" aria-label="Segment aus Shortcut hinzufügen">+</button>
             </div>
             <div class="shortcut-help" id="shortcut-help" popover="auto" role="dialog" aria-labelledby="shortcut-help-title">
@@ -288,6 +288,6 @@
         </div>
       </form>
     </dialog>
-    <script type="module" src="src/app.js?v=0.16"></script>
+    <script type="module" src="src/app.js?v=0.17"></script>
   </body>
 </html>
