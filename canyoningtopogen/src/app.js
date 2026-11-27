@@ -32,21 +32,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.15';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.15';
-import { createRandomTopo } from './random-topo.js?v=0.15';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.15';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.15';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.15';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.15';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.15';
+} from './model.js?v=0.16';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.16';
+import { createRandomTopo } from './random-topo.js?v=0.16';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.16';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.16';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.16';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.16';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.16';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.15';
+} from './exporters.js?v=0.16';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -62,12 +62,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.15';
-import { isPdfFile, openPdf } from './pdf.js?v=0.15';
-import { initPanelSections } from './panel-sections.js?v=0.15';
-import { initAiLock } from './ai-lock.js?v=0.15';
-import { initResponsive } from './responsive.js?v=0.15';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.15';
+} from './ai.js?v=0.16';
+import { isPdfFile, openPdf } from './pdf.js?v=0.16';
+import { initPanelSections } from './panel-sections.js?v=0.16';
+import { initAiLock } from './ai-lock.js?v=0.16';
+import { initResponsive } from './responsive.js?v=0.16';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.16';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -78,7 +78,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.15';
+} from './i18n.js?v=0.16';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -103,6 +103,8 @@ let pdfDoc = null;
 // Einträge dadurch nicht über gemeinsam referenzierte Objekte verändern.
 let history = { past: [], future: [] };
 let storageProtected = false;
+let sourcePending = false;
+let sourceSession = false;
 let currentLayout = null;
 let currentSvgText = '';
 const cameraOffset = { x: 0, y: 0 };
@@ -163,10 +165,11 @@ function replaceTopo(topo) {
 /**
  * Schreibt das externe JSON-Topo und die Editoransicht als einen Autosave.
  * Bei `storageProtected` bleibt ein nicht unterstützter alter Speicherstand
- * unangetastet; quota-/speicherbedingte Fehler sind hier bewusst optional.
+ * unangetastet. Link-Sitzungen speichern nicht automatisch, um den vorherigen
+ * Entwurf zu bewahren; quota-/speicherbedingte Fehler sind hier optional.
  */
 function persist() {
-  if (storageProtected) return;
+  if (storageProtected || sourcePending || sourceSession) return;
   try {
     localStorage.setItem(
       STORAGE_KEY,
@@ -210,7 +213,10 @@ function restore() {
 }
 
 function setStatus(message) {
-  const warning = storageProtected ? t(lang(), 'status.removed_weir_storage') : '';
+  const warning = [
+    storageProtected ? t(lang(), 'status.removed_weir_storage') : '',
+    sourceSession ? t(lang(), 'source.autosave_off') : '',
+  ].filter(Boolean).join(' ');
   const status = $('status');
   status.textContent = warning && message !== warning ? `${warning} ${message}` : message;
   status.title = status.textContent;
@@ -1208,7 +1214,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.15');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.16');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();
@@ -1218,6 +1224,50 @@ async function loadExample() {
   } catch (error) {
     setStatusKey('status.example_load_failed', { error: error.message });
   }
+}
+
+/**
+ * Ein Link-Topo ist eine temporäre Sitzung: Der vorhandene Autosave bleibt
+ * erhalten und kann nach Entfernen des Parameters wiederhergestellt werden.
+ * Interaktionen während des Ladens haben Vorrang vor der Netzwerkantwort.
+ */
+async function loadSource(source) {
+  let topo;
+  try {
+    const page = new URL(window.location.href);
+    const url = new URL(source, page);
+    if (!source.trim() || !['http:', 'https:'].includes(page.protocol) ||
+        url.origin !== page.origin || url.username || url.password ||
+        !/\.xml$/i.test(url.pathname)) {
+      throw new Error(t(lang(), 'source.invalid_url'));
+    }
+    const response = await fetch(url.href, { redirect: 'error', credentials: 'omit' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const text = await response.text();
+    if (!sourcePending) return;
+    // Der bestehende Scanner prüft keine XML-Wohlgeformtheit oder DTDs.
+    if (/<!DOCTYPE/i.test(text)) throw new Error(t(lang(), 'source.invalid_xml'));
+    const documentXml = new DOMParser().parseFromString(text, 'application/xml');
+    if (documentXml.querySelector('parsererror') || documentXml.documentElement?.nodeName !== 'topo') {
+      throw new Error(t(lang(), 'source.invalid_xml'));
+    }
+    topo = topoFromXml(text);
+  } catch (error) {
+    if (!sourcePending) return;
+    sourcePending = false;
+    if (error instanceof RemovedSegmentError) {
+      setStatusKey('status.removed_weir_import', { index: error.index });
+    } else {
+      setStatusKey('status.file_load_failed', { error: error.message });
+    }
+    return;
+  }
+  pushHistory();
+  sourceSession = true;
+  sourcePending = false;
+  replaceTopo(topo);
+  fitZoom();
+  setStatusKey('source.loaded');
 }
 
 /* ---------------------------------------------------------------- Bindings */
@@ -1866,6 +1916,18 @@ function init() {
   initAiLock({ onMessage: (key) => setStatusKey(key) });
   initResponsive();
   const restored = restore();
+  const source = new URL(window.location.href).searchParams.get('source');
+  if (source !== null) {
+    sourcePending = true;
+    const cancelSource = () => {
+      if (!sourcePending) return;
+      sourcePending = false;
+      setStatusKey('source.cancelled');
+    };
+    for (const event of ['pointerdown', 'click', 'input', 'change', 'keydown']) {
+      document.addEventListener(event, cancelSource, { capture: true, once: false });
+    }
+  }
   bindToolbar();
   bindTopoFields();
   bindPhoto();
@@ -1876,6 +1938,7 @@ function init() {
   render();
   fitZoom();
   setStatusKey(restored === 'removed_weir' ? 'status.removed_weir_storage' : restored ? 'status.restored' : 'status.ready_sentence');
+  if (source !== null) loadSource(source);
 }
 
 init();

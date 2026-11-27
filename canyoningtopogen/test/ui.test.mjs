@@ -2271,4 +2271,105 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
   });
 }
 
+/* --------------------------------------- XML-Link beim Start */
+
+{
+  const key = 'canyon-topo-generator/state/v1';
+  const originalFetch = globalThis.fetch;
+  const originalLocation = window.location;
+  const originalParser = globalThis.DOMParser;
+  const draft = JSON.stringify({ topo: { canyon_name: 'Gesicherter Entwurf', segments: [] } });
+  const xml = '<topo canyon_name="Link"><segment type="WALK" length_in_meters="20"/></topo>';
+  let serial = 0;
+  let requests;
+  globalThis.DOMParser = class {
+    parseFromString(text) {
+      return {
+        documentElement: { nodeName: text.startsWith('<topo') ? 'topo' : 'parsererror' },
+        querySelector: () => text.includes('INVALID') ? {} : null,
+      };
+    }
+  };
+  async function start(source, fetcher) {
+    storage.set(key, draft);
+    requests = [];
+    window.location = { href: `https://example.test/app/index.html${source === null ? '' : `?source=${encodeURIComponent(source)}`}` };
+    globalThis.fetch = (...args) => { requests.push(args); return fetcher(...args); };
+    const instance = await import(`../src/app.js?source-test-${serial++}`);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    return instance;
+  }
+  const ok = async () => ({ ok: true, text: async () => xml });
+  try {
+    const relative = await start('examples/route.xml', ok);
+    test('XML-Link lädt relativ zur App und schützt den Entwurf dauerhaft', () => {
+      assert.equal(requests[0][0], 'https://example.test/app/examples/route.xml');
+      assert.deepEqual(requests[0][1], { redirect: 'error', credentials: 'omit' });
+      assert.equal(relative.state.topo.canyon_name, 'Link');
+      assert.equal(relative.state.topo.segments[0].length_in_meters, 20);
+      assert.equal(elementById('topo-name').value, 'Link');
+      assert.match(svg(), /Link/);
+      assert.equal(storage.get(key), draft);
+      const name = elementById('topo-name');
+      name.value = 'Geändert';
+      name.listeners.get('input').at(-1)({ target: name });
+      assert.equal(storage.get(key), draft);
+      assert.match(elementById('status').textContent, /Autosave.*aus/);
+    });
+    const root = await start('/examples/route.xml', ok);
+    test('Root-relative XML-Links werden vom Origin-Root aufgelöst', () => {
+      assert.equal(requests[0][0], 'https://example.test/examples/route.xml');
+      assert.equal(root.state.topo.canyon_name, 'Link');
+      const undo = elementById('btn-undo').listeners.get('click').at(-1);
+      undo({ target: elementById('btn-undo') });
+      assert.equal(root.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.equal(storage.get(key), draft);
+    });
+    for (const source of ['', 'https://other.test/x.xml', 'https://u:p@example.test/x.xml', 'javascript:alert(1)', '/x.json']) {
+      const instance = await start(source, ok);
+      test(`ungültige Quelle ${source} wird ohne Request abgewiesen`, () => {
+        assert.equal(requests.length, 0);
+        assert.equal(instance.state.topo.canyon_name, 'Gesicherter Entwurf');
+        assert.equal(storage.get(key), draft);
+        assert.match(elementById('status').textContent, /Fehler/);
+      });
+    }
+    for (const [label, fetcher, expected] of [
+      ['HTTP', async () => ({ ok: false, status: 404 }), /HTTP 404/],
+      ['Netzwerk/Redirect', async () => { throw new Error('network'); }, /network/],
+      ['XML', async () => ({ ok: true, text: async () => '<topo>INVALID' }), /XML/],
+      ['DTD', async () => ({ ok: true, text: async () => '<!DOCTYPE topo><topo/>' }), /XML/],
+      ['WEIR', async () => ({ ok: true, text: async () => '<topo><segment type="WEIR"/></topo>' }), /WEIR/],
+    ]) {
+      const instance = await start('route.xml', fetcher);
+      test(`${label}-Fehler bewahrt Topo und Autosave`, () => {
+        assert.equal(instance.state.topo.canyon_name, 'Gesicherter Entwurf');
+        assert.equal(storage.get(key), draft);
+        assert.match(elementById('status').textContent, expected);
+      });
+    }
+    let resolveFetch;
+    const pending = await start('route.xml', () => new Promise((resolve) => { resolveFetch = resolve; }));
+    documentEvents.dispatch('input');
+    const name = elementById('topo-name');
+    name.value = 'Benutzeränderung';
+    name.listeners.get('input').at(-1)({ target: name });
+    resolveFetch(await ok());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    test('späte Netzwerkantwort überschreibt keine Benutzeränderung', () => {
+      assert.equal(pending.state.topo.canyon_name, 'Benutzeränderung');
+      assert.equal(JSON.parse(storage.get(key)).topo.canyon_name, 'Benutzeränderung');
+    });
+    const restored = await start(null, ok);
+    test('ohne source wird wie bisher der Autosave wiederhergestellt', () => {
+      assert.equal(requests.length, 0);
+      assert.equal(restored.state.topo.canyon_name, 'Gesicherter Entwurf');
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    window.location = originalLocation;
+    globalThis.DOMParser = originalParser;
+  }
+}
+
 console.log(`\n${passed} Test(s) bestanden.`);

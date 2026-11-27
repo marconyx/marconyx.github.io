@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.15`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.16`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -188,6 +188,24 @@ Tests (ohne Abhängigkeiten):
 ```bash
 npm test          # Round-Trip, Layout, Zufalls-Topo, UI, AI und Proxy
 ```
+
+### XML über einen Link öffnen
+
+Ein Webserver kann eine XML-Datei beim Start direkt öffnen, zum Beispiel
+`http://localhost:8080/index.html?source=examples/staubbach.xml` (Server im
+Verzeichnis `canyoningtopogen`). Relative Pfade beziehen sich auf die Seite;
+`/examples/staubbach.xml` bezieht sich auf das Root der Website. Nur XML-Dateien
+derselben HTTP(S)-Origin ohne Zugangsdaten sind erlaubt; Weiterleitungen werden
+abgelehnt. XML muss wohlgeformt sein und darf keine DTD enthalten; die übliche
+Topo-Validierung wird weiterhin im Editor angezeigt. Lade- und Importfehler
+lassen das aktuelle Topo unverändert. Beginnt die Bedienung vor der Antwort,
+wird das Laden verworfen.
+
+Ein per Link geöffnetes Topo ist eine temporäre Sitzung: Autosave ist darin
+deaktiviert, auch nach weiteren Änderungen oder Aktionen. Änderungen deshalb
+manuell speichern. Der vorherige lokale Entwurf bleibt erhalten und wird beim
+erneuten Öffnen der App ohne `source` wiederhergestellt; innerhalb der Sitzung
+ist er auch über Rückgängig erreichbar.
 
 ## Repository
 
