@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topo version="1" canyon_name="My Canyon" author="Marco" duration="5-6h" date="2026-09-17" maximum_walk_length="30" distance_of_single_line="60" legend_offset_top="0">
+  <segment type="WALK" length_in_meters="15" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false"/>
+  <segment type="RAPPEL_DRY" length_in_meters="12" angle_in_degrees="90" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false"/>
+  <segment type="POOL" length_in_meters="8" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false"/>
+</topo>
