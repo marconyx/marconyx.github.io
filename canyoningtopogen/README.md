@@ -7,9 +7,12 @@ Die responsive App-Kopfzeile zeigt das bachab-Logo neben dem App-Titel, darunter
 App-Version (`#app-version` in `index.html`). Sie beginnt bei `v0.1` und wird mit jedem
 Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
+Wird die Statusmeldung unter dem Titel abgeschnitten, öffnet ein Klick oder
+Tastaturfokus mit Enter/Leertaste die vollständige Meldung. Das Popup lässt sich
+mit Escape oder **Schliessen** verlassen.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.22`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.23`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.

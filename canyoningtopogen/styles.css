@@ -74,13 +74,43 @@ body {
 }
 
 .toolbar__hint {
+  position: relative;
   width: 0;
   min-width: 100%;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.toolbar__status-text {
+  display: block;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 0.75rem;
-  color: var(--muted);
+}
+
+.toolbar__hint.is-expandable .toolbar__status-text {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.15em;
+}
+
+.toolbar__status-trigger {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.toolbar__status-trigger:hover {
+  background: transparent;
+}
+
+.toolbar__status-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .toolbar__group {
@@ -369,6 +399,16 @@ input[type='date'] {
 
 .shortcut-help h3 {
   margin: 0;
+}
+
+.status-details p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.status-details button {
+  min-height: 44px;
 }
 
 /* Kompakt: Auswahl und „+“ auf einer niedrigen Zeile. */
@@ -685,6 +725,20 @@ input[type='date'] {
 
   .toolbar__brand {
     flex: 1 1 12rem;
+  }
+
+  .toolbar__hint.is-expandable {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .toolbar__hint.is-expandable .toolbar__status-text {
+    width: 100%;
+  }
+
+  .toolbar__status-trigger {
+    min-width: 0;
   }
 
   .toolbar__menu {

@@ -171,7 +171,10 @@ class FakeNode {
     };
   }
   get clientWidth() {
-    return 1000;
+    return this._clientWidth ?? 1000;
+  }
+  get scrollWidth() {
+    return this._scrollWidth ?? 0;
   }
   get clientHeight() {
     return 700;
@@ -649,7 +652,8 @@ test('Touch-Scrollen wird nur auf Symbolen verhindert, nicht auf freiem Gelände
 test('bachab-Logo steht nur in der responsiven App-Kopfzeile neben Titel und Status', () => {
   const header = /<header class="toolbar">([\s\S]*?)<\/header>/.exec(markup)?.[1];
   assert.ok(header);
-  assert.match(header, /<div class="toolbar__brand">\s*<div class="toolbar__logo-wrap">\s*<img class="toolbar__logo" src="assets\/logo\.png" alt="bachab" width="35" height="29" \/>\s*<span class="toolbar__version" id="app-version">v0\.\d+<\/span>\s*<\/div>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<span class="toolbar__hint" id="status" title="bereit" role="status" aria-live="polite">bereit<\/span>/);
+  assert.match(header, /<div class="toolbar__brand">\s*<div class="toolbar__logo-wrap">\s*<img class="toolbar__logo" src="assets\/logo\.png" alt="bachab" width="35" height="29" \/>\s*<span class="toolbar__version" id="app-version">v0\.\d+<\/span>\s*<\/div>\s*<div class="toolbar__brand-text">\s*<strong>Canyoning Topo Generator<\/strong>\s*<div class="toolbar__hint" id="status-container">\s*<span class="toolbar__status-text" id="status" title="bereit" role="status" aria-live="polite" tabindex="-1">bereit<\/span>/);
+  assert.match(header, /<button type="button" class="toolbar__status-trigger" id="btn-status-details"[^>]*aria-describedby="status"[^>]*aria-controls="status-details"[^>]*aria-expanded="false" hidden><\/button>/);
   assert.equal((markup.match(/assets\/logo\.png/g) || []).length, 1);
   const image = readFileSync(new URL('../assets/logo.png', import.meta.url));
   assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
@@ -660,13 +664,86 @@ test('bachab-Logo steht nur in der responsiven App-Kopfzeile neben Titel und Sta
   assert.match(css, /\.toolbar__brand\s*\{[^}]*align-items: center;[^}]*min-width: 0;[^}]*max-width: 100%;/);
   assert.match(css, /\.toolbar__logo\s*\{[^}]*flex: none;[^}]*width: auto;[^}]*height: 1rem;/);
   assert.match(css, /\.toolbar__brand-text\s*\{[^}]*display: grid;[^}]*grid-template-columns: minmax\(0, max-content\);[^}]*min-width: 0;[^}]*overflow-wrap: anywhere;/);
-  assert.match(css, /\.toolbar__hint\s*\{[^}]*width: 0;[^}]*min-width: 100%;[^}]*overflow: hidden;[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis;/);
+  assert.match(css, /\.toolbar__hint\s*\{[^}]*width: 0;[^}]*min-width: 100%;/);
+  assert.match(css, /\.toolbar__status-text\s*\{[^}]*overflow: hidden;[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis;/);
   assert.match(css, /\.toolbar__group\s*\{[^}]*flex-wrap: wrap;[^}]*max-width: 100%;/);
   for (const id of ['btn-new', 'btn-save-json', 'btn-export-svg', 'btn-export-png', 'btn-print', 'btn-undo']) {
     assert.ok(header.includes(`id="${id}"`), `${id} bleibt in der Kopfzeile`);
   }
   assert.doesNotMatch(svg(), /assets\/logo\.png|alt="bachab"/, 'kein Logo im Topo-Export');
 });
+
+test('Status-Popup ist nur bei Überlauf aktiv und bleibt bei Statuswechsel aktuell', () => {
+  const status = elementById('status');
+  const trigger = elementById('btn-status-details');
+  const popover = elementById('status-details');
+  const message = elementById('status-details-message');
+  const close = elementById('btn-close-status-details');
+  status._clientWidth = 120;
+  status._scrollWidth = 300;
+  elementById('btn-open-oc').dispatch('click');
+  assert.equal(trigger.hidden, false);
+  assert.ok(elementById('status-container').classList.contains('is-expandable'));
+  trigger.dispatch('click');
+  assert.equal(popover.popoverOpen, true);
+  assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+  assert.equal(message.textContent, status.textContent);
+  assert.equal(document.activeElement, close);
+  elementById('btn-save-oc').dispatch('click');
+  assert.equal(message.textContent, status.textContent);
+  let prevented = false;
+  popover.dispatch('keydown', { key: 'Escape', preventDefault() { prevented = true; } });
+  assert.ok(prevented);
+  assert.equal(popover.popoverOpen, false);
+  assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+  assert.equal(document.activeElement, trigger);
+  trigger.dispatch('click');
+  close.dispatch('click');
+  assert.equal(popover.popoverOpen, false);
+  assert.equal(document.activeElement, trigger);
+  status._scrollWidth = 120;
+  windowEvents.dispatch('resize');
+  assert.equal(trigger.hidden, true);
+  assert.equal(elementById('status-container').classList.contains('is-expandable'), false);
+  trigger.dispatch('click');
+  assert.equal(popover.popoverOpen, false);
+  status._scrollWidth = 300;
+  windowEvents.dispatch('resize');
+  trigger.dispatch('click');
+  status._scrollWidth = 100;
+  elementById('btn-new-empty').dispatch('click');
+  assert.equal(trigger.hidden, true);
+  assert.equal(message.textContent, status.textContent);
+  close.dispatch('click');
+  assert.equal(document.activeElement, status);
+  delete status._clientWidth;
+  delete status._scrollWidth;
+  windowEvents.dispatch('resize');
+});
+
+{
+  const status = elementById('status');
+  const trigger = elementById('btn-status-details');
+  const popover = elementById('status-details');
+  const message = elementById('status-details-message');
+  const input = elementById('file-open');
+  const name = '<img src=x onerror=alert(1)> & "Ä".json';
+  status._clientWidth = 100;
+  status._scrollWidth = 500;
+  input.files = [{ name, text: async () => '{"segments":[]}' }];
+  await input.listeners.get('change')[0]({ target: input });
+  trigger.dispatch('click');
+  test('Status-Popup behandelt Datei- und Fehlermeldungen als Text', () => {
+    assert.ok(message.textContent.includes(name));
+    assert.equal(message.textContent, status.textContent);
+    assert.equal(message.innerHTML, '');
+    assert.equal(popover.popoverOpen, true);
+  });
+  elementById('btn-close-status-details').dispatch('click');
+  delete status._clientWidth;
+  delete status._scrollWidth;
+  windowEvents.dispatch('resize');
+}
 
 test('alle sieben Abschnitte haben native summary-Überschriften; nur die gesperrte AI startet zu', () => {
   assert.deepEqual(panelHeaders.map((entry) => entry[1]), PANEL_SECTION_IDS);

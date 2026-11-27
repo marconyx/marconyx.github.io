@@ -4,18 +4,21 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Canyoning Topo Generator</title>
-    <link rel="stylesheet" href="styles.css?v=0.22" />
+    <link rel="stylesheet" href="styles.css?v=0.23" />
   </head>
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/logo.png" alt="bachab" width="35" height="29" />
-          <span class="toolbar__version" id="app-version">v0.22</span>
+          <span class="toolbar__version" id="app-version">v0.23</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
-          <span class="toolbar__hint" id="status" title="bereit" role="status" aria-live="polite">bereit</span>
+          <div class="toolbar__hint" id="status-container">
+            <span class="toolbar__status-text" id="status" title="bereit" role="status" aria-live="polite" tabindex="-1">bereit</span>
+            <button type="button" class="toolbar__status-trigger" id="btn-status-details" aria-label="Vollständige Statusmeldung anzeigen" aria-describedby="status" aria-controls="status-details" aria-expanded="false" hidden></button>
+          </div>
         </div>
       </div>
 
@@ -94,6 +97,12 @@
         </label>
       </div>
     </header>
+
+    <div class="shortcut-help status-details" id="status-details" popover="auto" role="dialog" aria-labelledby="status-details-title">
+      <h3 id="status-details-title">Statusmeldung</h3>
+      <p id="status-details-message"></p>
+      <button type="button" id="btn-close-status-details">Schliessen</button>
+    </div>
 
     <div class="view-switch" id="view-switch" role="tablist" aria-label="Ansicht">
       <button type="button" role="tab" id="view-tab-edit" aria-controls="panel-left" aria-selected="false" tabindex="-1">Bearbeiten</button>
@@ -289,6 +298,6 @@
         </div>
       </form>
     </dialog>
-    <script type="module" src="src/app.js?v=0.22"></script>
+    <script type="module" src="src/app.js?v=0.23"></script>
   </body>
 </html>

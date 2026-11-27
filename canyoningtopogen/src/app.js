@@ -32,21 +32,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.22';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.22';
-import { createRandomTopo } from './random-topo.js?v=0.22';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.22';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.22';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.22';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.22';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.22';
+} from './model.js?v=0.23';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.23';
+import { createRandomTopo } from './random-topo.js?v=0.23';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.23';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.23';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.23';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.23';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.23';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.22';
+} from './exporters.js?v=0.23';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -62,12 +62,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.22';
-import { isPdfFile, openPdf } from './pdf.js?v=0.22';
-import { initPanelSections } from './panel-sections.js?v=0.22';
-import { initAiLock } from './ai-lock.js?v=0.22';
-import { initResponsive } from './responsive.js?v=0.22';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.22';
+} from './ai.js?v=0.23';
+import { isPdfFile, openPdf } from './pdf.js?v=0.23';
+import { initPanelSections } from './panel-sections.js?v=0.23';
+import { initAiLock } from './ai-lock.js?v=0.23';
+import { initResponsive } from './responsive.js?v=0.23';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.23';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -78,7 +78,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.22';
+} from './i18n.js?v=0.23';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -220,6 +220,58 @@ function setStatus(message) {
   const status = $('status');
   status.textContent = warning && message !== warning ? `${warning} ${message}` : message;
   status.title = status.textContent;
+  if ($('status-details').matches(':popover-open')) {
+    $('status-details-message').textContent = status.textContent;
+  }
+  refreshStatusTrigger();
+}
+
+/** Die Aktionsfläche erscheint nur bei tatsächlichem Textüberlauf. */
+function refreshStatusTrigger() {
+  const status = $('status');
+  const clipped = status.clientWidth > 0 && status.scrollWidth > status.clientWidth;
+  $('btn-status-details').hidden = !clipped;
+  $('status-container').classList.toggle('is-expandable', clipped);
+}
+
+function bindStatusDetails() {
+  const trigger = $('btn-status-details');
+  const popover = $('status-details');
+  const close = $('btn-close-status-details');
+  const returnFocus = () => (trigger.hidden ? $('status') : trigger).focus();
+
+  trigger.addEventListener('click', () => {
+    refreshStatusTrigger();
+    if (trigger.hidden || popover.matches(':popover-open')) return;
+    $('status-details-message').textContent = $('status').textContent;
+    popover.showPopover();
+  });
+  popover.addEventListener('toggle', (event) => {
+    const open = event.newState === 'open';
+    trigger.setAttribute('aria-expanded', String(open));
+    if (open) close.focus();
+  });
+  const dismiss = () => {
+    if (popover.matches(':popover-open')) popover.hidePopover();
+    returnFocus();
+  };
+  close.addEventListener('click', dismiss);
+  popover.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    dismiss();
+  });
+  document.addEventListener('focusin', (event) => {
+    if (popover.matches(':popover-open') && event.target !== trigger && !popover.contains(event.target)) {
+      popover.hidePopover();
+    }
+  });
+  window.addEventListener('resize', refreshStatusTrigger);
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refreshStatusTrigger).observe($('status'));
+  document.fonts?.ready.then(refreshStatusTrigger);
+  document.fonts?.addEventListener('loadingdone', refreshStatusTrigger);
+  refreshStatusTrigger();
 }
 
 // Merkt sich den zuletzt gesetzten Statustext als Übersetzungs-Key, damit ein
@@ -1214,7 +1266,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.22');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.23');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();
@@ -1993,6 +2045,7 @@ function init() {
   initPanelSections();
   initAiLock({ onMessage: (key) => setStatusKey(key) });
   initResponsive();
+  bindStatusDetails();
   const restored = restore();
   const params = new URL(window.location.href).searchParams;
   const source = params.get('source');

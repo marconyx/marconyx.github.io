@@ -29,6 +29,13 @@ function pick(entry, lang) {
 
 /** Statischer Text (`textContent`) je Element-ID; alle Sprachen müssen vollständig sein. */
 export const UI_TEXT = {
+  'status-details-title': {
+    de: 'Statusmeldung', en: 'Status message', fr: 'Message d’état',
+    it: 'Messaggio di stato', es: 'Mensaje de estado',
+  },
+  'btn-close-status-details': {
+    de: 'Schliessen', en: 'Close', fr: 'Fermer', it: 'Chiudi', es: 'Cerrar',
+  },
   'shortcut-help-title': {
     de: 'Shortcut-Hilfe', en: 'Shortcut help', fr: 'Aide aux raccourcis',
     it: 'Aiuto scorciatoie', es: 'Ayuda de atajos',
@@ -327,6 +334,11 @@ export const UI_PLACEHOLDERS = {
 
 /** `aria-label`-Attribut je Element-ID. */
 export const UI_ARIA_LABELS = {
+  'btn-status-details': {
+    de: 'Vollständige Statusmeldung anzeigen', en: 'Show full status message',
+    fr: 'Afficher le message d’état complet', it: 'Mostra il messaggio di stato completo',
+    es: 'Mostrar el mensaje de estado completo',
+  },
   'btn-shortcut-help': {
     de: 'Shortcut-Hilfe öffnen', en: 'Open shortcut help', fr: 'Ouvrir l’aide aux raccourcis',
     it: 'Apri aiuto scorciatoie', es: 'Abrir ayuda de atajos',
