@@ -1083,16 +1083,19 @@ test('Dauer erscheint ohne Blur in der Legende', () => {
 
 test('empfohlene Seillänge ist editierbar, rückgängig und im Autosave', () => {
   const input = '2 x 40 m & Reserve';
-  const priorSvg = svg();
   type('topo-recommended-rope-length', input, { commit: true });
   assert.equal(state.topo.recommended_rope_length, input);
   assert.equal(JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1')).topo.recommended_rope_length, input);
-  assert.equal(svg(), priorSvg);
+  assert.match(svg(), /data-meta="recommended_rope_length"/);
+  assert.match(svg(), /2 x 40 m &amp; Reserve/);
   elementById('btn-undo').dispatch('click');
   assert.equal(elementById('topo-recommended-rope-length').value, '');
+  assert.doesNotMatch(svg(), /data-meta="recommended_rope_length"/);
   elementById('btn-redo').dispatch('click');
   assert.equal(elementById('topo-recommended-rope-length').value, input);
   assert.equal(state.topo.recommended_rope_length, input);
+  assert.match(svg(), /data-meta="recommended_rope_length"/);
+  type('topo-recommended-rope-length', '', { commit: true });
 });
 
 test('Name, Author und Dauer sind an denselben Ereignissen gebunden', () => {

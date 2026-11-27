@@ -10,7 +10,7 @@
  * oder verschieben das Modell nicht. Legendentext und seine geschätzte Breite
  * müssen für Layout, Interaktion und SVG aus denselben Hilfsfunktionen stammen.
  */
-import { DEFAULT_LANGUAGE, translateLegendLabel } from './i18n.js?v=0.20';
+import { DEFAULT_LANGUAGE, translateLegendLabel } from './i18n.js?v=0.21';
 
 
 /** Zielformate. `width`/`height` in Pixeln (A4 bei 96 dpi), `null` = frei. */
@@ -114,6 +114,8 @@ export function legendHeadLinesFor(topo, lang = DEFAULT_LANGUAGE) {
       value: `${formatNumber(maximumWalkLength)} m`,
     });
   }
+  const rope = trimmed(topo?.recommended_rope_length);
+  if (rope) lines.push({ key: 'recommended_rope_length', label: translateLegendLabel('recommended_rope_length', lang), value: rope });
   return lines;
 }
 
@@ -162,10 +164,18 @@ export function legendPanelWidthMeters(topo, lang = DEFAULT_LANGUAGE) {
     (max, text) => Math.max(max, LEGEND_ENTRY_CHAR_METERS * text.length + 1.5),
     0,
   );
+  const rope = legendHeadLinesFor(topo, lang).find((line) => line.key === 'recommended_rope_length');
+  // Freitext kann viele breite Zeichen enthalten; für diese Zeile konservativ
+  // schätzen, damit der rechtsbündige Text links nicht aus dem Kasten läuft.
+  const ropeWidth = rope
+    ? Array.from(`${rope.label}: ${rope.value}`)
+        .reduce((width, char) => width + (/[MW@%]|[^\x00-\x7f]/u.test(char) ? 1.1 : 0.8), 1.5)
+    : 0;
   return Math.max(
     legendTitleWidthMeters(topo),
     LEGEND_MIN_WIDTH_METERS,
     longest,
+    ropeWidth,
   );
 }
 

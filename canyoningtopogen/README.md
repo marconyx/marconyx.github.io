@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.20`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.21`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -75,7 +75,7 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 - **Komfort**: Undo/Redo, Autosave in `localStorage`, Live-Validierung, Auto-Nummerierung
 - **Mehrsprachige Oberfläche**: Auswahl links neben „Neu“ (DE/EN/FR/IT/ES) übersetzt alle
   Oberflächentexte (Labels, Buttons, Hinweise, Symbolpalette, Statuszeile, Legende im
-  Topo-SVG inkl. „Dauer“/„Max. Abseil“/„Author“/„Datum“/„Legende:“) sofort und ohne
+  Topo-SVG inkl. „Dauer“/„Max. Abseil“/„Empfohlene Seillänge“/„Author“/„Datum“/„Legende:“) sofort und ohne
   Neuladen. Ausgenommen bleibt bewusst nur der feste Produktname „Canyoning Topo
   Generator“ im Kopfbereich. Nicht übersetzt werden ausserdem technische
   Segmenttyp-Codes (z. B. `RAPPEL_DRY`), die kurzen Legenden-Abkürzungen
@@ -285,7 +285,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `canyon_name` | Titel im Topo |
 | `author` | optionaler Autor als Freitext |
 | `duration` | optionale Gesamtdauer als Freitext, z. B. `3-4 h` |
-| `recommended_rope_length` | optionale empfohlene Seillänge als Freitext, z. B. `2 x 40 m`; keine Legendenangabe |
+| `recommended_rope_length` | optionale empfohlene Seillänge als Freitext, z. B. `2 x 40 m`; wird in der Legende angezeigt |
 | `date` | Datum (ISO, `YYYY-MM-DD`) |
 | `maximum_walk_length` | optionale maximale Abseillänge in Metern; reine Legendenangabe, beeinflusst Zeichnung und Layout nicht |
 | `distance_of_single_line` | Zeilenbreite in Metern für das Format *Bildschirm* (bei *Kaskadiert* als Zielhöhe einer Spalte); bei A4 wird das Mass aus dem Format abgeleitet |
@@ -455,14 +455,15 @@ createRandomTopo();                    // wie der Knopf
 
 ### Legende
 
-Die Legende zeigt oben den Titel und — sofern gefüllt — die `duration`, darunter die
-Abkürzungen der verwendeten Segmenttypen. **`author` und das Datum schliessen die
+Die Legende zeigt oben den Titel und — sofern gefüllt — die `duration`, maximale
+Abseillänge und empfohlene Seillänge, darunter die Abkürzungen der verwendeten
+Segmenttypen. **`author` und das Datum schliessen die
 Legende ab**, in dieser Reihenfolge, nach dem letzten Legendeneintrag. Das Datum wird
 lesbar als `TT.MM.JJJJ` ausgegeben (ein Nicht-ISO-Wert bleibt unverändert stehen).
 Leere Werte erzeugen keine Zeile; Legendenkasten, Blattbreite und Blatthöhe wachsen mit
 dem Inhalt, damit nichts überlappt oder abgeschnitten wird — in jedem Format und Stil
 und damit auch in jedem Export. Änderungen an Name, Author, Dauer
-und Datum erscheinen sofort beim Tippen im Topo.
+Datum und empfohlener Seillänge erscheinen sofort beim Tippen im Topo.
 
 **Frei verschiebbar:** Die Legende lässt sich mit Maus oder Finger an jede Stelle im
 Topo ziehen (Raster 0,25 m, mit Rückgängig). Die Lage landet in `legend_offset_left`

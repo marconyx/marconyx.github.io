@@ -32,21 +32,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.20';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.20';
-import { createRandomTopo } from './random-topo.js?v=0.20';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.20';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.20';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.20';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.20';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.20';
+} from './model.js?v=0.21';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.21';
+import { createRandomTopo } from './random-topo.js?v=0.21';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.21';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.21';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.21';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.21';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.21';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.20';
+} from './exporters.js?v=0.21';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -62,12 +62,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.20';
-import { isPdfFile, openPdf } from './pdf.js?v=0.20';
-import { initPanelSections } from './panel-sections.js?v=0.20';
-import { initAiLock } from './ai-lock.js?v=0.20';
-import { initResponsive } from './responsive.js?v=0.20';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.20';
+} from './ai.js?v=0.21';
+import { isPdfFile, openPdf } from './pdf.js?v=0.21';
+import { initPanelSections } from './panel-sections.js?v=0.21';
+import { initAiLock } from './ai-lock.js?v=0.21';
+import { initResponsive } from './responsive.js?v=0.21';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.21';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -78,7 +78,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.20';
+} from './i18n.js?v=0.21';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -1214,7 +1214,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.20');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.21');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();

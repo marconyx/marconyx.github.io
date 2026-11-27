@@ -26,6 +26,7 @@ import {
   legendMetaTextsFor,
   legendPanelRectFor,
   legendPanelHeightMeters,
+  legendPanelWidthMeters,
   legendPanelTopMeters,
   paperAspectRatio,
   PAPER_PRESETS,
@@ -903,6 +904,39 @@ test('maximale Abseillänge steht direkt nach der Dauer in der Legende', () => {
       `${theme}: Max. Abseil steht direkt unter Dauer`,
     );
   }
+});
+
+test('empfohlene Seillänge erscheint übersetzt unter Max. Abseil und erweitert die Legende', () => {
+  const raw = `2 x 40 m & <Reserve> "😀"`;
+  const base = normalizeTopo({ ...example, duration: '3-4 h', maximum_walk_length: 45 });
+  const topo = normalizeTopo({ ...base, recommended_rope_length: raw });
+  assert.ok(Math.abs(legendPanelHeightMeters(topo) - legendPanelHeightMeters(base) - 1.4) < 1e-9);
+  assert.ok(legendPanelWidthMeters(topo) > legendPanelWidthMeters(base));
+  assert.ok(legendMetaTextsFor(topo).includes(`Empfohlene Seillänge: ${raw}`));
+  for (const [language, label] of [
+    ['de', 'Empfohlene Seillänge'], ['en', 'Recommended rope length'],
+    ['fr', 'Longueur de corde recommandée'], ['it', 'Lunghezza della corda consigliata'],
+    ['es', 'Longitud de cuerda recomendada'],
+  ]) {
+    for (const theme of ['color', 'alpiner_classic', 'eau_froide', 'pencil_sketch']) {
+      for (const paper of Object.keys(PAPER_PRESETS)) {
+        const layout = layoutTopo(topo, { paper });
+        const svg = renderTopoSvg(topo, layout, { theme, paper, language });
+        assert.ok(svg.includes(`${label}:</tspan> 2 x 40 m &amp; &lt;Reserve&gt; "😀"`), `${language}/${theme}/${paper}`);
+        assert.ok(Math.abs(metaY(svg, 'recommended_rope_length') - metaY(svg, 'maximum_walk_length') - 1.4) < 1e-9);
+        assert.ok(svg.includes('data-meta="duration"'));
+        assert.ok(svg.includes('data-meta="date"'));
+      }
+    }
+  }
+});
+
+test('leere Seillänge belegt weder Legendenzeile noch Platz', () => {
+  const empty = normalizeTopo({ ...example, recommended_rope_length: '' });
+  const whitespace = normalizeTopo({ ...example, recommended_rope_length: '   ' });
+  assert.equal(legendPanelHeightMeters(empty), legendPanelHeightMeters(whitespace));
+  assert.equal(legendPanelWidthMeters(empty), legendPanelWidthMeters(whitespace));
+  assert.doesNotMatch(renderTopoSvg(whitespace, layoutTopo(whitespace)), /data-meta="recommended_rope_length"/);
 });
 
 test('ein leeres Datum erzeugt keine Datumszeile', () => {

@@ -561,6 +561,13 @@ export const AI_PROMPT_HINTS = {
 export const LEGEND_LABELS = {
   duration: { de: 'Dauer', en: 'Duration', fr: 'Durée', it: 'Durata', es: 'Duración' },
   maximum_walk_length: { de: 'Max. Abseil', en: 'Max. rappel', fr: 'Rappel max.', it: 'Calata max.', es: 'Rápel máx.' },
+  recommended_rope_length: {
+    de: 'Empfohlene Seillänge',
+    en: 'Recommended rope length',
+    fr: 'Longueur de corde recommandée',
+    it: 'Lunghezza della corda consigliata',
+    es: 'Longitud de cuerda recomendada',
+  },
   author: { de: 'Author', en: 'Author', fr: 'Auteur', it: 'Autore', es: 'Autor' },
   date: { de: 'Datum', en: 'Date', fr: 'Date', it: 'Data', es: 'Fecha' },
   title: { de: 'Legende:', en: 'Legend:', fr: 'Légende :', it: 'Legenda:', es: 'Leyenda:' },
