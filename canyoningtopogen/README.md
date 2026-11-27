@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.21`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.22`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -234,6 +234,9 @@ Der API-Anbieter muss für fremde Origins CORS erlauben. Zugangsdaten in der URL
 Browser-Credentials und Weiterleitungen werden nicht unterstützt; HTTPS-Seiten
 benötigen eine HTTPS-API. Keine vertraulichen Schlüssel in URLs einfügen, da
 URLs beispielsweise im Browserverlauf gespeichert werden können.
+Bei einem Netzwerk-, CORS- oder Weiterleitungsfehler kann der Browser den
+HTTP-Status unter Umständen nicht auslesen. In diesem Fall Erreichbarkeit,
+CORS-Freigabe und Weiterleitungen beim API-Anbieter prüfen.
 
 ## Repository
 

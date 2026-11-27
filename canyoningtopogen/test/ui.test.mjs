@@ -2396,6 +2396,11 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       assert.equal(storage.get(key), draft);
       assert.match(elementById('status').textContent, /Autosave.*aus/);
     });
+    const encodedApi = 'https://api.test/topo?token=example%2Fvalue%2Btest&label=A%20B';
+    await start(null, json({ name: 'Encoded' }), encodedApi, 'apiUrl');
+    test('apiUrl dekodiert nur den äusseren Parameter, nicht die API-Query', () => {
+      assert.equal(requests[0][0], encodedApi);
+    });
     const both = await start(null, json({ name: 'Vorrang' }), '/ignored', 'apiUrl', '/preferred');
     test('apiURL hat Vorrang vor apiUrl, wenn beide vorkommen', () => {
       assert.equal(requests.length, 1);
@@ -2487,7 +2492,7 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
     }
     for (const [label, fetcher, expected] of [
       ['HTTP', async () => ({ ok: false, status: 403 }), /HTTP 403/],
-      ['Netzwerk', async () => { throw new Error('secret URL'); }, /Netzwerk/],
+      ['Netzwerk', async () => { throw new Error('secret URL'); }, /Netzwerk.*CORS-Freigabe.*Anbieter/],
       ['JSON', async () => ({ ok: true, json: async () => { throw new Error('secret URL'); } }), /JSON/],
     ]) {
       const instance = await start(null, fetcher, 'https://api.test/topo?key=private');

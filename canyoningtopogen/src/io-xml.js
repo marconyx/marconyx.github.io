@@ -8,7 +8,7 @@
  *  - null-Werte      : Attribut wird weggelassen
  *  - unbekannte Felder: als JSON im Attribut `extra`
  */
-import { normalizeTopo } from './model.js?v=0.21';
+import { normalizeTopo } from './model.js?v=0.22';
 
 const ROOT_NUMBER_FIELDS = [
   'maximum_walk_length',

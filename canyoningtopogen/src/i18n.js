@@ -760,11 +760,11 @@ export const MESSAGES = {
     es: 'Dirección API no válida. Se requiere HTTP(S) sin credenciales; las páginas HTTPS requieren HTTPS.',
   },
   'api_source.network_error': {
-    de: 'Netzwerk-, CORS- oder Weiterleitungsfehler.',
-    en: 'Network, CORS or redirect error.',
-    fr: 'Erreur réseau, CORS ou de redirection.',
-    it: 'Errore di rete, CORS o reindirizzamento.',
-    es: 'Error de red, CORS o redirección.',
+    de: 'Netzwerk-, CORS- oder Weiterleitungsfehler. API-Erreichbarkeit, CORS-Freigabe und Weiterleitungen beim Anbieter prüfen.',
+    en: 'Network, CORS or redirect error. Check API availability, CORS permission and redirects with the provider.',
+    fr: 'Erreur réseau, CORS ou de redirection. Vérifier la disponibilité de l’API, les autorisations CORS et les redirections auprès du fournisseur.',
+    it: 'Errore di rete, CORS o reindirizzamento. Verificare con il fornitore la disponibilità dell’API, i permessi CORS e i reindirizzamenti.',
+    es: 'Error de red, CORS o redirección. Comprueba con el proveedor la disponibilidad de la API, los permisos CORS y las redirecciones.',
   },
   'api_source.invalid_json': {
     de: 'Die API-Antwort ist kein gültiges JSON.',
