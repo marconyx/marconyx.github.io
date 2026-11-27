@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.17`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.18`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -204,8 +204,31 @@ wird das Laden verworfen.
 Ein per Link geöffnetes Topo ist eine temporäre Sitzung: Autosave ist darin
 deaktiviert, auch nach weiteren Änderungen oder Aktionen. Änderungen deshalb
 manuell speichern. Der vorherige lokale Entwurf bleibt erhalten und wird beim
-erneuten Öffnen der App ohne `source` wiederhergestellt; innerhalb der Sitzung
-ist er auch über Rückgängig erreichbar.
+erneuten Öffnen der App ohne `source` und `apiURL` wiederhergestellt; innerhalb
+der Sitzung ist er auch über Rückgängig erreichbar.
+
+### Topo-Metadaten über eine API laden
+
+`index.html?apiURL=https%3A%2F%2Fapi.example.com%2Ftopo%3Fid%3D42`
+ruft beim Start die angegebene HTTP(S)-Adresse per GET ab. Die URL kann auch
+relativ zur App sein. Erwartet wird ein direktes JSON-Objekt, zum Beispiel
+`{"name":"Staubbach","time_trip":"4 STD","max_descent":175}`. `name` und
+`time_trip` sind Texte, `max_descent` ist eine nichtnegative endliche Meterzahl
+(auch als numerischer Text). Fehlende oder null-Felder bleiben unverändert;
+ungültige Felder verhindern die gesamte Metadatenübernahme. Segmente und übrige
+Topo-Felder bleiben unverändert.
+
+Mit `source` und `apiURL` wird zuerst das XML geöffnet und danach werden die
+API-Metadaten darübergelegt. Schlägt das XML fehl, wird die API nicht aufgerufen;
+bei API-Fehler bleibt das bereits geladene XML sichtbar. Beginnt die Bedienung
+während des Ladens, werden spätere Antworten verworfen. Wie beim XML-Link ist
+der bisherige Autosave geschützt: Nach erfolgreicher Übernahme Änderungen
+manuell speichern; den Entwurf durch Öffnen ohne beide Parameter wiederherstellen.
+
+Der API-Anbieter muss für fremde Origins CORS erlauben. Zugangsdaten in der URL,
+Browser-Credentials und Weiterleitungen werden nicht unterstützt; HTTPS-Seiten
+benötigen eine HTTPS-API. Keine vertraulichen Schlüssel in URLs einfügen, da
+URLs beispielsweise im Browserverlauf gespeichert werden können.
 
 ## Repository
 

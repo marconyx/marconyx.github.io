@@ -2278,7 +2278,7 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
   const originalFetch = globalThis.fetch;
   const originalLocation = window.location;
   const originalParser = globalThis.DOMParser;
-  const draft = JSON.stringify({ topo: { canyon_name: 'Gesicherter Entwurf', segments: [] } });
+  const draft = JSON.stringify({ topo: { canyon_name: 'Gesicherter Entwurf', duration: 'alt', maximum_walk_length: 30, segments: [] } });
   const xml = '<topo canyon_name="Link"><segment type="WALK" length_in_meters="20"/></topo>';
   let serial = 0;
   let requests;
@@ -2290,10 +2290,13 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       };
     }
   };
-  async function start(source, fetcher) {
+  async function start(source, fetcher, apiUrl = null) {
     storage.set(key, draft);
     requests = [];
-    window.location = { href: `https://example.test/app/index.html${source === null ? '' : `?source=${encodeURIComponent(source)}`}` };
+    const query = new URLSearchParams();
+    if (source !== null) query.set('source', source);
+    if (apiUrl !== null) query.set('apiURL', apiUrl);
+    window.location = { href: `https://example.test/app/index.html?${query}` };
     globalThis.fetch = (...args) => { requests.push(args); return fetcher(...args); };
     const instance = await import(`../src/app.js?source-test-${serial++}`);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -2364,6 +2367,113 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
     test('ohne source wird wie bisher der Autosave wiederhergestellt', () => {
       assert.equal(requests.length, 0);
       assert.equal(restored.state.topo.canyon_name, 'Gesicherter Entwurf');
+    });
+    const json = (data) => async () => ({ ok: true, json: async () => data });
+    const mapped = await start(null, json({ name: '<img onerror=alert(1)> Ä', time_trip: '4 STD', max_descent: '175.5' }), 'https://api.test/topo?key=private');
+    test('API-Metadaten aktualisieren nur Kopffelder und schützen den Autosave', () => {
+      assert.equal(requests[0][0], 'https://api.test/topo?key=private');
+      assert.deepEqual(requests[0][1], { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer' });
+      assert.equal(mapped.state.topo.canyon_name, '<img onerror=alert(1)> Ä');
+      assert.equal(mapped.state.topo.duration, '4 STD');
+      assert.equal(mapped.state.topo.maximum_walk_length, 175.5);
+      assert.equal(elementById('topo-name').value, mapped.state.topo.canyon_name);
+      assert.deepEqual(mapped.state.topo.segments, []);
+      assert.match(svg(), /&lt;img onerror=alert\(1\)&gt;/);
+      assert.equal(storage.get(key), draft);
+      assert.match(elementById('status').textContent, /API-Daten geladen/);
+    });
+    const partial = await start(null, json({ name: null, max_descent: 0 }), '/api');
+    test('fehlende und null Felder bleiben unverändert, null Meter ist zulässig', () => {
+      assert.equal(requests[0][0], 'https://example.test/api');
+      assert.equal(partial.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.equal(partial.state.topo.duration, 'alt');
+      assert.equal(partial.state.topo.maximum_walk_length, 0);
+    });
+    const empty = await start(null, json({ name: null }), '/api');
+    test('eine Antwort ohne Werte ändert das Topo nicht und aktiviert keinen Link-Autosaveschutz', () => {
+      assert.equal(empty.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.equal(storage.get(key), draft);
+      assert.doesNotMatch(elementById('status').textContent, /Autosave/);
+    });
+    for (const data of [
+      null, [], { name: 'neu', max_descent: -1 }, { name: 'neu', time_trip: 2 },
+      { name: 'neu', max_descent: '' }, { name: 'neu', max_descent: '0x10' },
+      { name: 'neu', max_descent: 'Infinity' }, { name: false },
+    ]) {
+      const instance = await start(null, json(data), '/api');
+      test(`ungültige API-Daten werden atomar abgewiesen: ${JSON.stringify(data)}`, () => {
+        assert.equal(instance.state.topo.canyon_name, 'Gesicherter Entwurf');
+        assert.equal(instance.state.topo.duration, 'alt');
+        assert.equal(instance.state.topo.maximum_walk_length, 30);
+        assert.equal(storage.get(key), draft);
+        assert.match(elementById('status').textContent, /Ungültige API-Daten/);
+      });
+    }
+    for (const url of ['', 'javascript:alert(1)', 'https://user:pass@api.test/x', 'http://api.test/x']) {
+      const instance = await start(null, json({ name: 'neu' }), url);
+      test(`unsichere API-Adresse ${url} wird ohne Request abgewiesen`, () => {
+        assert.equal(requests.length, 0);
+        assert.equal(instance.state.topo.canyon_name, 'Gesicherter Entwurf');
+        assert.match(elementById('status').textContent, /Ungültige API-Adresse/);
+      });
+    }
+    for (const [label, fetcher, expected] of [
+      ['HTTP', async () => ({ ok: false, status: 403 }), /HTTP 403/],
+      ['Netzwerk', async () => { throw new Error('secret URL'); }, /Netzwerk/],
+      ['JSON', async () => ({ ok: true, json: async () => { throw new Error('secret URL'); } }), /JSON/],
+    ]) {
+      const instance = await start(null, fetcher, 'https://api.test/topo?key=private');
+      test(`${label}-API-Fehler bewahrt Daten ohne URL im Status`, () => {
+        assert.equal(instance.state.topo.canyon_name, 'Gesicherter Entwurf');
+        assert.equal(storage.get(key), draft);
+        assert.match(elementById('status').textContent, expected);
+        assert.doesNotMatch(elementById('status').textContent, /private|secret/);
+      });
+    }
+    const combined = await start('route.xml', async (url) => url.endsWith('.xml')
+      ? ok() : ({ ok: true, json: async () => ({ name: 'API-Name', time_trip: '3h', max_descent: 50 }) }), 'https://api.test/topo');
+    test('XML wird vor API geladen und Segmente bleiben erhalten', () => {
+      assert.deepEqual(requests.map(([url]) => url), ['https://example.test/app/route.xml', 'https://api.test/topo']);
+      assert.equal(combined.state.topo.canyon_name, 'API-Name');
+      assert.equal(combined.state.topo.duration, '3h');
+      assert.equal(combined.state.topo.maximum_walk_length, 50);
+      assert.equal(combined.state.topo.segments[0].length_in_meters, 20);
+      assert.equal(storage.get(key), draft);
+    });
+    const failedApi = await start('route.xml', async (url) => url.endsWith('.xml') ? ok() : ({ ok: false, status: 500 }), '/api');
+    test('API-Fehler lässt erfolgreich geladenes XML und Autosave unverändert', () => {
+      assert.equal(failedApi.state.topo.canyon_name, 'Link');
+      assert.equal(failedApi.state.topo.segments[0].length_in_meters, 20);
+      assert.equal(storage.get(key), draft);
+      assert.match(elementById('status').textContent, /HTTP 500/);
+    });
+    await start('route.xml', async () => ({ ok: false, status: 404 }), '/api');
+    test('fehlgeschlagenes XML verhindert API-Aufruf', () => {
+      assert.equal(requests.length, 1);
+      assert.match(elementById('status').textContent, /HTTP 404/);
+    });
+    let resolveApi;
+    const pendingApi = await start('route.xml', async (url) => url.endsWith('.xml')
+      ? ok() : new Promise((resolve) => { resolveApi = resolve; }), '/api');
+    documentEvents.dispatch('input');
+    name.value = 'Meine Arbeit';
+    name.listeners.get('input').at(-1)({ target: name });
+    resolveApi({ ok: true, json: async () => ({ name: 'spät' }) });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    test('späte API-Antwort überschreibt weder Nutzereingabe noch Entwurf', () => {
+      assert.equal(pendingApi.state.topo.canyon_name, 'Meine Arbeit');
+      assert.equal(storage.get(key), draft);
+    });
+    let resolveApiOnly;
+    const apiOnly = await start(null, () => new Promise((resolve) => { resolveApiOnly = resolve; }), '/api');
+    documentEvents.dispatch('input');
+    name.value = 'Lokale Änderung';
+    name.listeners.get('input').at(-1)({ target: name });
+    resolveApiOnly({ ok: true, json: async () => ({ name: 'spät' }) });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    test('Benutzeränderung während reinem API-Fetch bleibt erhalten und wird gespeichert', () => {
+      assert.equal(apiOnly.state.topo.canyon_name, 'Lokale Änderung');
+      assert.equal(JSON.parse(storage.get(key)).topo.canyon_name, 'Lokale Änderung');
     });
   } finally {
     globalThis.fetch = originalFetch;
