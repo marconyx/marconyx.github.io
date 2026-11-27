@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Canyoning Topo Generator</title>
-    <link rel="stylesheet" href="styles.css?v=0.18" />
+    <link rel="stylesheet" href="styles.css?v=0.19" />
   </head>
   <body>
     <header class="toolbar">
       <div class="toolbar__brand">
         <div class="toolbar__logo-wrap">
           <img class="toolbar__logo" src="assets/logo.png" alt="bachab" width="35" height="29" />
-          <span class="toolbar__version" id="app-version">v0.18</span>
+          <span class="toolbar__version" id="app-version">v0.19</span>
         </div>
         <div class="toolbar__brand-text">
           <strong>Canyoning Topo Generator</strong>
@@ -111,6 +111,7 @@
             <label><span id="lbl-topo-duration">Dauer</span> <input type="text" id="topo-duration" /></label>
             <label><span id="lbl-topo-date">Datum</span> <input type="date" id="topo-date" /></label>
             <label><span id="lbl-topo-max-walk">Max. Abseillänge (m)</span> <input type="number" id="topo-max-walk" min="1" step="1" /></label>
+            <label><span id="lbl-topo-recommended-rope-length">Empfohlene Seillänge</span> <input type="text" id="topo-recommended-rope-length" /></label>
             <label id="lbl-topo-line-distance-row" title="Serpentine: Zeilenbreite · Kaskadiert: Spaltenhöhe (Format Bildschirm)"><span id="lbl-topo-line-distance">Zeilenbreite (m)</span> <input type="number" id="topo-line-distance" min="5" step="1" /></label>
             <label><span id="lbl-topo-length-shortening-threshold">Segmente verkürzen ab (m): </span><input type="number" id="topo-length-shortening-threshold" min="0" step="1" /></label>
           </div>
@@ -288,6 +289,6 @@
         </div>
       </form>
     </dialog>
-    <script type="module" src="src/app.js?v=0.18"></script>
+    <script type="module" src="src/app.js?v=0.19"></script>
   </body>
 </html>

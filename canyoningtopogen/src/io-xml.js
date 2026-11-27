@@ -8,7 +8,7 @@
  *  - null-Werte      : Attribut wird weggelassen
  *  - unbekannte Felder: als JSON im Attribut `extra`
  */
-import { normalizeTopo } from './model.js?v=0.18';
+import { normalizeTopo } from './model.js?v=0.19';
 
 const ROOT_NUMBER_FIELDS = [
   'maximum_walk_length',
@@ -78,6 +78,7 @@ export function topoToXml(topo) {
       ['canyon_name', topo.canyon_name],
       ['author', topo.author || null],
       ['duration', topo.duration || null],
+      ['recommended_rope_length', topo.recommended_rope_length || null],
       ['date', topo.date],
       ...ROOT_NUMBER_FIELDS.map((field) => [field, topo[field]]),
       ...extraAttr(topo),
@@ -204,6 +205,7 @@ export function topoFromXml(xml) {
     canyon_name: root.attributes.canyon_name,
     author: root.attributes.author,
     duration: root.attributes.duration,
+    recommended_rope_length: root.attributes.recommended_rope_length,
     date: root.attributes.date,
     segments: [],
   };

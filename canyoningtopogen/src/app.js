@@ -32,21 +32,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.18';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.18';
-import { createRandomTopo } from './random-topo.js?v=0.18';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.18';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.18';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.18';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.18';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.18';
+} from './model.js?v=0.19';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.19';
+import { createRandomTopo } from './random-topo.js?v=0.19';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.19';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.19';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.19';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.19';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.19';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.18';
+} from './exporters.js?v=0.19';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -62,12 +62,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.18';
-import { isPdfFile, openPdf } from './pdf.js?v=0.18';
-import { initPanelSections } from './panel-sections.js?v=0.18';
-import { initAiLock } from './ai-lock.js?v=0.18';
-import { initResponsive } from './responsive.js?v=0.18';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.18';
+} from './ai.js?v=0.19';
+import { isPdfFile, openPdf } from './pdf.js?v=0.19';
+import { initPanelSections } from './panel-sections.js?v=0.19';
+import { initAiLock } from './ai-lock.js?v=0.19';
+import { initResponsive } from './responsive.js?v=0.19';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.19';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -78,7 +78,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.18';
+} from './i18n.js?v=0.19';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -1214,7 +1214,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.18');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.19');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();
@@ -1308,7 +1308,7 @@ async function loadApiMetadata(apiUrl) {
       throw new Error(t(lang(), 'api_source.invalid_data'));
     }
     patch = {};
-    for (const [field, target] of [['name', 'canyon_name'], ['time_trip', 'duration']]) {
+    for (const [field, target] of [['name', 'canyon_name'], ['time_trip', 'duration'], ['ropes', 'recommended_rope_length']]) {
       if (data[field] != null) {
         if (typeof data[field] !== 'string') throw new Error(t(lang(), 'api_source.invalid_data'));
         patch[target] = data[field];
@@ -1360,6 +1360,7 @@ function bindTopoFields() {
     ['topo-name', 'canyon_name', (value) => value],
     ['topo-author', 'author', (value) => value],
     ['topo-duration', 'duration', (value) => value],
+    ['topo-recommended-rope-length', 'recommended_rope_length', (value) => value],
     ['topo-date', 'date', (value) => value],
     ['topo-max-walk', 'maximum_walk_length', Number],
     ['topo-line-distance', 'distance_of_single_line', Number],
@@ -1429,6 +1430,7 @@ function syncTopoFields() {
   $('topo-name').value = state.topo.canyon_name;
   $('topo-author').value = state.topo.author;
   $('topo-duration').value = state.topo.duration;
+  $('topo-recommended-rope-length').value = state.topo.recommended_rope_length;
   $('topo-date').value = state.topo.date;
   $('topo-max-walk').value = state.topo.maximum_walk_length;
   $('topo-line-distance').value = state.topo.distance_of_single_line;

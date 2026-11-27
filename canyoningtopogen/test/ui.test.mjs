@@ -1034,6 +1034,7 @@ test('Spanisch übersetzt Oberfläche, Legende und die AI-Auswahllisten', () => 
   select.value = 'es';
   select.dispatch('change');
   assert.equal(elementById('h-panel-segments').textContent, 'Segmentos');
+  assert.equal(elementById('lbl-topo-recommended-rope-length').textContent, 'Longitud de cuerda recomendada');
   assert.equal(elementById('btn-export-shortlist').textContent, 'Lista breve');
   assert.ok(svg().includes('>Duración:<'), 'Legende ist nicht spanisch');
   assert.equal(providerOption().textContent, 'Compatible con OpenAI');
@@ -1078,6 +1079,20 @@ test('Dauer erscheint ohne Blur in der Legende', () => {
   assert.equal(state.topo.duration, '3-4 h');
   assert.ok(svg().includes('data-meta="duration"'));
   assert.ok(svg().includes('3-4 h'));
+});
+
+test('empfohlene Seillänge ist editierbar, rückgängig und im Autosave', () => {
+  const input = '2 x 40 m & Reserve';
+  const priorSvg = svg();
+  type('topo-recommended-rope-length', input, { commit: true });
+  assert.equal(state.topo.recommended_rope_length, input);
+  assert.equal(JSON.parse(localStorage.getItem('canyon-topo-generator/state/v1')).topo.recommended_rope_length, input);
+  assert.equal(svg(), priorSvg);
+  elementById('btn-undo').dispatch('click');
+  assert.equal(elementById('topo-recommended-rope-length').value, '');
+  elementById('btn-redo').dispatch('click');
+  assert.equal(elementById('topo-recommended-rope-length').value, input);
+  assert.equal(state.topo.recommended_rope_length, input);
 });
 
 test('Name, Author und Dauer sind an denselben Ereignissen gebunden', () => {
@@ -2278,7 +2293,7 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
   const originalFetch = globalThis.fetch;
   const originalLocation = window.location;
   const originalParser = globalThis.DOMParser;
-  const draft = JSON.stringify({ topo: { canyon_name: 'Gesicherter Entwurf', duration: 'alt', maximum_walk_length: 30, segments: [] } });
+  const draft = JSON.stringify({ topo: { canyon_name: 'Gesicherter Entwurf', duration: 'alt', recommended_rope_length: 'Altes Seil', maximum_walk_length: 30, segments: [] } });
   const xml = '<topo canyon_name="Link"><segment type="WALK" length_in_meters="20"/></topo>';
   let serial = 0;
   let requests;
@@ -2369,13 +2384,15 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       assert.equal(restored.state.topo.canyon_name, 'Gesicherter Entwurf');
     });
     const json = (data) => async () => ({ ok: true, json: async () => data });
-    const mapped = await start(null, json({ name: '<img onerror=alert(1)> Ä', time_trip: '4 STD', max_descent: '175.5' }), 'https://api.test/topo?key=private');
+    const mapped = await start(null, json({ name: '<img onerror=alert(1)> Ä', time_trip: '4 STD', max_descent: '175.5', ropes: '2 x 40 m & <Reserve>' }), 'https://api.test/topo?key=private');
     test('API-Metadaten aktualisieren nur Kopffelder und schützen den Autosave', () => {
       assert.equal(requests[0][0], 'https://api.test/topo?key=private');
       assert.deepEqual(requests[0][1], { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer' });
       assert.equal(mapped.state.topo.canyon_name, '<img onerror=alert(1)> Ä');
       assert.equal(mapped.state.topo.duration, '4 STD');
       assert.equal(mapped.state.topo.maximum_walk_length, 175.5);
+      assert.equal(mapped.state.topo.recommended_rope_length, '2 x 40 m & <Reserve>');
+      assert.equal(elementById('topo-recommended-rope-length').value, '2 x 40 m & <Reserve>');
       assert.equal(elementById('topo-name').value, mapped.state.topo.canyon_name);
       assert.deepEqual(mapped.state.topo.segments, []);
       assert.match(svg(), /&lt;img onerror=alert\(1\)&gt;/);
@@ -2388,6 +2405,17 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       assert.equal(partial.state.topo.canyon_name, 'Gesicherter Entwurf');
       assert.equal(partial.state.topo.duration, 'alt');
       assert.equal(partial.state.topo.maximum_walk_length, 0);
+      assert.equal(partial.state.topo.recommended_rope_length, 'Altes Seil');
+    });
+    const nullRopes = await start(null, json({ ropes: null }), '/api');
+    test('null ropes lässt vorhandene Seillänge unverändert', () => {
+      assert.equal(nullRopes.state.topo.recommended_rope_length, 'Altes Seil');
+    });
+    const clearedRopes = await start(null, json({ ropes: '' }), '/api');
+    test('leerer ropes-Text entfernt die vorhandene Seillänge', () => {
+      assert.equal(clearedRopes.state.topo.recommended_rope_length, '');
+      assert.equal(elementById('topo-recommended-rope-length').value, '');
+      assert.equal(storage.get(key), draft);
     });
     const empty = await start(null, json({ name: null }), '/api');
     test('eine Antwort ohne Werte ändert das Topo nicht und aktiviert keinen Link-Autosaveschutz', () => {
@@ -2399,12 +2427,14 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       null, [], { name: 'neu', max_descent: -1 }, { name: 'neu', time_trip: 2 },
       { name: 'neu', max_descent: '' }, { name: 'neu', max_descent: '0x10' },
       { name: 'neu', max_descent: 'Infinity' }, { name: false },
+      { name: 'neu', ropes: 40 }, { name: 'neu', ropes: ['2 x 40 m'] },
     ]) {
       const instance = await start(null, json(data), '/api');
       test(`ungültige API-Daten werden atomar abgewiesen: ${JSON.stringify(data)}`, () => {
         assert.equal(instance.state.topo.canyon_name, 'Gesicherter Entwurf');
         assert.equal(instance.state.topo.duration, 'alt');
         assert.equal(instance.state.topo.maximum_walk_length, 30);
+        assert.equal(instance.state.topo.recommended_rope_length, 'Altes Seil');
         assert.equal(storage.get(key), draft);
         assert.match(elementById('status').textContent, /Ungültige API-Daten/);
       });
@@ -2431,12 +2461,13 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       });
     }
     const combined = await start('route.xml', async (url) => url.endsWith('.xml')
-      ? ok() : ({ ok: true, json: async () => ({ name: 'API-Name', time_trip: '3h', max_descent: 50 }) }), 'https://api.test/topo');
+      ? ok() : ({ ok: true, json: async () => ({ name: 'API-Name', time_trip: '3h', max_descent: 50, ropes: '2 x 50 m' }) }), 'https://api.test/topo');
     test('XML wird vor API geladen und Segmente bleiben erhalten', () => {
       assert.deepEqual(requests.map(([url]) => url), ['https://example.test/app/route.xml', 'https://api.test/topo']);
       assert.equal(combined.state.topo.canyon_name, 'API-Name');
       assert.equal(combined.state.topo.duration, '3h');
       assert.equal(combined.state.topo.maximum_walk_length, 50);
+      assert.equal(combined.state.topo.recommended_rope_length, '2 x 50 m');
       assert.equal(combined.state.topo.segments[0].length_in_meters, 20);
       assert.equal(storage.get(key), draft);
     });

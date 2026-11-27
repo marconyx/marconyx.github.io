@@ -259,6 +259,25 @@ test('maximale Abseillänge bleibt als Metadatum im JSON- und XML-Roundtrip erha
   );
 });
 
+test('empfohlene Seillänge übersteht JSON und XML mit Sonderzeichen', () => {
+  const rope = `2 x 40 m & <Reserve> "ä" '😀'\t\n`;
+  const topo = normalizeTopo({ ...original, recommended_rope_length: rope });
+  const xml = topoToXml(topo);
+  assert.match(xml, /recommended_rope_length="2 x 40 m &amp; &lt;Reserve&gt; &quot;ä&quot;/);
+  assert.equal(topoFromJson(topoToJson(topo)).recommended_rope_length, rope);
+  assert.equal(topoFromXml(xml).recommended_rope_length, rope);
+  assert.equal(topoFromXml(xml).maximum_walk_length, topo.maximum_walk_length);
+  assert.match(readFileSync(xsdPath, 'utf8'), /name="recommended_rope_length" type="xs:string"/);
+  const result = spawnSync('xmllint', ['--noout', '--schema', xsdPath, '-'], {
+    encoding: 'utf8', input: xml,
+  });
+  if (result.error?.code !== 'ENOENT') assert.equal(result.status, 0, result.stderr);
+  const old = normalizeTopo(original);
+  assert.equal(old.recommended_rope_length, '');
+  assert.equal(Object.hasOwn(topoToJsonObject(old), 'recommended_rope_length'), false);
+  assert.doesNotMatch(topoToXml(old), / recommended_rope_length=/);
+});
+
 test('alte Dateien ohne Author und Dauer bleiben kompatibel', () => {
   const { author, duration, ...legacy } = original;
   const topo = topoFromJson(legacy);

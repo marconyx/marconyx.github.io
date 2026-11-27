@@ -9,7 +9,7 @@ Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
 Topo-Titel und SVG-, PNG- sowie PDF-Exporte bleiben ohne dieses Logo.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.18`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.19`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -212,8 +212,9 @@ der Sitzung ist er auch über Rückgängig erreichbar.
 `index.html?apiURL=https%3A%2F%2Fapi.example.com%2Ftopo%3Fid%3D42`
 ruft beim Start die angegebene HTTP(S)-Adresse per GET ab. Die URL kann auch
 relativ zur App sein. Erwartet wird ein direktes JSON-Objekt, zum Beispiel
-`{"name":"Staubbach","time_trip":"4 STD","max_descent":175}`. `name` und
-`time_trip` sind Texte, `max_descent` ist eine nichtnegative endliche Meterzahl
+`{"name":"Staubbach","time_trip":"4 STD","max_descent":175,"ropes":"2 x 200 m"}`.
+`name`, `time_trip` und `ropes` (empfohlene Seillänge) sind Texte;
+`max_descent` ist eine nichtnegative endliche Meterzahl
 (auch als numerischer Text). Fehlende oder null-Felder bleiben unverändert;
 ungültige Felder verhindern die gesamte Metadatenübernahme. Segmente und übrige
 Topo-Felder bleiben unverändert.
@@ -280,6 +281,7 @@ unbekannte Felder und Typen bleiben erhalten (Round-Trip durch Tests abgesichert
 | `canyon_name` | Titel im Topo |
 | `author` | optionaler Autor als Freitext |
 | `duration` | optionale Gesamtdauer als Freitext, z. B. `3-4 h` |
+| `recommended_rope_length` | optionale empfohlene Seillänge als Freitext, z. B. `2 x 40 m`; keine Legendenangabe |
 | `date` | Datum (ISO, `YYYY-MM-DD`) |
 | `maximum_walk_length` | optionale maximale Abseillänge in Metern; reine Legendenangabe, beeinflusst Zeichnung und Layout nicht |
 | `distance_of_single_line` | Zeilenbreite in Metern für das Format *Bildschirm* (bei *Kaskadiert* als Zielhöhe einer Spalte); bei A4 wird das Mass aus dem Format abgeleitet |

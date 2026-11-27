@@ -138,6 +138,13 @@ export const UI_TEXT = {
     it: 'Lunghezza max. calata (m)',
     es: 'Long. máx. de rápel (m)',
   },
+  'lbl-topo-recommended-rope-length': {
+    de: 'Empfohlene Seillänge',
+    en: 'Recommended rope length',
+    fr: 'Longueur de corde recommandée',
+    it: 'Lunghezza della corda consigliata',
+    es: 'Longitud de cuerda recomendada',
+  },
   'lbl-topo-line-distance': {
     de: 'Zeilenbreite (m)',
     en: 'Row width (m)',
@@ -760,11 +767,11 @@ export const MESSAGES = {
     es: 'La respuesta de la API no es JSON válido.',
   },
   'api_source.invalid_data': {
-    de: 'Ungültige API-Daten: name und time_trip müssen Texte, max_descent eine nichtnegative Zahl sein.',
-    en: 'Invalid API data: name and time_trip must be strings, max_descent a non-negative number.',
-    fr: 'Données API invalides : name et time_trip doivent être des textes et max_descent un nombre positif ou nul.',
-    it: 'Dati API non validi: name e time_trip devono essere testi e max_descent un numero non negativo.',
-    es: 'Datos API no válidos: name y time_trip deben ser textos y max_descent un número no negativo.',
+    de: 'Ungültige API-Daten: name, time_trip und ropes müssen Texte, max_descent eine nichtnegative Zahl sein.',
+    en: 'Invalid API data: name, time_trip and ropes must be strings, max_descent a non-negative number.',
+    fr: 'Données API invalides : name, time_trip et ropes doivent être des textes et max_descent un nombre positif ou nul.',
+    it: 'Dati API non validi: name, time_trip e ropes devono essere testi e max_descent un numero non negativo.',
+    es: 'Datos API no válidos: name, time_trip y ropes deben ser textos y max_descent un número no negativo.',
   },
   'api_source.failed': {
     de: 'API-Daten nicht geladen: {error}', en: 'API data not loaded: {error}',

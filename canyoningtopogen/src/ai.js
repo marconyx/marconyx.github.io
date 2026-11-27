@@ -36,9 +36,9 @@ import {
   defaultLengthFor,
   normalizeTopo,
   todayIso,
-} from './model.js?v=0.18';
-import { SYMBOLS } from './symbols.js?v=0.18';
-import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.18';
+} from './model.js?v=0.19';
+import { SYMBOLS } from './symbols.js?v=0.19';
+import { DEFAULT_LANGUAGE, t, translateProviderLabel } from './i18n.js?v=0.19';
 
 const SETTINGS_KEY = 'canyon-topo-generator/ai/v1';
 
@@ -628,6 +628,7 @@ const SCHEMA_BLOCK = `{
   "canyon_name": string,
   "author": string,                        // "" wenn nicht erkennbar
   "duration": string,                      // freie Angabe, z. B. "3-4 h"
+  "recommended_rope_length": string,       // nur wenn erkennbar, sonst ""
   "date": "YYYY-MM-DD",
   "maximum_walk_length": number,           // optionale maximale Abseillänge; nur in der Legende
   "distance_of_single_line": number,       // Zeilenbreite vor dem Umbruch, üblich 60
