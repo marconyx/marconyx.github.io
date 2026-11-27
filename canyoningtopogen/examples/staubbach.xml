@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topo version="1" canyon_name="Staubbach" author="M. Wahler" duration="4 STD" date="2024-06-15" maximum_walk_length="175" distance_of_single_line="0" legend_offset_top="0" length_shortening_threshold_meters="30">
+  <segment type="WALK" length_in_meters="20" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="-0.75" vertical_start_rel_to_segment_start="2.75" size="1" text="P. 1251"/>
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="8" vertical_start_rel_to_segment_start="1.5" size="1" text="E: 635'620 / 159'850 1251 m ü.M."/>
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="3" vertical_start_rel_to_segment_start="6" size="1" text="A: 635'785 / 159'925 850 m ü.M."/>
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="8.75" vertical_start_rel_to_segment_start="3.25" size="1" text="SEIL: 2 x 200 m + RESERVE!"/>
+  </segment>
+  <segment type="RAPPEL_DRY" length_in_meters="15" angle_in_degrees="90" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="R 15, rd"/>
+    <element type="STONE_HOUSE" horizontal_start_rel_to_segment_start="-0.5" vertical_start_rel_to_segment_start="-3.5" size="1" text=""/>
+  </segment>
+  <segment type="RAPPEL_WET" length_in_meters="40" angle_in_degrees="70" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="C 40, rd"/>
+  </segment>
+  <segment type="RAPPEL_WET" length_in_meters="40" angle_in_degrees="70" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="C 40, rd"/>
+  </segment>
+  <segment type="RAPPEL_DRY" length_in_meters="15" angle_in_degrees="70" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="C 25, rd"/>
+  </segment>
+  <segment type="WALK" length_in_meters="5" angle_in_degrees="0" duration_to_walk_in_min="1" do_not_cut_row_after_this_segment="true" force_cut_row_after_this_segment="false"/>
+  <segment type="RAPPEL_DRY" length_in_meters="20" angle_in_degrees="80" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="R 20, rd"/>
+    <element type="CONIFER_TREE" horizontal_start_rel_to_segment_start="-1.5" vertical_start_rel_to_segment_start="-1.5" size="1" text="" dead="true"/>
+  </segment>
+  <segment type="RAPPEL_WET" length_in_meters="175" angle_in_degrees="90" wall_distance_in_meters="30" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="C 175 rg, expo."/>
+  </segment>
+  <segment type="RAPPEL_WET" length_in_meters="20" angle_in_degrees="70" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="C 20, rg"/>
+  </segment>
+  <segment type="RAPPEL_WET" length_in_meters="90" angle_in_degrees="80" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="BOLT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="C 90, rg"/>
+  </segment>
+  <segment type="WALK" length_in_meters="20" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="0" vertical_start_rel_to_segment_start="0" size="1" text="TOURISTENGALERIE"/>
+  </segment>
+  <segment type="WALK" length_in_meters="20" angle_in_degrees="0" do_not_cut_row_after_this_segment="false" force_cut_row_after_this_segment="false">
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="6" vertical_start_rel_to_segment_start="0.5" size="1" text="~ 850 m üM"/>
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="0.25" vertical_start_rel_to_segment_start="2" size="1" text="rg 2"/>
+    <element type="CUSTOM_TEXT" horizontal_start_rel_to_segment_start="-8.75" vertical_start_rel_to_segment_start="2.5" size="1" text="STAUBBACHFALL 247 m"/>
+  </segment>
+</topo>
