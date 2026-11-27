@@ -2305,12 +2305,13 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       };
     }
   };
-  async function start(source, fetcher, apiUrl = null) {
+  async function start(source, fetcher, apiUrl = null, apiKey = 'apiURL', alternate = null) {
     storage.set(key, draft);
     requests = [];
     const query = new URLSearchParams();
     if (source !== null) query.set('source', source);
-    if (apiUrl !== null) query.set('apiURL', apiUrl);
+    if (apiUrl !== null) query.set(apiKey, apiUrl);
+    if (alternate !== null) query.set('apiURL', alternate);
     window.location = { href: `https://example.test/app/index.html?${query}` };
     globalThis.fetch = (...args) => { requests.push(args); return fetcher(...args); };
     const instance = await import(`../src/app.js?source-test-${serial++}`);
@@ -2384,6 +2385,40 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       assert.equal(restored.state.topo.canyon_name, 'Gesicherter Entwurf');
     });
     const json = (data) => async () => ({ ok: true, json: async () => data });
+    const alias = await start(null, json({ name: 'Alias', ropes: '2 x 40 m' }), '/api?id=demo&format=json', 'apiUrl');
+    test('apiUrl akzeptiert eine kodierte API-Adresse samt Query und schützt den Entwurf', () => {
+      assert.equal(requests[0][0], 'https://example.test/api?id=demo&format=json');
+      assert.equal(alias.state.topo.canyon_name, 'Alias');
+      assert.equal(alias.state.topo.recommended_rope_length, '2 x 40 m');
+      assert.equal(storage.get(key), draft);
+      assert.match(elementById('status').textContent, /Autosave.*aus/);
+    });
+    const both = await start(null, json({ name: 'Vorrang' }), '/ignored', 'apiUrl', '/preferred');
+    test('apiURL hat Vorrang vor apiUrl, wenn beide vorkommen', () => {
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0][0], 'https://example.test/preferred');
+      assert.equal(both.state.topo.canyon_name, 'Vorrang');
+    });
+    const emptyPreferred = await start(null, json({ name: 'nicht geladen' }), '/ignored', 'apiUrl', '');
+    test('leeres apiURL hat Vorrang und wird als ungültig gemeldet', () => {
+      assert.equal(requests.length, 0);
+      assert.equal(emptyPreferred.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.match(elementById('status').textContent, /Ungültige API-Adresse/);
+    });
+    const aliasFailure = await start(null, async () => ({ ok: false, status: 404 }), '/api', 'apiUrl');
+    test('apiUrl zeigt HTTP-Fehler ohne Datenverlust', () => {
+      assert.equal(aliasFailure.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.equal(storage.get(key), draft);
+      assert.match(elementById('status').textContent, /HTTP 404/);
+    });
+    const aliasSource = await start('route.xml', async (url) => url.endsWith('.xml')
+      ? ok() : ({ ok: true, json: async () => ({ ropes: '2 x 40 m' }) }), '/api', 'apiUrl');
+    test('apiUrl ergänzt die zuvor geladene XML-Quelle', () => {
+      assert.equal(requests.length, 2);
+      assert.equal(aliasSource.state.topo.segments[0].length_in_meters, 20);
+      assert.equal(aliasSource.state.topo.recommended_rope_length, '2 x 40 m');
+      assert.equal(storage.get(key), draft);
+    });
     const mapped = await start(null, json({ name: '<img onerror=alert(1)> Ä', time_trip: '4 STD', max_descent: '175.5', ropes: '2 x 40 m & <Reserve>' }), 'https://api.test/topo?key=private');
     test('API-Metadaten aktualisieren nur Kopffelder und schützen den Autosave', () => {
       assert.equal(requests[0][0], 'https://api.test/topo?key=private');
@@ -2505,6 +2540,17 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
     test('Benutzeränderung während reinem API-Fetch bleibt erhalten und wird gespeichert', () => {
       assert.equal(apiOnly.state.topo.canyon_name, 'Lokale Änderung');
       assert.equal(JSON.parse(storage.get(key)).topo.canyon_name, 'Lokale Änderung');
+    });
+    let resolveAlias;
+    const pendingAlias = await start(null, () => new Promise((resolve) => { resolveAlias = resolve; }), '/api', 'apiUrl');
+    documentEvents.dispatch('input');
+    name.value = 'Alias-Bearbeitung';
+    name.listeners.get('input').at(-1)({ target: name });
+    resolveAlias({ ok: true, json: async () => ({ name: 'spät' }) });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    test('apiUrl respektiert Benutzeränderungen während des Ladens', () => {
+      assert.equal(pendingAlias.state.topo.canyon_name, 'Alias-Bearbeitung');
+      assert.equal(JSON.parse(storage.get(key)).topo.canyon_name, 'Alias-Bearbeitung');
     });
   } finally {
     globalThis.fetch = originalFetch;

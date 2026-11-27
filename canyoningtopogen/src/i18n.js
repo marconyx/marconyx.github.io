@@ -732,11 +732,11 @@ export const MESSAGES = {
     es: 'Topo del enlace cargado.',
   },
   'source.autosave_off': {
-    de: 'Autosave ist für diese Sitzung aus; bisherigen Entwurf ohne source und apiURL wieder öffnen und Änderungen manuell speichern.',
-    en: 'Autosave is off for this session; reopen without source or apiURL for the previous draft and save changes manually.',
-    fr: 'Sauvegarde automatique désactivée pour cette session ; rouvrir sans source ni apiURL pour retrouver le brouillon et enregistrer manuellement.',
-    it: 'Salvataggio automatico disattivato per questa sessione; riaprire senza source e apiURL per la bozza precedente e salvare manualmente.',
-    es: 'Autoguardado desactivado durante esta sesión; abre sin source ni apiURL para recuperar el borrador y guarda manualmente.',
+    de: 'Autosave ist für diese Sitzung aus; bisherigen Entwurf ohne source und API-Parameter wieder öffnen und Änderungen manuell speichern.',
+    en: 'Autosave is off for this session; reopen without source or the API parameter for the previous draft and save changes manually.',
+    fr: 'Sauvegarde automatique désactivée pour cette session ; rouvrir sans source ni paramètre API pour retrouver le brouillon et enregistrer manuellement.',
+    it: 'Salvataggio automatico disattivato per questa sessione; riaprire senza source e parametro API per la bozza precedente e salvare manualmente.',
+    es: 'Autoguardado desactivado durante esta sesión; abre sin source ni el parámetro API para recuperar el borrador y guarda manualmente.',
   },
   'source.cancelled': {
     de: 'Link-Laden abgebrochen, da die Bedienung bereits begonnen hat.',

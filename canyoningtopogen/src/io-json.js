@@ -1,7 +1,7 @@
 /**
  * Import/Export im Canyon-Explore-JSON-Format (verlustfreier Round-Trip).
  */
-import { normalizeTopo } from './model.js?v=0.19';
+import { normalizeTopo } from './model.js?v=0.20';
 
 /**
  * Baut das JSON-Objekt in der Feldreihenfolge des Originalformats.
