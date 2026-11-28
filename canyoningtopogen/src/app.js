@@ -1324,9 +1324,19 @@ async function loadSource(source, hasApi) {
 }
 
 /**
- * Validate the entire response before applying any field. Missing properties
- * leave current metadata intact; null text properties explicitly clear them.
- * API text is never interpreted as markup.
+ * Übernimmt ausschließlich geprüfte Canyon-Metadaten aus der Start-API.
+ *
+ * Die API liefert entweder ein Objekt mit den Metadaten direkt oder ein
+ * Objekt unter `canyon`. Die komplette Feldmenge wird erst in `patch`
+ * validiert, bevor sie das aktuelle Modell berührt. Fehlende Felder bleiben
+ * erhalten, `null` leert Textfelder, und ein ungültiges Feld verwirft die
+ * gesamte Antwort. Insbesondere wird API-Text nie als Markup interpretiert.
+ *
+ * `sourcePending` ist zugleich der Abbruchschutz: Eine Benutzerinteraktion
+ * während des Requests setzt das Flag zurück, sodass eine späte Antwort den
+ * gerade bearbeiteten Topo nicht überschreibt.
+ *
+ * @param {string} apiUrl absoluter oder relativer HTTP(S)-URL-Wert
  */
 async function loadApiMetadata(apiUrl) {
   let patch;
@@ -1431,6 +1441,14 @@ function isIsoCalendarDate(value) {
   return month >= 1 && month <= 12 && day >= 1 && day <= daysPerMonth[month - 1];
 }
 
+/**
+ * Führt Startlinks in fester Reihenfolge aus: erst XML-Topo, danach API-Metadaten.
+ * Der API-Schritt läuft nur, wenn der XML-Schritt erfolgreich war und noch
+ * kein Benutzerereignis die ausstehende Link-Sitzung abgebrochen hat.
+ *
+ * @param {string|null} source Same-Origin-XML-URL oder `null`
+ * @param {string|null} apiUrl Metadaten-URL oder `null`
+ */
 async function loadStartupLinks(source, apiUrl) {
   if (source !== null && !(await loadSource(source, apiUrl !== null))) return;
   if (apiUrl !== null && sourcePending) await loadApiMetadata(apiUrl);
@@ -2079,6 +2097,13 @@ function bindCanvas() {
 
 /* -------------------------------------------------------------------- Start */
 
+/**
+ * Verbindet DOM, Persistenz und Module in der Startreihenfolge.
+ * Der Autosave wird zuerst wiederhergestellt; anschließend werden alle
+ * Ereignishandler und der erste Render eingerichtet. Linkparameter markieren
+ * danach eine temporäre Sitzung, deren Netzwerkantwort Benutzeränderungen
+ * nicht überholen darf.
+ */
 function init() {
   initPanelSections();
   initAiLock({ onMessage: (key) => setStatusKey(key) });

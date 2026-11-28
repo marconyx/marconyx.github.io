@@ -3,6 +3,9 @@
 Statische Web-App zum Erstellen, Bearbeiten und Exportieren von Canyoning-Topos.
 Läuft ohne Build-Step und ohne Backend direkt auf GitHub Pages — alle Daten bleiben im Browser.
 
+Neu im Projekt? Der [Einstieg für Entwicklerinnen und Entwickler](docs/DEVELOPER_GUIDE.md)
+erklärt Modulaufbau, Datenfluss, Import/Export, Startparameter und typische Erweiterungen.
+
 Die responsive App-Kopfzeile zeigt das bachab-Logo neben dem App-Titel, darunter die
 App-Version (`#app-version` in `index.html`). Sie beginnt bei `v0.1` und wird mit jedem
 Commit um eine Nebenversion erhöht (`v0.2`, `v0.3` …).
