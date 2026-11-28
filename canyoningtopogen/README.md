@@ -12,7 +12,7 @@ Tastaturfokus mit Enter/Leertaste die vollständige Meldung. Das Popup lässt si
 mit Escape oder **Schliessen** verlassen.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.24`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.25`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -221,8 +221,13 @@ ein direktes JSON-Objekt, zum Beispiel
 `{"name":"Staubbach","time_trip":"4 STD","max_descent":175,"ropes":"2 x 200 m"}`.
 `name`, `time_trip` und `ropes` (empfohlene Seillänge) sind Texte;
 `max_descent` ist eine nichtnegative endliche Meterzahl
-(auch als numerischer Text). Fehlende oder null-Felder bleiben unverändert;
-ungültige Felder verhindern die gesamte Metadatenübernahme. Segmente und übrige
+(auch als numerischer Text). Fehlende Felder bleiben unverändert; explizit
+`null` oder leerer Text bei `name`, `time_trip` und `ropes` leert das jeweilige
+Textfeld. `max_descent: null` lässt die vorhandene Zahl unverändert, da dieses
+Modellfeld nicht nullable ist. Ungültige Felder verhindern die gesamte
+Metadatenübernahme. Vorhandene Metadaten werden durch gelieferte Werte
+überschrieben; die Werte erscheinen in den Eingabefeldern und – sofern nicht
+leer bzw. bei Abseillänge grösser als 0 – in der Legende. Segmente und übrige
 Topo-Felder bleiben unverändert.
 
 Mit `source` und `apiURL` wird zuerst das XML geöffnet und danach werden die
