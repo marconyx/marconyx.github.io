@@ -12,7 +12,7 @@ Tastaturfokus mit Enter/Leertaste die vollständige Meldung. Das Popup lässt si
 mit Escape oder **Schliessen** verlassen.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.26`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.27`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -218,9 +218,15 @@ relativ zur App sein. Alternativ wird `apiUrl` unterstützt. Sind beide angegebe
 hat `apiURL` Vorrang, auch wenn dieser Wert leer ist. Die API-Adresse muss als
 Parameterwert URL-kodiert sein, insbesondere eigene `?` und `&`. Erwartet wird
 ein direktes JSON-Objekt, zum Beispiel
-`{"name":"Staubbach","time_trip":"4 STD","max_descent":175,"ropes":"2 x 200 m"}`.
-`name`, `time_trip` und `ropes` (empfohlene Seillänge) sind Texte;
-`max_descent` ist eine nichtnegative endliche Meterzahl
+Erwartet wird das API-Objekt mit den Metadaten unter `canyon`, zum Beispiel
+`{"canyon":{"name":"Staubbach","time_trip":255,"max_descent":175,"ropes":"2 x 200 m"}}`.
+Die Zuordnung liest ausschliesslich `canyon.name`, `canyon.time_trip`,
+`canyon.max_descent` und `canyon.ropes`; ein `topo`-Objekt oder weitere
+Antwortfelder werden ignoriert. Für ältere/andere API-Endpunkte wird weiterhin
+ein direktes Objekt mit denselben vier Feldern akzeptiert.
+`name` und `ropes` (empfohlene Seillänge) sind Texte; `time_trip` darf Text oder
+eine endliche Zahl sein und wird unverändert als Text angezeigt (z. B. `255`,
+ohne Einheitenumrechnung); `max_descent` ist eine nichtnegative endliche Meterzahl
 (auch als numerischer Text). Fehlende Felder bleiben unverändert; explizit
 `null` oder leerer Text bei `name`, `time_trip` und `ropes` leert das jeweilige
 Textfeld. `max_descent: null` lässt die vorhandene Zahl unverändert, da dieses

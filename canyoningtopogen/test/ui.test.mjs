@@ -2564,7 +2564,8 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       assert.match(elementById('status').textContent, /enthält keines.*Zuordnungsfelder/);
     });
     for (const data of [
-      null, [], { name: 'neu', max_descent: -1 }, { name: 'neu', time_trip: 2 },
+      null, [], { name: 'neu', max_descent: -1 }, { name: 'neu', time_trip: true },
+      { canyon: { name: 'neu', time_trip: true } },
       { name: 'neu', max_descent: '' }, { name: 'neu', max_descent: '0x10' },
       { name: 'neu', max_descent: 'Infinity' }, { name: false },
       { name: 'neu', ropes: 40 }, { name: 'neu', ropes: ['2 x 40 m'] },
@@ -2602,19 +2603,23 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
     }
     const combined = await start('route.xml', async (url) => url.endsWith('.xml')
       ? ({ ok: true, text: async () => '<topo canyon_name="XML-Name" duration="XML-Dauer" maximum_walk_length="12" recommended_rope_length="1 x 20 m"><segment type="WALK" length_in_meters="20"/></topo>' })
-      : ({ ok: true, json: async () => ({ name: 'API-Name', time_trip: '3h', max_descent: 50, ropes: '2 x 50 m' }) }), 'https://api.test/topo');
-    test('API-Werte überschreiben XML-Metadaten und erscheinen in Eingabefeldern und Legende', () => {
+      : ({ ok: true, json: async () => ({
+        canyon: { name: 'API-Name', time_trip: 255, max_descent: 50, ropes: '2 x 50 m' },
+        topo: { title: 'nicht zugeordnet', xmlUrl: '/must-not-fetch.xml' },
+        tmpTopoSaveUrl: '/must-not-call-save',
+      }) }), 'https://api.test/topo');
+    test('canyon-Envelope überschreibt XML-Metadaten; numerische Dauer erscheint unverändert', () => {
       assert.deepEqual(requests.map(([url]) => url), ['https://example.test/app/route.xml', 'https://api.test/topo']);
       assert.equal(combined.state.topo.canyon_name, 'API-Name');
-      assert.equal(combined.state.topo.duration, '3h');
+      assert.equal(combined.state.topo.duration, '255');
       assert.equal(combined.state.topo.maximum_walk_length, 50);
       assert.equal(combined.state.topo.recommended_rope_length, '2 x 50 m');
       assert.equal(combined.state.topo.segments[0].length_in_meters, 20);
       assert.equal(elementById('topo-name').value, 'API-Name');
-      assert.equal(elementById('topo-duration').value, '3h');
+      assert.equal(elementById('topo-duration').value, '255');
       assert.equal(elementById('topo-max-walk').value, 50);
       assert.equal(elementById('topo-recommended-rope-length').value, '2 x 50 m');
-      assert.match(svg(), /data-meta="duration"[^>]*>[\s\S]*3h<\/text>/);
+      assert.match(svg(), /data-meta="duration"[^>]*>[\s\S]*255<\/text>/);
       assert.match(svg(), /data-meta="maximum_walk_length"[^>]*>[\s\S]*50 m<\/text>/);
       assert.match(svg(), /data-meta="recommended_rope_length"[^>]*>[\s\S]*2 x 50 m<\/text>/);
       assert.equal(storage.get(key), draft);

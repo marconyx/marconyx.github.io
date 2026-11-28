@@ -786,11 +786,11 @@ export const MESSAGES = {
     es: 'La respuesta de la API no es JSON válido.',
   },
   'api_source.invalid_data': {
-    de: 'Ungültige API-Daten: name, time_trip und ropes müssen Texte, max_descent eine nichtnegative Zahl sein.',
-    en: 'Invalid API data: name, time_trip and ropes must be strings, max_descent a non-negative number.',
-    fr: 'Données API invalides : name, time_trip et ropes doivent être des textes et max_descent un nombre positif ou nul.',
-    it: 'Dati API non validi: name, time_trip e ropes devono essere testi e max_descent un numero non negativo.',
-    es: 'Datos API no válidos: name, time_trip y ropes deben ser textos y max_descent un número no negativo.',
+    de: 'Ungültige API-Daten: name und ropes müssen Texte, time_trip Text oder Zahl und max_descent eine nichtnegative Zahl sein.',
+    en: 'Invalid API data: name and ropes must be strings, time_trip a string or number, and max_descent a non-negative number.',
+    fr: 'Données API invalides : name et ropes doivent être des textes, time_trip un texte ou un nombre et max_descent un nombre positif ou nul.',
+    it: 'Dati API non validi: name e ropes devono essere testi, time_trip un testo o un numero e max_descent un numero non negativo.',
+    es: 'Datos API no válidos: name y ropes deben ser textos, time_trip texto o número y max_descent un número no negativo.',
   },
   'api_source.missing_fields': {
     de: 'Die API-Antwort enthält keines der erwarteten Zuordnungsfelder: name, time_trip, max_descent, ropes.',
