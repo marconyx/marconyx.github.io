@@ -2208,7 +2208,7 @@ test('Leer erzeugt ein Topo ohne Segmente und unterstützt Undo, Redo und Autosa
   elementById('btn-undo').dispatch('click');
 });
 
-test('Öffnen startet den Dateidialog; OC-Platzhalter ändern keine Daten und senden keine Anfrage', () => {
+test('Öffnen startet den Dateidialog; OC-Aktionen ohne API-Ziel ändern keine Daten', () => {
   const fileInput = elementById('file-open');
   let clicks = 0;
   const oldClick = fileInput.click;
@@ -2227,12 +2227,14 @@ test('Öffnen startet den Dateidialog; OC-Platzhalter ändern keine Daten und se
   let requests = 0;
   globalThis.fetch = () => { requests += 1; throw new Error('unexpected request'); };
   try {
-    for (const id of ['btn-open-oc', 'btn-save-oc']) {
-      elementById(id).dispatch('click');
-      assert.equal(topoToJson(state.topo), before);
-      assert.equal(storage.get('canyon-topo-generator/state/v1'), stored);
-      assert.match(elementById('status').textContent, /API.*noch bereitgestellt/);
-    }
+    elementById('btn-open-oc').dispatch('click');
+    assert.match(elementById('status').textContent, /API.*noch bereitgestellt/);
+    const saveButton = elementById('btn-save-oc');
+    assert.equal(saveButton.disabled, true);
+    saveButton.dispatch('click');
+    assert.match(elementById('status').textContent, /keine gültige OC-Speicheradresse/);
+    assert.equal(topoToJson(state.topo), before);
+    assert.equal(storage.get('canyon-topo-generator/state/v1'), stored);
     assert.equal(requests, 0);
     elementById('btn-undo').dispatch('click');
     assert.equal(topoToJson(state.topo), previous, 'OC erzeugt keinen Undo-Schritt');
@@ -2241,7 +2243,7 @@ test('Öffnen startet den Dateidialog; OC-Platzhalter ändern keine Daten und se
   }
 });
 
-test('Speichern-Popover bündelt Exportaktionen und OC-Platzhalter', () => {
+test('Speichern-Popover bündelt Exportaktionen und das optionale OC-Speichern', () => {
   assert.match(markup, /id="btn-save" popovertarget="save-menu" aria-controls="save-menu" aria-expanded="false">Speichern…/);
   const menu = /<div id="save-menu"[^>]*popover="auto"[^>]*>([\s\S]*?)<\/div>/.exec(markup)[1];
   const ids = ['btn-save-json', 'btn-save-xml', 'btn-export-svg', 'btn-export-png', 'btn-export-shortlist', 'btn-print', 'btn-save-oc'];
@@ -2633,6 +2635,131 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       assert.equal(topoFromJson(topoToJson(combined.state.topo)).date, '2026-08-14');
       assert.equal(topoFromXml(topoToXml(combined.state.topo)).date, '2026-08-14');
       assert.equal(storage.get(key), draft);
+      assert.equal(elementById('btn-save-oc').disabled, false);
+    });
+    const saveUrl = 'https://api.test/save?cap=synthetic';
+    let saveRequest;
+    const saveReady = await start(null, async (url, options) => {
+      if (options?.method === 'POST') {
+        saveRequest = [url, options];
+        return { ok: true, status: 204 };
+      }
+      return { ok: true, json: async () => ({
+        canyon: { name: 'API-Name' },
+        tmpTopoSaveUrl: saveUrl,
+      }) };
+    }, 'https://api.test/metadata');
+    test('Speicherziel bleibt flüchtig und löst beim Laden keinen POST aus', () => {
+      assert.equal(requests.length, 1);
+      assert.equal(elementById('btn-save-oc').disabled, false);
+      assert.doesNotMatch(storage.get(key), /tmpTopoSaveUrl|cap=synthetic/);
+      assert.doesNotMatch(topoToJson(saveReady.state.topo), /tmpTopoSaveUrl|cap=synthetic/);
+      assert.doesNotMatch(topoToXml(saveReady.state.topo), /tmpTopoSaveUrl|cap=synthetic/);
+      assert.doesNotMatch(svg(), /tmpTopoSaveUrl|cap=synthetic/);
+    });
+    const editedName = elementById('topo-name');
+    editedName.value = 'Ungespeichert & <Topo>';
+    editedName.listeners.get('input').at(-1)({ target: editedName });
+    const saveHandler = elementById('btn-save-oc').listeners.get('click').at(-1);
+    await saveHandler();
+    test('Expliziter OC-Klick sendet das aktuelle XML ohne Credentials oder Redirects', () => {
+      assert.equal(requests.length, 2);
+      assert.equal(saveRequest[0], saveUrl);
+      assert.deepEqual(saveRequest[1], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/xml' },
+        body: topoToXml(saveReady.state.topo),
+        credentials: 'omit',
+        redirect: 'error',
+        referrerPolicy: 'no-referrer',
+      });
+      assert.match(saveRequest[1].body, /canyon_name="Ungespeichert &amp; &lt;Topo&gt;"/);
+      assert.match(elementById('status').textContent, /Topo wurde bei OC gespeichert/);
+    });
+    let resolveSave;
+    const pendingSave = await start(null, async (url, options) => options?.method === 'POST'
+      ? new Promise((resolve) => { resolveSave = resolve; })
+      : ({ ok: true, json: async () => ({ name: 'Wird bearbeitet', tmpTopoSaveUrl: saveUrl }) }),
+    'https://api.test/metadata');
+    const pendingSaveButton = elementById('btn-save-oc');
+    const pendingSaveHandler = pendingSaveButton.listeners.get('click').at(-1);
+    const firstSave = pendingSaveHandler();
+    await pendingSaveHandler();
+    test('Während eines POST verhindert ein In-Flight-Guard parallele Speicherungen', () => {
+      assert.equal(requests.filter(([, options]) => options?.method === 'POST').length, 1);
+      assert.equal(pendingSaveButton.disabled, true);
+    });
+    resolveSave({ ok: true, status: 200 });
+    await firstSave;
+    test('Erfolgreiche Antwort schliesst den POST mit einer Erfolgsmeldung ab', () => {
+      assert.match(elementById('status').textContent, /Topo wurde bei OC gespeichert/);
+      assert.equal(pendingSaveButton.disabled, false);
+      assert.equal(pendingSave.state.topo.canyon_name, 'Wird bearbeitet');
+    });
+    const statusBeforeContextSwitch = await start(null, async (url, options) => options?.method === 'POST'
+      ? { ok: true, status: 200 }
+      : ({ ok: true, json: async () => ({ name: 'API', tmpTopoSaveUrl: saveUrl }) }),
+    'https://api.test/metadata');
+    elementById('btn-new-empty').dispatch('click');
+    const requestCountAfterApi = requests.length;
+    await elementById('btn-save-oc').listeners.get('click').at(-1)();
+    test('Ein Topo-Wechsel verwirft die alte Save-URL und verhindert falsches Überschreiben', () => {
+      assert.equal(elementById('btn-save-oc').disabled, true);
+      assert.equal(requests.length, requestCountAfterApi);
+      assert.deepEqual(statusBeforeContextSwitch.state.topo.segments, []);
+      assert.match(elementById('status').textContent, /keine gültige OC-Speicheradresse/);
+    });
+    const invalidSaveTarget = await start(null, json({
+      canyon: { name: 'Nicht anwenden' },
+      tmpTopoSaveUrl: 'https://untrusted.test/save',
+    }), 'https://api.test/metadata');
+    test('Save-URL mit fremdem Origin wird abgewiesen, ohne Datenänderung oder POST', () => {
+      assert.equal(invalidSaveTarget.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.equal(elementById('btn-save-oc').disabled, true);
+      assert.equal(requests.length, 1);
+      assert.match(elementById('status').textContent, /Speicheradresse ist ungültig/);
+      assert.doesNotMatch(elementById('status').textContent, /untrusted\.test/);
+    });
+    const httpSaveTarget = await start(null, json({
+      name: 'Nicht anwenden',
+      tmpTopoSaveUrl: 'http://api.test/save',
+    }), 'https://api.test/metadata');
+    test('HTTP-Save-URL wird abgewiesen, bevor Speichern aktiviert wird', () => {
+      assert.equal(httpSaveTarget.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.equal(elementById('btn-save-oc').disabled, true);
+      assert.match(elementById('status').textContent, /Speicheradresse ist ungültig/);
+    });
+    const credentialSaveTarget = await start(null, json({
+      name: 'Nicht anwenden',
+      tmpTopoSaveUrl: 'https://user:pass@api.test/save',
+    }), 'https://api.test/metadata');
+    test('Save-URL mit Credentials wird abgewiesen und nicht angezeigt', () => {
+      assert.equal(credentialSaveTarget.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.equal(elementById('btn-save-oc').disabled, true);
+      assert.match(elementById('status').textContent, /Speicheradresse ist ungültig/);
+      assert.doesNotMatch(elementById('status').textContent, /user|pass|api\.test/);
+    });
+    const failedSave = await start(null, async (url, options) => options?.method === 'POST'
+      ? { ok: false, status: 403 }
+      : ({ ok: true, json: async () => ({ name: 'API', tmpTopoSaveUrl: saveUrl }) }),
+    'https://api.test/metadata');
+    await elementById('btn-save-oc').listeners.get('click').at(-1)();
+    test('HTTP-Fehler melden den Statuscode und keinen Erfolg', () => {
+      assert.equal(requests.filter(([, options]) => options?.method === 'POST').length, 1);
+      assert.match(elementById('status').textContent, /HTTP 403/);
+      assert.doesNotMatch(elementById('status').textContent, /cap=synthetic|api\.test/);
+      assert.equal(failedSave.state.topo.canyon_name, 'API');
+    });
+    const failedNetworkSave = await start(null, async (url, options) => options?.method === 'POST'
+      ? (() => { throw new Error('https://api.test/save?cap=secret'); })()
+      : ({ ok: true, json: async () => ({ name: 'API', tmpTopoSaveUrl: saveUrl }) }),
+    'https://api.test/metadata');
+    await elementById('btn-save-oc').listeners.get('click').at(-1)();
+    test('Netzwerk-/CORS-Fehler geben weder URL noch Signaturdetails aus', () => {
+      assert.equal(requests.filter(([, options]) => options?.method === 'POST').length, 1);
+      assert.match(elementById('status').textContent, /Netzwerk, CORS oder abgelaufene Speicheradresse/);
+      assert.doesNotMatch(elementById('status').textContent, /cap=synthetic|cap=secret|api\.test/);
+      assert.equal(failedNetworkSave.state.topo.canyon_name, 'API');
     });
     const directDate = await start(null, json({ last_update_date: '2024-02-29' }), '/api');
     test('last_update_date wird auch im direkten Objekt übernommen', () => {
@@ -2688,11 +2815,12 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
     documentEvents.dispatch('input');
     name.value = 'Alias-Bearbeitung';
     name.listeners.get('input').at(-1)({ target: name });
-    resolveAlias({ ok: true, json: async () => ({ name: 'spät' }) });
+    resolveAlias({ ok: true, json: async () => ({ name: 'spät', tmpTopoSaveUrl: saveUrl }) });
     await new Promise((resolve) => setTimeout(resolve, 0));
     test('apiUrl respektiert Benutzeränderungen während des Ladens', () => {
       assert.equal(pendingAlias.state.topo.canyon_name, 'Alias-Bearbeitung');
       assert.equal(JSON.parse(storage.get(key)).topo.canyon_name, 'Alias-Bearbeitung');
+      assert.equal(elementById('btn-save-oc').disabled, true);
     });
   } finally {
     globalThis.fetch = originalFetch;

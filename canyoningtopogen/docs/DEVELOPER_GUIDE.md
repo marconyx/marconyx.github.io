@@ -175,6 +175,28 @@ Autosave nicht; ohne Linkparameter wird der gespeicherte Entwurf normal
 wiederhergestellt. Das ist absichtlich so, damit ein geteiltes XML/API-Linkziel
 den lokalen Entwurf nicht dauerhaft ersetzt.
 
+Ein zusätzliches `tmpTopoSaveUrl` auf Root-Ebene der Antwort stellt ein
+temporäres Speicherziel bereit. Die App akzeptiert es nur als HTTPS-URL ohne
+Credentials, mit demselben Origin wie die geladene API und ohne Fragment.
+Die URL bleibt in einer privaten Modulvariable und gehört nicht zu `state`,
+Undo-Snapshots, `localStorage` oder Exportdaten. Der Button **Auf OC speichern**
+ist sonst deaktiviert. Sein Handler baut erst beim expliziten Klick
+`topoToXml(state.topo)` und sendet genau diesen Text als POST-Body mit
+`Content-Type: application/xml`, ohne Cookies oder Redirects. Nur ein
+erfolgreicher HTTP-Status setzt eine Erfolgsmeldung; Fehler enthalten keine
+Ziel-URL. Die CORS-Policy des API-/Save-Servers muss den Seiten-Origin, POST
+und den Content-Type-Header zulassen.
+
+Die öffentliche OpenCanyon-Hilfe enthält keinen vollständigen Vertrag für
+diesen Save-Endpunkt. Die Clientimplementierung folgt der bereitgestellten
+Semantik (`tmpTopoSaveUrl`, POST, XML-Topo); `application/xml` und ein beliebiger
+2xx-Status sind die hier verwendete Request-/Erfolgsvereinbarung, keine
+Behauptung über weitere Serverantwortfelder. Teste Änderungen ausschließlich
+mit lokalen synthetischen Zielen, niemals mit einer echten signierten URL.
+Jeder Topo-Kontextwechsel verwirft die alte Save-URL. Undo/Redo innerhalb
+desselben Kontexts darf sie behalten; während eines Requests blockiert ein
+In-Flight-Flag parallele POSTs und es gibt keinen automatischen Retry.
+
 Für den API-Aufruf gelten Browser-Sicherheitsregeln: absolute oder relative
 HTTP(S)-URL, keine URL-Zugangsdaten, keine Credentials/Browser-Cookies, keine
 HTTPS-zu-HTTP-Abstufung und keine Redirects. Ein fremder API-Origin muss selbst

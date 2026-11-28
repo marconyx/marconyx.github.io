@@ -15,7 +15,7 @@ Tastaturfokus mit Enter/Leertaste die vollständige Meldung. Das Popup lässt si
 mit Escape oder **Schliessen** verlassen.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.28`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.29`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -27,9 +27,10 @@ prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
   **Leer** (ein neues Topo ohne Segmente), **Beispiel**, **Zufall**,
   **Öffnen…** (JSON/XML/TXT) und **Von OC öffnen**. Letzteres ist ein
   Platzhalter: Die API ist noch nicht verfügbar; es werden keine Daten geladen
-  oder verändert. **Auf OC speichern** in der Speichern-Auswahl ist ebenfalls
-  ein Platzhalter für das spätere Speichern des generierten XML; es wird noch
-  keine Anfrage gesendet. Die Auswahlen unterstützen Tastatur und Smartphone-Toolbar.
+  oder verändert. **Auf OC speichern** ist verfügbar, wenn die geladene API-
+  Antwort eine gültige `tmpTopoSaveUrl` enthält; Details und Grenzen stehen
+  unter „Topo-Metadaten über eine API laden“. Die Auswahlen unterstützen
+  Tastatur und Smartphone-Toolbar.
 - **Editor**: Segmente anlegen, sortieren, duplizieren, Winkel/Länge/Gehzeit setzen,
   bei Abseilstellen zusätzlich die Wanddistanz für frei hängende Überhänge
 - **Segment-Shortcuts**: Das Feld `shortcuts` über der Segmentauswahl hängt mit
@@ -259,6 +260,23 @@ URLs beispielsweise im Browserverlauf gespeichert werden können.
 Bei einem Netzwerk-, CORS- oder Weiterleitungsfehler kann der Browser den
 HTTP-Status unter Umständen nicht auslesen. In diesem Fall Erreichbarkeit,
 CORS-Freigabe und Weiterleitungen beim API-Anbieter prüfen.
+
+Enthält die JSON-Antwort zusätzlich auf Root-Ebene `tmpTopoSaveUrl`, aktiviert
+die App **Auf OC speichern**, sofern der Wert eine HTTPS-Adresse ohne
+Zugangsdaten ist und denselben Origin wie die geladene API verwendet. Die
+Adresse wird als kurzlebiges Schreibrecht nur im Arbeitsspeicher gehalten:
+Sie wird weder im Autosave noch in Topo-Exporten oder Statusmeldungen abgelegt.
+Erst ein ausdrücklicher Klick sendet das aktuelle Topo als XML-Request-Body
+mit `Content-Type: application/xml` per POST an dieses Ziel. Weiterleitungen
+und Browser-Credentials sind deaktiviert; ein HTTP-Erfolg wird nur bei einem
+2xx-Status gemeldet. Der API-Server muss den Browser-Origin für POST und den
+Header `Content-Type` per CORS erlauben. Die öffentliche OpenCanyon-Hilfe
+beschreibt keinen vollständigen Save-API-Vertrag; diese Clientseite folgt dem
+von der API-Antwort bereitgestellten temporären Ziel und der in dieser App
+festgelegten XML-Übertragung. Ein abgelaufenes Ziel muss über einen neuen
+API-Link geladen werden. Neue, importierte oder anderweitig ersetzte Topos
+verlieren das Ziel, damit nicht versehentlich ein anderes Topo gespeichert
+wird. Es gibt keinen automatischen Aufruf und keinen Retry.
 
 ## Repository
 

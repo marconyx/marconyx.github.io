@@ -11,7 +11,7 @@
  * Schema. Punkt-Renderer arbeiten um den Anker, Strecken-Renderer erhalten
  * Anfang und Ende; unbekannte Typen bleiben als sichtbarer Platzhalter erhalten.
  */
-import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.28';
+import { DEAD_CAPABLE_ELEMENT_TYPES } from './model.js?v=0.29';
 
 const esc = (value) =>
   String(value ?? '')

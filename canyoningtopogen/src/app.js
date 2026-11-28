@@ -32,21 +32,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.28';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.28';
-import { createRandomTopo } from './random-topo.js?v=0.28';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.28';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.28';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.28';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.28';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.28';
+} from './model.js?v=0.29';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.29';
+import { createRandomTopo } from './random-topo.js?v=0.29';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.29';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.29';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.29';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.29';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.29';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.28';
+} from './exporters.js?v=0.29';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -62,12 +62,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.28';
-import { isPdfFile, openPdf } from './pdf.js?v=0.28';
-import { initPanelSections } from './panel-sections.js?v=0.28';
-import { initAiLock } from './ai-lock.js?v=0.28';
-import { initResponsive } from './responsive.js?v=0.28';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.28';
+} from './ai.js?v=0.29';
+import { isPdfFile, openPdf } from './pdf.js?v=0.29';
+import { initPanelSections } from './panel-sections.js?v=0.29';
+import { initAiLock } from './ai-lock.js?v=0.29';
+import { initResponsive } from './responsive.js?v=0.29';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.29';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -78,7 +78,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.28';
+} from './i18n.js?v=0.29';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -105,6 +105,9 @@ let history = { past: [], future: [] };
 let storageProtected = false;
 let sourcePending = false;
 let sourceSession = false;
+let ocSaveUrl = null;
+let ocSaveGeneration = 0;
+let ocSaveInFlight = false;
 let currentLayout = null;
 let currentSvgText = '';
 const cameraOffset = { x: 0, y: 0 };
@@ -139,13 +142,13 @@ function pushHistory() {
 function undo() {
   if (!history.past.length) return;
   history.future.push(topoToJson(state.topo, 0));
-  replaceTopo(topoFromJson(history.past.pop()));
+  replaceTopo(topoFromJson(history.past.pop()), { preserveOcSaveTarget: true });
 }
 
 function redo() {
   if (!history.future.length) return;
   history.past.push(topoToJson(state.topo, 0));
-  replaceTopo(topoFromJson(history.future.pop()));
+  replaceTopo(topoFromJson(history.future.pop()), { preserveOcSaveTarget: true });
 }
 
 /**
@@ -154,8 +157,24 @@ function redo() {
  * nächsten Tippen wieder. Beim Bearbeiten einzelner Segmente wird bewusst nur
  * render() gerufen, damit ein Eingabefeld unter dem Cursor nicht neu gesetzt wird.
  */
-function replaceTopo(topo) {
+function refreshOcSaveButton() {
+  $('btn-save-oc').disabled = !ocSaveUrl || ocSaveInFlight;
+}
+
+/**
+ * Verwirft das kurzlebige Schreibrecht aus der API-Antwort.
+ * Es gehört zum geladenen Topo-Kontext und darf nie mit einem anderen Topo
+ * oder im Autosave weiterverwendet werden.
+ */
+function clearOcSaveTarget() {
+  ocSaveUrl = null;
+  ocSaveGeneration += 1;
+  refreshOcSaveButton();
+}
+
+function replaceTopo(topo, { preserveOcSaveTarget = false } = {}) {
   if (drag || legendDrag) onPointerUp();
+  if (!preserveOcSaveTarget) clearOcSaveTarget();
   state.topo = topo;
   state.selection = null;
   render();
@@ -1266,7 +1285,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.28');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.29');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();
@@ -1284,6 +1303,7 @@ async function loadExample() {
  * Interaktionen während des Ladens haben Vorrang vor der Netzwerkantwort.
  */
 async function loadSource(source, hasApi) {
+  clearOcSaveTarget();
   let topo;
   try {
     const page = new URL(window.location.href);
@@ -1339,7 +1359,10 @@ async function loadSource(source, hasApi) {
  * @param {string} apiUrl absoluter oder relativer HTTP(S)-URL-Wert
  */
 async function loadApiMetadata(apiUrl) {
+  clearOcSaveTarget();
   let patch;
+  let saveUrl = null;
+  let apiOrigin;
   try {
     const page = new URL(window.location.href);
     let url;
@@ -1348,6 +1371,7 @@ async function loadApiMetadata(apiUrl) {
     } catch {
       throw new Error(t(lang(), 'api_source.invalid_url'));
     }
+    apiOrigin = url.origin;
     if (!apiUrl.trim() || !['http:', 'https:'].includes(page.protocol) ||
         !['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
         (page.protocol === 'https:' && url.protocol !== 'https:')) {
@@ -1370,11 +1394,29 @@ async function loadApiMetadata(apiUrl) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
       throw new Error(t(lang(), 'api_source.invalid_data'));
     }
+    const responseData = data;
     if (Object.hasOwn(data, 'canyon')) {
       if (!data.canyon || typeof data.canyon !== 'object' || Array.isArray(data.canyon)) {
         throw new Error(t(lang(), 'api_source.invalid_data'));
       }
       data = data.canyon;
+    }
+    if (Object.hasOwn(responseData, 'tmpTopoSaveUrl')) {
+      const rawSaveUrl = responseData.tmpTopoSaveUrl;
+      if (typeof rawSaveUrl !== 'string' || !rawSaveUrl.trim()) {
+        throw new Error(t(lang(), 'api_source.invalid_save_url'));
+      }
+      let candidate;
+      try {
+        candidate = new URL(rawSaveUrl, url);
+      } catch {
+        throw new Error(t(lang(), 'api_source.invalid_save_url'));
+      }
+      if (candidate.protocol !== 'https:' || candidate.origin !== apiOrigin ||
+          candidate.username || candidate.password || candidate.hash) {
+        throw new Error(t(lang(), 'api_source.invalid_save_url'));
+      }
+      saveUrl = candidate.href;
     }
     patch = {};
     const mappingFields = ['name', 'time_trip', 'ropes', 'max_descent', 'last_update_date'];
@@ -1420,13 +1462,14 @@ async function loadApiMetadata(apiUrl) {
   }
   if (Object.keys(patch).length) {
     pushHistory();
-    sourceSession = true;
-    sourcePending = false;
-    replaceTopo({ ...state.topo, ...patch });
+    replaceTopo({ ...state.topo, ...patch }, { preserveOcSaveTarget: true });
     fitZoom();
-  } else {
-    sourcePending = false;
   }
+  sourceSession = true;
+  sourcePending = false;
+  ocSaveUrl = saveUrl;
+  ocSaveGeneration += 1;
+  refreshOcSaveButton();
   setStatusKey('api_source.loaded');
 }
 
@@ -1546,6 +1589,49 @@ function syncTopoFields() {
     state.topo.length_shortening_threshold_meters ?? '';
 }
 
+/**
+ * Sendet das aktuelle Modell nur nach explizitem Klick an das kurzlebige
+ * Schreibziel aus der API-Antwort. Der Request enthält ausschließlich das
+ * XML-Topo; Redirects und Browser-Credentials sind deaktiviert. Ein
+ * Generationszähler verhindert, dass die Antwort den Status eines inzwischen
+ * gewechselten Topos verfälscht.
+ */
+async function saveToOc() {
+  if (!ocSaveUrl) {
+    setStatusKey('status.oc_save_unavailable');
+    return;
+  }
+  if (ocSaveInFlight) return;
+
+  const target = ocSaveUrl;
+  const generation = ocSaveGeneration;
+  const body = topoToXml(state.topo);
+  ocSaveInFlight = true;
+  refreshOcSaveButton();
+  setStatusKey('status.oc_save_saving');
+  try {
+    const response = await fetch(target, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/xml' },
+      body,
+      credentials: 'omit',
+      redirect: 'error',
+      referrerPolicy: 'no-referrer',
+    });
+    if (generation !== ocSaveGeneration) return;
+    if (!response.ok) {
+      setStatusKey('status.oc_save_http_error', { status: response.status });
+      return;
+    }
+    setStatusKey('status.oc_save_success');
+  } catch {
+    if (generation === ocSaveGeneration) setStatusKey('status.oc_save_network_error');
+  } finally {
+    ocSaveInFlight = false;
+    refreshOcSaveButton();
+  }
+}
+
 function bindToolbar() {
   $('btn-new-default').addEventListener('click', () => {
     pushHistory();
@@ -1566,7 +1652,7 @@ function bindToolbar() {
   });
   $('btn-open-file').addEventListener('click', () => $('file-open').click());
   $('btn-open-oc').addEventListener('click', () => setStatusKey('status.oc_unavailable'));
-  $('btn-save-oc').addEventListener('click', () => setStatusKey('status.oc_save_unavailable'));
+  $('btn-save-oc').addEventListener('click', saveToOc);
   $('file-open').addEventListener('change', async (event) => {
     const [file] = event.target.files;
     if (file) await openFile(file);
@@ -2125,6 +2211,7 @@ function init() {
     }
   }
   bindToolbar();
+  refreshOcSaveButton();
   bindTopoFields();
   bindPhoto();
   bindAi();
