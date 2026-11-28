@@ -792,6 +792,13 @@ export const MESSAGES = {
     it: 'Dati API non validi: name, time_trip e ropes devono essere testi e max_descent un numero non negativo.',
     es: 'Datos API no válidos: name, time_trip y ropes deben ser textos y max_descent un número no negativo.',
   },
+  'api_source.missing_fields': {
+    de: 'Die API-Antwort enthält keines der erwarteten Zuordnungsfelder: name, time_trip, max_descent, ropes.',
+    en: 'The API response contains none of the expected mapping fields: name, time_trip, max_descent, ropes.',
+    fr: 'La réponse API ne contient aucun des champs de correspondance attendus : name, time_trip, max_descent, ropes.',
+    it: 'La risposta API non contiene nessuno dei campi di mappatura previsti: name, time_trip, max_descent, ropes.',
+    es: 'La respuesta de la API no contiene ninguno de los campos de mapeo esperados: name, time_trip, max_descent, ropes.',
+  },
   'api_source.failed': {
     de: 'API-Daten nicht geladen: {error}', en: 'API data not loaded: {error}',
     fr: 'Données API non chargées : {error}', it: 'Dati API non caricati: {error}', es: 'Datos API no cargados: {error}',

@@ -32,21 +32,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.25';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.25';
-import { createRandomTopo } from './random-topo.js?v=0.25';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.25';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.25';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.25';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.25';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.25';
+} from './model.js?v=0.26';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.26';
+import { createRandomTopo } from './random-topo.js?v=0.26';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.26';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.26';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.26';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.26';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.26';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.25';
+} from './exporters.js?v=0.26';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -62,12 +62,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.25';
-import { isPdfFile, openPdf } from './pdf.js?v=0.25';
-import { initPanelSections } from './panel-sections.js?v=0.25';
-import { initAiLock } from './ai-lock.js?v=0.25';
-import { initResponsive } from './responsive.js?v=0.25';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.25';
+} from './ai.js?v=0.26';
+import { isPdfFile, openPdf } from './pdf.js?v=0.26';
+import { initPanelSections } from './panel-sections.js?v=0.26';
+import { initAiLock } from './ai-lock.js?v=0.26';
+import { initResponsive } from './responsive.js?v=0.26';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.26';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -78,7 +78,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.25';
+} from './i18n.js?v=0.26';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -1266,7 +1266,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.25');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.26');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();
@@ -1361,6 +1361,10 @@ async function loadApiMetadata(apiUrl) {
       throw new Error(t(lang(), 'api_source.invalid_data'));
     }
     patch = {};
+    const mappingFields = ['name', 'time_trip', 'ropes', 'max_descent'];
+    if (!mappingFields.some((field) => Object.hasOwn(data, field))) {
+      throw new Error(t(lang(), 'api_source.missing_fields'));
+    }
     for (const [field, target] of [['name', 'canyon_name'], ['time_trip', 'duration'], ['ropes', 'recommended_rope_length']]) {
       if (Object.hasOwn(data, field)) {
         if (data[field] === null) {

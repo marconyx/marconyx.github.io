@@ -19,8 +19,8 @@ import {
   WALL_DISTANCE_SEGMENT_TYPES,
   normalizeTopo,
   renumberElements,
-} from './model.js?v=0.25';
-import { symbolOptions } from './symbols.js?v=0.25';
+} from './model.js?v=0.26';
+import { symbolOptions } from './symbols.js?v=0.26';
 
 /**
  * Kleiner deterministischer PRNG mit 32-Bit-Zustand (mulberry32), nicht für

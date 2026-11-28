@@ -12,7 +12,7 @@ Tastaturfokus mit Enter/Leertaste die vollständige Meldung. Das Popup lässt si
 mit Escape oder **Schliessen** verlassen.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.25`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.26`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -228,7 +228,10 @@ Modellfeld nicht nullable ist. Ungültige Felder verhindern die gesamte
 Metadatenübernahme. Vorhandene Metadaten werden durch gelieferte Werte
 überschrieben; die Werte erscheinen in den Eingabefeldern und – sofern nicht
 leer bzw. bei Abseillänge grösser als 0 – in der Legende. Segmente und übrige
-Topo-Felder bleiben unverändert.
+Topo-Felder bleiben unverändert. Fehlen alle vier Zuordnungsfelder, wird die
+Antwort als nicht unterstützte Struktur gemeldet statt eine erfolgreiche
+Zuordnung vorzutäuschen. Die API muss die Felder direkt im JSON-Objekt liefern;
+ein nicht dokumentiertes Envelope-Format wird nicht automatisch interpretiert.
 
 Mit `source` und `apiURL` wird zuerst das XML geöffnet und danach werden die
 API-Metadaten darübergelegt. Schlägt das XML fehl, wird die API nicht aufgerufen;

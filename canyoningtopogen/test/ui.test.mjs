@@ -2551,10 +2551,17 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       assert.equal(storage.get(key), draft);
     });
     const empty = await start(null, json({}), '/api');
-    test('eine Antwort ohne Werte ändert das Topo nicht und aktiviert keinen Link-Autosaveschutz', () => {
+    test('Antwort ohne Mappingfelder wird als nicht unterstützte Struktur gemeldet', () => {
       assert.equal(empty.state.topo.canyon_name, 'Gesicherter Entwurf');
       assert.equal(storage.get(key), draft);
-      assert.doesNotMatch(elementById('status').textContent, /Autosave/);
+      assert.match(elementById('status').textContent, /enthält keines.*Zuordnungsfelder.*name.*time_trip.*max_descent.*ropes/);
+      assert.doesNotMatch(elementById('status').textContent, /API-Daten geladen/);
+    });
+    const envelope = await start(null, json({ data: { name: 'verschachtelt' } }), '/api');
+    test('unbekanntes Antwort-Envelope wird nicht als erfolgreiche Zuordnung gemeldet', () => {
+      assert.equal(envelope.state.topo.canyon_name, 'Gesicherter Entwurf');
+      assert.equal(storage.get(key), draft);
+      assert.match(elementById('status').textContent, /enthält keines.*Zuordnungsfelder/);
     });
     for (const data of [
       null, [], { name: 'neu', max_descent: -1 }, { name: 'neu', time_trip: 2 },

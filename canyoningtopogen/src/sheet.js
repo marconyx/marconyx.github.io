@@ -10,7 +10,7 @@
  * oder verschieben das Modell nicht. Legendentext und seine geschätzte Breite
  * müssen für Layout, Interaktion und SVG aus denselben Hilfsfunktionen stammen.
  */
-import { DEFAULT_LANGUAGE, translateLegendLabel } from './i18n.js?v=0.25';
+import { DEFAULT_LANGUAGE, translateLegendLabel } from './i18n.js?v=0.26';
 
 
 /** Zielformate. `width`/`height` in Pixeln (A4 bei 96 dpi), `null` = frei. */
