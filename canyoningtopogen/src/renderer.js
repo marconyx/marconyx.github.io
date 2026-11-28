@@ -10,18 +10,18 @@
  * separat ohne Auswahl-/Drag-Markierungen erzeugt. Sichtbare Nutztexte werden
  * vor dem Einfügen in SVG escaped.
  */
-import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.27';
+import { SEGMENT_LABELS, WATER_SEGMENT_TYPES } from './model.js?v=0.28';
 import {
   symbolFor,
   renderUnknownSymbol,
   renderEauFroideSymbol,
   renderEauFroideRange,
   EAU_FROIDE_PALETTE,
-} from './symbols.js?v=0.27';
+} from './symbols.js?v=0.28';
 import {
   DEFAULT_LANGUAGE,
   translateLegendLabel,
-} from './i18n.js?v=0.27';
+} from './i18n.js?v=0.28';
 import {
   PAPER_PRESETS,
   contentBoundsFor,
@@ -37,7 +37,7 @@ import {
   paperPreset,
   poolDepthLabelFor,
   poolDrawingDepthOf,
-} from './sheet.js?v=0.27';
+} from './sheet.js?v=0.28';
 
 export { PAPER_PRESETS };
 

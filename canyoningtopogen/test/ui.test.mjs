@@ -231,8 +231,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 
 import { SEGMENT_TYPES, SEGMENT_SHORTCUTS, parseSegmentShortcut, validateTopo, createEmptyTopo, defaultAngleFor, normalizeTopo } from '../src/model.js';
 import { symbolOptions } from '../src/symbols.js';
-import { topoToJson } from '../src/io-json.js';
-import { topoToXml } from '../src/io-xml.js';
+import { topoFromJson, topoToJson } from '../src/io-json.js';
+import { topoFromXml, topoToXml } from '../src/io-xml.js';
 import { layoutTopo } from '../src/layout.js';
 import { initPanelSections, PANEL_SECTION_IDS, PANEL_STORAGE_KEY } from '../src/panel-sections.js';
 import { initResponsive, MOBILE_QUERY, VIEWS, DEFAULT_VIEW } from '../src/responsive.js';
@@ -2566,6 +2566,9 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
     for (const data of [
       null, [], { name: 'neu', max_descent: -1 }, { name: 'neu', time_trip: true },
       { canyon: { name: 'neu', time_trip: true } },
+      { canyon: { last_update_date: '2026-02-29' } },
+      { canyon: { last_update_date: '2026-13-01' } },
+      { last_update_date: '2025-2-03' },
       { name: 'neu', max_descent: '' }, { name: 'neu', max_descent: '0x10' },
       { name: 'neu', max_descent: 'Infinity' }, { name: false },
       { name: 'neu', ropes: 40 }, { name: 'neu', ropes: ['2 x 40 m'] },
@@ -2602,9 +2605,9 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       });
     }
     const combined = await start('route.xml', async (url) => url.endsWith('.xml')
-      ? ({ ok: true, text: async () => '<topo canyon_name="XML-Name" duration="XML-Dauer" maximum_walk_length="12" recommended_rope_length="1 x 20 m"><segment type="WALK" length_in_meters="20"/></topo>' })
+      ? ({ ok: true, text: async () => '<topo canyon_name="XML-Name" duration="XML-Dauer" date="2020-01-02" maximum_walk_length="12" recommended_rope_length="1 x 20 m"><segment type="WALK" length_in_meters="20"/></topo>' })
       : ({ ok: true, json: async () => ({
-        canyon: { name: 'API-Name', time_trip: 255, max_descent: 50, ropes: '2 x 50 m' },
+        canyon: { name: 'API-Name', time_trip: 255, max_descent: 50, ropes: '2 x 50 m', last_update_date: '2026-08-14' },
         topo: { title: 'nicht zugeordnet', xmlUrl: '/must-not-fetch.xml' },
         tmpTopoSaveUrl: '/must-not-call-save',
       }) }), 'https://api.test/topo');
@@ -2614,15 +2617,36 @@ test('ohne matchMedia (Desktop/Tests) bleibt alles sichtbar und die App ist verd
       assert.equal(combined.state.topo.duration, '255');
       assert.equal(combined.state.topo.maximum_walk_length, 50);
       assert.equal(combined.state.topo.recommended_rope_length, '2 x 50 m');
+      assert.equal(combined.state.topo.date, '2026-08-14');
       assert.equal(combined.state.topo.segments[0].length_in_meters, 20);
       assert.equal(elementById('topo-name').value, 'API-Name');
       assert.equal(elementById('topo-duration').value, '255');
       assert.equal(elementById('topo-max-walk').value, 50);
       assert.equal(elementById('topo-recommended-rope-length').value, '2 x 50 m');
+      assert.equal(elementById('topo-date').value, '2026-08-14');
       assert.match(svg(), /data-meta="duration"[^>]*>[\s\S]*255<\/text>/);
       assert.match(svg(), /data-meta="maximum_walk_length"[^>]*>[\s\S]*50 m<\/text>/);
       assert.match(svg(), /data-meta="recommended_rope_length"[^>]*>[\s\S]*2 x 50 m<\/text>/);
+      assert.match(svg(), /data-meta="date"[^>]*>[\s\S]*14\.08\.2026<\/text>/);
+      assert.match(topoToJson(combined.state.topo), /"date": "2026-08-14"/);
+      assert.match(topoToXml(combined.state.topo), /date="2026-08-14"/);
+      assert.equal(topoFromJson(topoToJson(combined.state.topo)).date, '2026-08-14');
+      assert.equal(topoFromXml(topoToXml(combined.state.topo)).date, '2026-08-14');
       assert.equal(storage.get(key), draft);
+    });
+    const directDate = await start(null, json({ last_update_date: '2024-02-29' }), '/api');
+    test('last_update_date wird auch im direkten Objekt übernommen', () => {
+      assert.equal(directDate.state.topo.date, '2024-02-29');
+      assert.equal(elementById('topo-date').value, '2024-02-29');
+      assert.match(svg(), /29\.02\.2024/);
+    });
+    const clearedDate = await start(null, json({ last_update_date: null }), '/api');
+    const clearedEmptyDate = await start(null, json({ last_update_date: '' }), '/api');
+    test('explizit null oder leer leert das Datum statt das heutige Datum einzusetzen', () => {
+      assert.equal(clearedDate.state.topo.date, '');
+      assert.equal(clearedEmptyDate.state.topo.date, '');
+      assert.equal(elementById('topo-date').value, '');
+      assert.doesNotMatch(svg(), /data-meta="date"/);
     });
     const failedApi = await start('route.xml', async (url) => url.endsWith('.xml') ? ok() : ({ ok: false, status: 500 }), '/api');
     test('API-Fehler lässt erfolgreich geladenes XML und Autosave unverändert', () => {

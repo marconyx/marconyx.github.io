@@ -32,21 +32,21 @@ import {
   normalizeTopo,
   parseSegmentShortcutList,
   validateTopo,
-} from './model.js?v=0.27';
-import { topoFromJson, topoToJson } from './io-json.js?v=0.27';
-import { createRandomTopo } from './random-topo.js?v=0.27';
-import { topoFromXml, topoToXml } from './io-xml.js?v=0.27';
-import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.27';
-import { layoutTopo, worldToLocal } from './layout.js?v=0.27';
-import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.27';
-import { SYMBOLS, symbolOptions } from './symbols.js?v=0.27';
+} from './model.js?v=0.28';
+import { topoFromJson, topoToJson } from './io-json.js?v=0.28';
+import { createRandomTopo } from './random-topo.js?v=0.28';
+import { topoFromXml, topoToXml } from './io-xml.js?v=0.28';
+import { ShortListError, topoFromShortList, topoToShortList } from './io-shortlist.js?v=0.28';
+import { layoutTopo, worldToLocal } from './layout.js?v=0.28';
+import { legendRectFor, renderTopoSvg } from './renderer.js?v=0.28';
+import { SYMBOLS, symbolOptions } from './symbols.js?v=0.28';
 import {
   downloadBlob,
   downloadText,
   printSvg,
   slugify,
   svgToPngBlob,
-} from './exporters.js?v=0.27';
+} from './exporters.js?v=0.28';
 import {
   AI_PROVIDERS,
   LOCAL_PROXY_PORT,
@@ -62,12 +62,12 @@ import {
   providerById,
   providerStatusText,
   saveAiSettings,
-} from './ai.js?v=0.27';
-import { isPdfFile, openPdf } from './pdf.js?v=0.27';
-import { initPanelSections } from './panel-sections.js?v=0.27';
-import { initAiLock } from './ai-lock.js?v=0.27';
-import { initResponsive } from './responsive.js?v=0.27';
-import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.27';
+} from './ai.js?v=0.28';
+import { isPdfFile, openPdf } from './pdf.js?v=0.28';
+import { initPanelSections } from './panel-sections.js?v=0.28';
+import { initAiLock } from './ai-lock.js?v=0.28';
+import { initResponsive } from './responsive.js?v=0.28';
+import { contentBoundsFor, fitBoundsToPaper } from './sheet.js?v=0.28';
 import {
   DEFAULT_LANGUAGE,
   applyStaticTranslations,
@@ -78,7 +78,7 @@ import {
   translatePromptHint,
   translatePromptLabel,
   translateSymbolLabel,
-} from './i18n.js?v=0.27';
+} from './i18n.js?v=0.28';
 
 const STORAGE_KEY = 'canyon-topo-generator/state/v1';
 
@@ -1266,7 +1266,7 @@ function shortListErrors(error, context) {
 
 async function loadExample() {
   try {
-    const response = await fetch('examples/my-canyon-inferiore.json?v=0.27');
+    const response = await fetch('examples/my-canyon-inferiore.json?v=0.28');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const topo = topoFromJson(await response.text());
     pushHistory();
@@ -1367,7 +1367,7 @@ async function loadApiMetadata(apiUrl) {
       data = data.canyon;
     }
     patch = {};
-    const mappingFields = ['name', 'time_trip', 'ropes', 'max_descent'];
+    const mappingFields = ['name', 'time_trip', 'ropes', 'max_descent', 'last_update_date'];
     if (!mappingFields.some((field) => Object.hasOwn(data, field))) {
       throw new Error(t(lang(), 'api_source.missing_fields'));
     }
@@ -1378,6 +1378,16 @@ async function loadApiMetadata(apiUrl) {
         } else if (typeof data[field] === 'string' ||
             (field === 'time_trip' && typeof data[field] === 'number' && Number.isFinite(data[field]))) {
           patch[target] = String(data[field]);
+        } else {
+          throw new Error(t(lang(), 'api_source.invalid_data'));
+        }
+      }
+      if (Object.hasOwn(data, 'last_update_date')) {
+        const value = data.last_update_date;
+        if (value === null || value === '') {
+          patch.date = '';
+        } else if (typeof value === 'string' && isIsoCalendarDate(value)) {
+          patch.date = value;
         } else {
           throw new Error(t(lang(), 'api_source.invalid_data'));
         }
@@ -1408,6 +1418,17 @@ async function loadApiMetadata(apiUrl) {
     sourcePending = false;
   }
   setStatusKey('api_source.loaded');
+}
+
+function isIsoCalendarDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysPerMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysPerMonth[month - 1];
 }
 
 async function loadStartupLinks(source, apiUrl) {

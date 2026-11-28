@@ -12,7 +12,7 @@ Tastaturfokus mit Enter/Leertaste die vollständige Meldung. Das Popup lässt si
 mit Escape oder **Schliessen** verlassen.
 
 Das Stylesheet, der JS-Einstiegspunkt, alle lokalen Modulimporte sowie PDF.js
-und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.27`). Bei
+und sein Worker tragen dieselbe Versionsnummer als URL-Query (`?v=0.28`). Bei
 jedem Versionswechsel müssen alle diese Queries mit erhöht werden; ein Test
 prüft die Übereinstimmung. So kann eine neue HTML-Version nicht versehentlich
 ältere Browser-Cache-Versionen der Module verwenden.
@@ -217,27 +217,29 @@ ruft beim Start die angegebene HTTP(S)-Adresse per GET ab. Die URL kann auch
 relativ zur App sein. Alternativ wird `apiUrl` unterstützt. Sind beide angegeben,
 hat `apiURL` Vorrang, auch wenn dieser Wert leer ist. Die API-Adresse muss als
 Parameterwert URL-kodiert sein, insbesondere eigene `?` und `&`. Erwartet wird
-ein direktes JSON-Objekt, zum Beispiel
-Erwartet wird das API-Objekt mit den Metadaten unter `canyon`, zum Beispiel
-`{"canyon":{"name":"Staubbach","time_trip":255,"max_descent":175,"ropes":"2 x 200 m"}}`.
+das API-Objekt mit den Metadaten unter `canyon`, zum Beispiel
+`{"canyon":{"name":"Staubbach","time_trip":255,"max_descent":175,"ropes":"2 x 200 m","last_update_date":"2026-08-14"}}`.
 Die Zuordnung liest ausschliesslich `canyon.name`, `canyon.time_trip`,
-`canyon.max_descent` und `canyon.ropes`; ein `topo`-Objekt oder weitere
+`canyon.max_descent`, `canyon.ropes` und `canyon.last_update_date`; ein `topo`-Objekt oder weitere
 Antwortfelder werden ignoriert. Für ältere/andere API-Endpunkte wird weiterhin
-ein direktes Objekt mit denselben vier Feldern akzeptiert.
+ein direktes Objekt mit denselben fünf Feldern akzeptiert.
 `name` und `ropes` (empfohlene Seillänge) sind Texte; `time_trip` darf Text oder
 eine endliche Zahl sein und wird unverändert als Text angezeigt (z. B. `255`,
 ohne Einheitenumrechnung); `max_descent` ist eine nichtnegative endliche Meterzahl
-(auch als numerischer Text). Fehlende Felder bleiben unverändert; explizit
-`null` oder leerer Text bei `name`, `time_trip` und `ropes` leert das jeweilige
-Textfeld. `max_descent: null` lässt die vorhandene Zahl unverändert, da dieses
-Modellfeld nicht nullable ist. Ungültige Felder verhindern die gesamte
+(auch als numerischer Text); `last_update_date` muss ein gültiges Datum im
+ISO-Format `YYYY-MM-DD` sein und wird unverändert ins Datum-Feld übernommen.
+Fehlende Felder bleiben unverändert; explizit `null` oder leerer Text bei
+`name`, `time_trip`, `ropes` und `last_update_date` leert das jeweilige Feld.
+`max_descent: null` lässt die vorhandene Zahl unverändert, da dieses Modellfeld
+nicht nullable ist. Ungültige Felder verhindern die gesamte
 Metadatenübernahme. Vorhandene Metadaten werden durch gelieferte Werte
 überschrieben; die Werte erscheinen in den Eingabefeldern und – sofern nicht
 leer bzw. bei Abseillänge grösser als 0 – in der Legende. Segmente und übrige
-Topo-Felder bleiben unverändert. Fehlen alle vier Zuordnungsfelder, wird die
+Topo-Felder bleiben unverändert. Fehlen alle fünf Zuordnungsfelder, wird die
 Antwort als nicht unterstützte Struktur gemeldet statt eine erfolgreiche
-Zuordnung vorzutäuschen. Die API muss die Felder direkt im JSON-Objekt liefern;
-ein nicht dokumentiertes Envelope-Format wird nicht automatisch interpretiert.
+Zuordnung vorzutäuschen. Die API muss die Felder im direkten JSON-Objekt oder
+gezielt unter `canyon` liefern; nicht dokumentierte Envelope-Formate werden
+nicht automatisch interpretiert.
 
 Mit `source` und `apiURL` wird zuerst das XML geöffnet und danach werden die
 API-Metadaten darübergelegt. Schlägt das XML fehl, wird die API nicht aufgerufen;
